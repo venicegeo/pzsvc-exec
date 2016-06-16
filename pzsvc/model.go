@@ -136,8 +136,8 @@ type ExecService struct {
 // Also used in the response to the List Service job.
 type Service struct {
 	ServiceID		string		`json:"serviceId,omitempty"`
-	URL			string		`json:"url,omitempty"`
-	ContractUrl		string 		`json:"contractUrl,omitempty"`
+	URL				string		`json:"url,omitempty"`
+	ContractURL		string 		`json:"contractUrl,omitempty"`
 	RestMethod		string 		`json:"method,omitempty"`
 	ResMeta			ResMeta		`json:"resourceMetadata,omitempty"`
 }

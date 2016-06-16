@@ -101,7 +101,7 @@ func ManageRegistration(svcName, svcDesc, svcURL, pzAddr, svcVers, authKey strin
 	for key, val := range attributes {
 		metaObj.Metadata[key] = val
 	}
-	svcObj := Service{ svcID, svcURL, svcURL, "POST", metaObj }
+	svcObj := Service{ svcID, svcURL, "", "POST", metaObj }
 	svcJSON, err := json.Marshal(svcObj)
 
 	if svcID == "" {
