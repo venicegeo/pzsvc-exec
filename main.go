@@ -47,7 +47,8 @@ type configType struct {
 type outStruct struct {
 	InFiles		map[string]string
 	OutFiles	map[string]string
-	ProgReturn	string
+	ProgStdOut	string
+	ProgStdErr	string
 	Errors		[]string
 }
 
@@ -62,12 +63,12 @@ func main() {
 	// ReadFile returns the contents of the file as a byte buffer.
 	configBuf, err := ioutil.ReadFile(os.Args[1])
 	if err != nil {
-		fmt.Println("error:", err)
+		fmt.Println("pzsvc-exec error in reading config: " + err.Error())
 	}
 	var configObj configType
 	err = json.Unmarshal(configBuf, &configObj)
 	if err != nil {
-		fmt.Println("error:", err.Error())
+		fmt.Println("pzsvc-exec error in unmarshalling config: " + err.Error())
 	}
 	canReg, canFile, hasAuth := checkConfig(&configObj)
 
@@ -98,7 +99,7 @@ func main() {
 										authKey,
 										configObj.Attributes )
 		if err != nil {
-			fmt.Println("error:", err.Error())
+			fmt.Println("pzsvc-exec error in managing registration: ", err.Error())
 		}
 		fmt.Println("Registration managed.")
 	}
@@ -190,14 +191,14 @@ func execute(w http.ResponseWriter, r *http.Request, configObj configType, authK
 	}
 
 	runID, err := psuUUID()
-	handleError(&output, err, w, http.StatusInternalServerError)
+	handleError(&output, "psuUUID error: ", err, w, http.StatusInternalServerError)
 
 	err = os.Mkdir("./"+runID, 0777)
-	handleError(&output, err, w, http.StatusInternalServerError)
+	handleError(&output, "os.Mkdir error: ", err, w, http.StatusInternalServerError)
 	defer os.RemoveAll("./" + runID)
 
 	err = os.Chmod("./"+runID, 0777)
-	handleError(&output, err, w, http.StatusInternalServerError)
+	handleError(&output, "os.Chmod error: ", err, w, http.StatusInternalServerError)
 
 	// this is done to enable use of handleFList, which lets us
 	// reduce a fair bit of code duplication in plowing through
@@ -229,16 +230,19 @@ func execute(w http.ResponseWriter, r *http.Request, configObj configType, authK
 	clc := exec.Command(cmdSlice[0], cmdSlice[1:]...)
 	clc.Dir = runID
 
-	var b bytes.Buffer
-	clc.Stdout = &b
-	clc.Stderr = os.Stderr
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+	clc.Stdout = &stdout
+	clc.Stderr = &stderr
 
 	err = clc.Run()
-	handleError(&output, err, w, http.StatusBadRequest)
+	handleError(&output, "clc.Run error: ", err, w, http.StatusBadRequest)
 	
-	output.ProgReturn = b.String()
+	output.ProgStdOut = stdout.String()
+	output.ProgStdErr = stderr.String()
 				
-	fmt.Printf("Program output: %s\n", output.ProgReturn)
+	fmt.Printf("Program stdout: %s\n", output.ProgStdOut)
+	fmt.Printf("Program stderr: %s\n", output.ProgStdErr)
 
 	attMap := make(map[string]string)
 	attMap["algoName"] = configObj.SvcName
@@ -266,7 +270,7 @@ func handleFList(fList []string, lFunc rangeFunc, fType string, output *outStruc
 	for _, f := range fList {
 		outStr, err := lFunc(f, fType)
 		if err != nil {
-			output.Errors = append(output.Errors, err.Error())
+			output.Errors = append(output.Errors, "handleFlist error:" + err.Error())
 			w.WriteHeader(http.StatusBadRequest)
 		} else {
 			fileRec[f] = outStr
@@ -274,9 +278,9 @@ func handleFList(fList []string, lFunc rangeFunc, fType string, output *outStruc
 	}
 }
 
-func handleError(output *outStruct, err error, w http.ResponseWriter, httpStat int) {
+func handleError(output *outStruct, addString string, err error, w http.ResponseWriter, httpStat int) {
 	if (err != nil) {
-		output.Errors = append(output.Errors, err.Error())
+		output.Errors = append(output.Errors, addString + err.Error())
 		w.WriteHeader(httpStat)
 	}
 	return
