@@ -153,11 +153,16 @@ func Download(dataID, subFold, pzAddr, authKey string) (string, error) {
 // until job completion, then acquires and returns the resulting DataId.
 func getDataID(jobID, pzAddr, authKey string) (string, error) {
 
+	if jobID == "" {
+		return "", fmt.Errorf(`JobID not provided after ingest.  Cannot acquire dataID.`)
+	}
+
 	time.Sleep(1000 * time.Millisecond)
 	for i := 0; i < 300; i++ { // will wait up to 1.5 minutes
 		resp, err := submitGet(pzAddr + "/job/" + jobID, authKey)
 		if resp != nil {
 			defer resp.Body.Close()
+			//TODO: look into this.  Seems like it leaves an awful lot of lose calls stacked up by the end.
 		}
 		if err != nil {
 			return "", err
@@ -175,12 +180,15 @@ func getDataID(jobID, pzAddr, authKey string) (string, error) {
 		if err != nil {
 			return "", err
 		}
-if respObj.Status == "Error" {fmt.Println(respBuf.String())}
+
 		if respObj.Status == "Submitted" || respObj.Status == "Running" || respObj.Status == "Pending" || respObj.Status == "Error" {
 			time.Sleep(300 * time.Millisecond)
 		} else {
 
 			if respObj.Status == "Success" {
+				if respObj.Result.DataID == "" {
+					return "", fmt.Errorf(`pzsvc.getDataId: response returned as success, but no ID.  Json: %s`, respBuf.String())
+				} 
 				return respObj.Result.DataID, nil
 			}
 			if respObj.Status == "Fail" {
@@ -263,6 +271,9 @@ func IngestFile(fName, subFold, fType, pzAddr, sourceName, version, authKey stri
 	fData, err := ioutil.ReadFile(locString(subFold, fName))
 	if err != nil {
 		return "", err
+	}
+	if len(fData) == 0 {
+		return "", fmt.Errorf(`pzsvc.IngestFile: File "%s" read as empty`, fName)
 	}
 	return Ingest(fName, fType, pzAddr, sourceName, version, authKey, fData, props)
 }
