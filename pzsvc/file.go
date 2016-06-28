@@ -157,7 +157,6 @@ func getDataID(jobID, pzAddr, authKey string) (string, error) {
 		return "", fmt.Errorf(`JobID not provided after ingest.  Cannot acquire dataID.`)
 	}
 
-	time.Sleep(1000 * time.Millisecond)
 	for i := 0; i < 300; i++ { // will wait up to 1.5 minutes
 		resp, err := submitGet(pzAddr + "/job/" + jobID, authKey)
 		if resp != nil {
@@ -181,7 +180,7 @@ func getDataID(jobID, pzAddr, authKey string) (string, error) {
 			return "", err
 		}
 
-		if respObj.Status == "Submitted" || respObj.Status == "Running" || respObj.Status == "Pending" || respObj.Status == "Error" {
+		if respObj.Status == "Submitted" || respObj.Status == "Running" || respObj.Status == "Pending" {
 			time.Sleep(300 * time.Millisecond)
 		} else {
 
@@ -193,6 +192,9 @@ func getDataID(jobID, pzAddr, authKey string) (string, error) {
 			}
 			if respObj.Status == "Fail" {
 				return "", errors.New("Piazza failure when acquiring DataId.  Response json: " + respBuf.String())
+			}
+			if respObj.Status == "Error" {
+				return "", errors.New("Piazza error when acquiring DataId.  Response json: " + respBuf.String())
 			}
 			return "", errors.New("Unknown status when acquiring DataId.  Response json: " + respBuf.String())
 		}
@@ -219,7 +221,7 @@ func Ingest(fName, fType, pzAddr, sourceName, version, authKey string,
 
 	switch fType {
 		case "raster" : {
-			dType.MimeType = "image/tiff"
+			//dType.MimeType = "image/tiff"
 			fileData = ingData
 		}
 		case "geojson" : {
