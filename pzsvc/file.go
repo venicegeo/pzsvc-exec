@@ -180,14 +180,13 @@ func getDataID(jobID, pzAddr, authKey string) (string, error) {
 			return "", err
 		}
 
-		if respObj.Status == "Submitted" || respObj.Status == "Running" || respObj.Status == "Pending" {
+		if	respObj.Status == "Submitted" ||
+			respObj.Status == "Running" ||
+			respObj.Status == "Pending" ||
+			( respObj.Status == "Success" && respObj.Result.DataID == "" ) {
 			time.Sleep(300 * time.Millisecond)
 		} else {
-
 			if respObj.Status == "Success" {
-				if respObj.Result.DataID == "" {
-					return "", fmt.Errorf(`pzsvc.getDataId: response returned as success, but no ID.  Json: %s`, respBuf.String())
-				} 
 				return respObj.Result.DataID, nil
 			}
 			if respObj.Status == "Fail" {
