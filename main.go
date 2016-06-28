@@ -272,6 +272,8 @@ func handleFList(fList []string, lFunc rangeFunc, fType string, output *outStruc
 		if err != nil {
 			output.Errors = append(output.Errors, "handleFlist error:" + err.Error())
 			w.WriteHeader(http.StatusBadRequest)
+		} else if outStr == "" {
+			output.Errors = append(output.Errors, `handleFlist error: type "` + fType + `", input "` + f + `" blank result.`)
 		} else {
 			fileRec[f] = outStr
 		}
