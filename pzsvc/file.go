@@ -316,7 +316,7 @@ func UpdateFileMeta(dataID, pzAddr, authKey string, newMeta map[string]string ) 
 		return err
 	}
 	
-	_, err = SubmitSinglePart("POST", string(jbuff), fmt.Sprintf(`%s/data/%s`, pzAddr, dataID), authKey)
+	_, err = SubmitSinglePart("PUT", string(jbuff), fmt.Sprintf(`%s/data/%s`, pzAddr, dataID), authKey)
 	return err
 }
 
