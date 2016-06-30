@@ -157,7 +157,7 @@ func getDataID(jobID, pzAddr, authKey string) (string, error) {
 		return "", fmt.Errorf(`JobID not provided after ingest.  Cannot acquire dataID.`)
 	}
 
-	for i := 0; i < 300; i++ { // will wait up to 1.5 minutes
+	for i := 0; i < 180; i++ { // will wait up to 3 minutes
 		resp, err := submitGet(pzAddr + "/job/" + jobID, authKey)
 		if resp == nil {
 			return "", fmt.Errorf("getDataID: no response")
@@ -185,7 +185,7 @@ func getDataID(jobID, pzAddr, authKey string) (string, error) {
 			respObj.Status == "Running" ||
 			respObj.Status == "Pending" ||
 			( respObj.Status == "Success" && respObj.Result.DataID == "" ) {
-			time.Sleep(300 * time.Millisecond)
+			time.Sleep(1000 * time.Millisecond)
 		} else {
 			if respObj.Status == "Success" {
 				return respObj.Result.DataID, nil
