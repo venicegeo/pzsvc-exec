@@ -159,17 +159,18 @@ func getDataID(jobID, pzAddr, authKey string) (string, error) {
 
 	for i := 0; i < 300; i++ { // will wait up to 1.5 minutes
 		resp, err := submitGet(pzAddr + "/job/" + jobID, authKey)
-		if resp != nil {
-			defer resp.Body.Close()
-			//TODO: look into this.  Seems like it leaves an awful lot of lose calls stacked up by the end.
+		if resp == nil {
+			return "", fmt.Errorf("getDataID: no response")
 		}
 		if err != nil {
+			resp.Body.Close()
 			return "", err
 		}
 
 		respBuf := &bytes.Buffer{}
 
 		_, err = respBuf.ReadFrom(resp.Body)
+		resp.Body.Close()
 		if err != nil {
 			return "", err
 		}
