@@ -259,6 +259,15 @@ func execute(w http.ResponseWriter, r *http.Request, configObj configType, authK
 		return pzsvc.IngestFile(fName, runID, fType, configObj.PzAddr, configObj.SvcName, version, authKey, attMap)
 	}
 
+
+clc = exec.Command("ls", "-l")
+var stdout2 bytes.Buffer
+var stderr2 bytes.Buffer
+clc.Stdout = &stdout2
+clc.Stderr = &stderr2
+_ = clc.Run()
+output.Errors = append(output.Errors, "ls result: " + stdout.String())
+
 	handleFList(outTiffSlice, ingFunc, "raster", &output, output.OutFiles, w)
 	handleFList(outTxtSlice, ingFunc, "text", &output, output.OutFiles, w)
 	handleFList(outGeoJSlice, ingFunc, "geojson", &output, output.OutFiles, w)
