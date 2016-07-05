@@ -266,7 +266,7 @@ var stderr2 bytes.Buffer
 clc.Stdout = &stdout2
 clc.Stderr = &stderr2
 _ = clc.Run()
-output.Errors = append(output.Errors, "ls result: " + stdout.String())
+output.Errors = append(output.Errors, "ls result: " + stdout2.String())
 
 	handleFList(outTiffSlice, ingFunc, "raster", &output, output.OutFiles, w)
 	handleFList(outTxtSlice, ingFunc, "text", &output, output.OutFiles, w)
