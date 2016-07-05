@@ -117,3 +117,72 @@ func ManageRegistration(svcName, svcDesc, svcURL, pzAddr, svcVers, authKey strin
 
 	return nil
 }
+
+// ExecIn is a structure designed to contain all of the information necessary
+// to call pzsvc-exec.
+type ExecIn struct {
+	FuncStr		string
+	InFiles		[]string
+	OutGeoJSON	[]string
+	OutGeoTIFF	[]string
+	OutTxt		[]string
+	AlgoURL		string
+	AuthKey		string
+}
+
+// CallPzsvcExec is a function designed to simplify calls to pzsvc-exec.
+// Fill out the inpObj properly, and it'll go through the contact process,
+// returning the OutFiles mapping (as that is generally what people are
+// interested in, one way or the other)
+func CallPzsvcExec(inpObj *ExecIn) (map[string]string, error){
+	type execOut struct {
+		InFiles		map[string]string
+		OutFiles	map[string]string
+		ProgReturn	string
+		Errors		[]string
+	}
+	var formVal url.Values
+
+	formVal = make(map[string][]string)
+	formVal.Set("cmd", inpObj.FuncStr)
+	formVal.Set("inFiles", sliceToCommaSep(inpObj.InFiles))
+	formVal.Set("outGeoJson", sliceToCommaSep(inpObj.OutGeoJSON))
+	formVal.Set("outTiffs", sliceToCommaSep(inpObj.OutGeoTIFF))
+	formVal.Set("outTxt", sliceToCommaSep(inpObj.OutTxt))
+	formVal.Set("authKey", inpObj.AuthKey)
+	fmt.Println(inpObj.FuncStr)
+
+	resp, err := http.PostForm(inpObj.AlgoURL, formVal)
+	if err != nil {
+		return nil, fmt.Errorf(`PostForm: %s`, err.Error())
+	}
+	
+	respBuf := &bytes.Buffer{}
+	_, err = respBuf.ReadFrom(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf(`ReadFrom: %s`, err.Error())
+	}
+fmt.Println(respBuf.String())
+	var respObj execOut
+	err = json.Unmarshal(respBuf.Bytes(), &respObj)
+	if err != nil {
+		fmt.Printf(`Unmarshalling error.  Json as follows:\n%s`, respBuf.String())
+		return nil, fmt.Errorf(`Unmarshalling error: %s.  Json: %s`, err.Error(), respBuf.String())
+	}
+	
+	return respObj.OutFiles, nil
+}
+
+// takes a string slice, and turns it into a comma-separated list of strings,
+// suitable for JSON.
+func sliceToCommaSep(inSlice []string) string {
+	sliLen := len(inSlice)
+	if (sliLen == 0){
+		return ""
+	}
+	accum := inSlice[0]
+	for i := 1; i < sliLen; i++ {
+		accum = accum + ", " + inSlice[i]
+	}
+	return accum + " "
+}
