@@ -25,6 +25,7 @@ import (
 	"mime/multipart"
 	"net/http"
 	"os"
+	"path/filepath"
 	"time"
 )
 
@@ -264,7 +265,11 @@ func Ingest(fName, fType, pzAddr, sourceName, version, authKey string,
 func IngestFile(fName, subFold, fType, pzAddr, sourceName, version, authKey string,
 				props map[string]string) (string, error) {
 
-	fData, err := ioutil.ReadFile(locString(subFold, fName))
+	absPath, err := filepath.Abs(locString(subFold, fName))
+	if err != nil {
+		return "", err
+	}
+	fData, err := ioutil.ReadFile(absPath)
 	if err != nil {
 		return "", err
 	}
