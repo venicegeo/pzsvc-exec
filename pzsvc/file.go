@@ -25,6 +25,7 @@ import (
 	"mime/multipart"
 	"net/http"
 	"os"
+"os/exec"
 	"time"
 )
 
@@ -149,22 +150,22 @@ func Download(dataID, subFold, pzAddr, authKey string) (string, error) {
 	return filename, nil
 }
 
-// getDataID will repeatedly poll the job status on the given job Id
-// until job completion, then acquires and returns the resulting DataId.
-func getDataID(jobID, pzAddr, authKey string) (string, error) {
+// GetJobResponse will repeatedly poll the job status on the given job Id
+// until job completion, then acquires and returns the DataResult.  
+func GetJobResponse(jobID, pzAddr, authKey string) (*DataResult, error) {
 
 	if jobID == "" {
-		return "", fmt.Errorf(`JobID not provided after ingest.  Cannot acquire dataID.`)
+		return nil, fmt.Errorf(`JobID not provided after ingest.  Cannot acquire dataID.`)
 	}
 
 	for i := 0; i < 180; i++ { // will wait up to 3 minutes
 		resp, err := submitGet(pzAddr + "/job/" + jobID, authKey)
 		if resp == nil {
-			return "", fmt.Errorf("getDataID: no response")
+			return nil, fmt.Errorf("getDataID: no response")
 		}
 		if err != nil {
 			resp.Body.Close()
-			return "", err
+			return nil, err
 		}
 
 		respBuf := &bytes.Buffer{}
@@ -172,13 +173,13 @@ func getDataID(jobID, pzAddr, authKey string) (string, error) {
 		_, err = respBuf.ReadFrom(resp.Body)
 		resp.Body.Close()
 		if err != nil {
-			return "", err
+			return nil, err
 		}
 
 		var respObj JobResp
 		err = json.Unmarshal(respBuf.Bytes(), &respObj)
 		if err != nil {
-			return "", err
+			return nil, err
 		}
 
 		if	respObj.Status == "Submitted" ||
@@ -188,19 +189,19 @@ func getDataID(jobID, pzAddr, authKey string) (string, error) {
 			time.Sleep(1000 * time.Millisecond)
 		} else {
 			if respObj.Status == "Success" {
-				return respObj.Result.DataID, nil
+				return &respObj.Result, nil
 			}
 			if respObj.Status == "Fail" {
-				return "", errors.New("Piazza failure when acquiring DataId.  Response json: " + respBuf.String())
+				return nil, errors.New("Piazza failure when acquiring DataId.  Response json: " + respBuf.String())
 			}
 			if respObj.Status == "Error" {
-				return "", errors.New("Piazza error when acquiring DataId.  Response json: " + respBuf.String())
+				return nil, errors.New("Piazza error when acquiring DataId.  Response json: " + respBuf.String())
 			}
-			return "", errors.New("Unknown status when acquiring DataId.  Response json: " + respBuf.String())
+			return nil, errors.New("Unknown status when acquiring DataId.  Response json: " + respBuf.String())
 		}
 	}
 
-	return "", fmt.Errorf("Never completed.  JobId: %s", jobID)
+	return nil, fmt.Errorf("Never completed.  JobId: %s", jobID)
 }
 
 // Ingest ingests the given bytes to Pz.  
@@ -250,25 +251,28 @@ func Ingest(fName, fType, pzAddr, sourceName, version, authKey string,
 	if err != nil {
 		return "", err
 	}
-		
-	respBuf := &bytes.Buffer{}
-	_, err = respBuf.ReadFrom(resp.Body)
+
+	jobID, err := getJobID(resp)
 	if err != nil {
 		return "", err
 	}
 
-	var respObj JobResp
-	err = json.Unmarshal(respBuf.Bytes(), &respObj)
-	if err != nil {
-		fmt.Println("error:", err)
-	}
-
-	return getDataID(respObj.JobID, pzAddr, authKey)
+	result, err := GetJobResponse(jobID, pzAddr, authKey)
+	return result.DataID, err
 }
 
 // IngestFile ingests the given file
 func IngestFile(fName, subFold, fType, pzAddr, sourceName, version, authKey string,
 				props map[string]string) (string, error) {
+
+clc := exec.Command("ls", "-l")
+clc.Dir = subFold
+var stdout bytes.Buffer
+var stderr bytes.Buffer
+clc.Stdout = &stdout
+clc.Stderr = &stderr
+err := clc.Run()
+fmt.Printf("Ingest ls: %s\n", stdout.String())
 
 	fData, err := ioutil.ReadFile(locString(subFold, fName))
 	if err != nil {
@@ -321,6 +325,41 @@ func UpdateFileMeta(dataID, pzAddr, authKey string, newMeta map[string]string ) 
 	return err
 }
 
+func DeployToGeoServer(dataID, pzAddr, authKey string) (string, error) {
+	outJSON := fmt.Sprintf(`{"dataId":"%s","deploymentType":"geoserver","type":"access"}`, dataID)
+	resp, err := SubmitSinglePart("POST", outJSON, fmt.Sprintf(`%s/deployment`, pzAddr), authKey)
+	if err != nil {
+		return "", err
+	}
+		
+	jobID, err := getJobID(resp)
+	if err != nil {
+		return "", err
+	}
+
+	result, err := GetJobResponse(jobID, pzAddr, authKey)
+	if err != nil {
+		return "", err
+	}
+
+	return result.Deployment.DeplID, nil
+}
 
 
 
+func getJobID (resp *http.Response) (string, error) {
+
+	respBuf := &bytes.Buffer{}
+	_, err := respBuf.ReadFrom(resp.Body)
+	if err != nil {
+		return "", err
+	}
+// need to decide exactly how we're going to treat these errors
+	var respObj JobResp
+	err = json.Unmarshal(respBuf.Bytes(), &respObj)
+	if err != nil {
+		fmt.Println("error:", err)
+	}
+
+	return respObj.JobID, nil
+}

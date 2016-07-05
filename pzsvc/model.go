@@ -34,6 +34,18 @@ package pzsvc
 /***  Subordinate types  ***/
 /***************************/
 
+// DeplStrct corresponds to model/data/deployment/Deployment.java.  It includes
+// all known fields as of time of entry.  Its primary use appears to be as part
+// of the job status response object from a deployment to geoserver
+type DeplStrct struct {
+	DeplID			string		`json:"id,omitempty"`
+	DataID			string		`json:"dataId,omitempty"`
+	Host			string		`json:"host,omitempty"`
+	Port			string		`json:"port,omitempty"`
+	Layer			string		`json:"layer,omitempty"`
+	CapabilitiesURL	string		`json:"capabilitiesUrl,omitempty"`
+}
+
 // DataResult corresponds to an number of classes, all of which implement interface
 // ResultType.  Of those classes, it currently handles model/job/result/type/DataResult.java
 // and model/job/result/type/FileResult.java.  Other such classes do exist, and would
@@ -41,6 +53,7 @@ package pzsvc
 type DataResult struct {
 	Type			string		`json:"type,omitempty"`
 	DataID			string		`json:"dataId,omitempty"`
+	Deployment		DeplStrct	`json:"deployment,omitempty"`
 	Details			string		`json:"details,omitempty"`
 }
 

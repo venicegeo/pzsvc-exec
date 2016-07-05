@@ -50,6 +50,7 @@ type outStruct struct {
 	ProgStdOut	string
 	ProgStdErr	string
 	Errors		[]string
+	httpStatus	int
 }
 
 func main() {
@@ -120,7 +121,7 @@ func main() {
 				// the other options are shallow and informational.  This is the
 				// place where the work gets done.
 				output := execute (w, r, configObj, authKey, version, canFile)
-				printJSON(w, output)
+				printJSON(w, output, output.httpStatus)
 			}
 		case "/description":
 			if configObj.Description == "" {
@@ -132,7 +133,7 @@ func main() {
 			if configObj.Attributes == nil {
 				fmt.Fprintf(w, "{ }")
 			} else {
-				printJSON(w, configObj.Attributes)
+				printJSON(w, configObj.Attributes, http.StatusOK)
 			}
 		case "/help":
 			printHelp(w)
@@ -157,10 +158,11 @@ func execute(w http.ResponseWriter, r *http.Request, configObj configType, authK
 	var output outStruct
 	output.InFiles = make(map[string]string)
 	output.OutFiles = make(map[string]string)
+	output.httpStatus = http.StatusOK
 
 	if r.Method != "POST" {
 		output.Errors = append(output.Errors, "This endpoint does not support that method.  Please try again with POST.")
-		w.WriteHeader(http.StatusMethodNotAllowed)
+		output.httpStatus = http.StatusMethodNotAllowed
 		return output
 	}
 
@@ -180,13 +182,13 @@ func execute(w http.ResponseWriter, r *http.Request, configObj configType, authK
 
 	if !canFile && (len(inFileSlice) + len(outTiffSlice) + len(outTxtSlice) + len(outGeoJSlice) != 0) {
 		output.Errors = append(output.Errors, "Cannot complete.  File up/download not enabled in config file.")
-		w.WriteHeader(http.StatusForbidden)
+		output.httpStatus = http.StatusForbidden
 		return output
 	}
 
 	if authKey == "" && (len(inFileSlice) + len(outTiffSlice) + len(outTxtSlice) + len(outGeoJSlice) != 0) {
 		output.Errors = append(output.Errors, "Cannot complete.  Auth Key not available.")
-		w.WriteHeader(http.StatusForbidden)
+		output.httpStatus = http.StatusForbidden
 		return output
 	}
 
@@ -211,7 +213,7 @@ func execute(w http.ResponseWriter, r *http.Request, configObj configType, authK
 
 	if len(cmdSlice) == 0 {
 		output.Errors = append(output.Errors, `No cmd or CliCmd.  Please provide "cmd" param.`)
-		w.WriteHeader(http.StatusBadRequest)
+		output.httpStatus = http.StatusBadRequest
 		return output
 	}
 
@@ -271,9 +273,10 @@ func handleFList(fList []string, lFunc rangeFunc, fType string, output *outStruc
 		outStr, err := lFunc(f, fType)
 		if err != nil {
 			output.Errors = append(output.Errors, "handleFlist error:" + err.Error())
-			w.WriteHeader(http.StatusBadRequest)
+			output.httpStatus = http.StatusBadRequest
 		} else if outStr == "" {
 			output.Errors = append(output.Errors, `handleFlist error: type "` + fType + `", input "` + f + `" blank result.`)
+			output.httpStatus = http.StatusBadRequest
 		} else {
 			fileRec[f] = outStr
 		}
@@ -283,7 +286,7 @@ func handleFList(fList []string, lFunc rangeFunc, fType string, output *outStruc
 func handleError(output *outStruct, addString string, err error, w http.ResponseWriter, httpStat int) {
 	if (err != nil) {
 		output.Errors = append(output.Errors, addString + err.Error())
-		w.WriteHeader(httpStat)
+		output.httpStatus = httpStat
 	}
 	return
 }
@@ -305,13 +308,15 @@ func psuUUID() (string, error) {
 	return fmt.Sprintf("%X-%X-%X-%X-%X", b[0:4], b[4:6], b[6:8], b[8:10], b[10:]), nil
 }
 
-func printJSON(w http.ResponseWriter, output interface{}) {
+func printJSON(w http.ResponseWriter, output interface{}, httpStatus int) {
 	outBuf, err := json.Marshal(output)
 	if err != nil {
-		fmt.Fprintf(w, `{"Errors":"Json marshalling failure.  Data not reportable."}`)
+		http.Error(w, `{"Errors":"Json marshalling failure.  Data not reportable."}`, http.StatusInternalServerError)
+	} else if httpStatus != http.StatusOK {
+		http.Error(w, string(outBuf), httpStatus)
+	} else {
+		fmt.Fprintf(w, "%s", string(outBuf))
 	}
-
-	fmt.Fprintf(w, "%s", string(outBuf))
 }
 
 func getVersion(configObj configType) string {
