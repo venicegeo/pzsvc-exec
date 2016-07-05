@@ -182,7 +182,7 @@ func sliceToCommaSep(inSlice []string) string {
 	}
 	accum := inSlice[0]
 	for i := 1; i < sliLen; i++ {
-		accum = accum + ", " + inSlice[i]
+		accum = accum + "," + inSlice[i]
 	}
-	return accum + " "
+	return accum
 }
