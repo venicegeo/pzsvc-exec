@@ -260,7 +260,7 @@ func execute(w http.ResponseWriter, r *http.Request, configObj configType, authK
 	}
 
 
-clc = exec.Command("ls", "-l")
+clc = exec.Command("ls", runID)
 var stdout2 bytes.Buffer
 var stderr2 bytes.Buffer
 clc.Stdout = &stdout2
