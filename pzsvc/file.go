@@ -25,7 +25,6 @@ import (
 	"mime/multipart"
 	"net/http"
 	"os"
-"os/exec"
 	"time"
 )
 
@@ -264,15 +263,6 @@ func Ingest(fName, fType, pzAddr, sourceName, version, authKey string,
 // IngestFile ingests the given file
 func IngestFile(fName, subFold, fType, pzAddr, sourceName, version, authKey string,
 				props map[string]string) (string, error) {
-
-clc := exec.Command("ls", "-l")
-clc.Dir = subFold
-var stdout bytes.Buffer
-var stderr bytes.Buffer
-clc.Stdout = &stdout
-clc.Stderr = &stderr
-err := clc.Run()
-fmt.Printf("Ingest ls: %s\n", stdout.String())
 
 	fData, err := ioutil.ReadFile(locString(subFold, fName))
 	if err != nil {
