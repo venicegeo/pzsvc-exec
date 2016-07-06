@@ -258,6 +258,10 @@ func Ingest(fName, fType, pzAddr, sourceName, version, authKey string,
 	}
 
 	result, err := GetJobResponse(jobID, pzAddr, authKey)
+	if err != nil {
+		return "", err
+	}
+	
 	return result.DataID, err
 }
 
