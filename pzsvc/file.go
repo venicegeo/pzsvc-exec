@@ -186,11 +186,11 @@ func GetJobResponse(jobID, pzAddr, authKey string) (*DataResult, error) {
 			respObj.Status == "Running" ||
 			respObj.Status == "Pending" ||
 			( respObj.Status == "Error" && respObj.Message == "Job Not Found." ) ||
-			( respObj.Status == "Success" && respObj.Result.DataID == "" ) {
+			( respObj.Status == "Success" && respObj.Result == nil ) {
 			time.Sleep(1000 * time.Millisecond)
 		} else {
 			if respObj.Status == "Success" {
-				return &respObj.Result, nil
+				return respObj.Result, nil
 			}
 			if respObj.Status == "Fail" {
 				return nil, errors.New("Piazza failure when acquiring DataId.  Response json: " + respBuf.String())
@@ -329,6 +329,7 @@ func UpdateFileMeta(dataID, pzAddr, authKey string, newMeta map[string]string ) 
 
 func DeployToGeoServer(dataID, pzAddr, authKey string) (string, error) {
 	outJSON := fmt.Sprintf(`{"dataId":"%s","deploymentType":"geoserver","type":"access"}`, dataID)
+fmt.Println(outJSON)
 	resp, err := SubmitSinglePart("POST", outJSON, fmt.Sprintf(`%s/deployment`, pzAddr), authKey)
 	if err != nil {
 		return "", err
