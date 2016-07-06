@@ -38,7 +38,7 @@ package pzsvc
 // all known fields as of time of entry.  Its primary use appears to be as part
 // of the job status response object from a deployment to geoserver
 type DeplStrct struct {
-	DeplID			string		`json:"id,omitempty"`
+	DeplID			string		`json:"deploymentId,omitempty"`
 	DataID			string		`json:"dataId,omitempty"`
 	Host			string		`json:"host,omitempty"`
 	Port			string		`json:"port,omitempty"`
@@ -177,7 +177,7 @@ type JobResult struct { //name
 type JobResp struct { //name
 	Type			string		`json:"type,omitempty"`
 	JobID			string		`json:"jobId,omitempty"`
-	Result			DataResult	`json:"result,omitempty"`
+	Result			*DataResult	`json:"result,omitempty"`
 	Status			string		`json:"status,omitempty"`
 	JobType			string		`json:"jobType,omitempty"`
 	SubmittedBy		string		`json:"submittedBy,omitempty"`
