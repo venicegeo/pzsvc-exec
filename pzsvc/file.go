@@ -185,6 +185,7 @@ func GetJobResponse(jobID, pzAddr, authKey string) (*DataResult, error) {
 		if	respObj.Status == "Submitted" ||
 			respObj.Status == "Running" ||
 			respObj.Status == "Pending" ||
+			( respObj.Status == "Error" && respObj.Message == "Job Not Found." ) ||
 			( respObj.Status == "Success" && respObj.Result.DataID == "" ) {
 			time.Sleep(1000 * time.Millisecond)
 		} else {
