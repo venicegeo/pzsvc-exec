@@ -190,6 +190,9 @@ func GetJobResponse(jobID, pzAddr, authKey string) (*DataResult, error) {
 			time.Sleep(1000 * time.Millisecond)
 		} else {
 			if respObj.Status == "Success" {
+
+outb, _ := json.Marshal(respObj.Result)
+fmt.Println("GetJobResponse: " + string(outb))
 				return respObj.Result, nil
 			}
 			if respObj.Status == "Fail" {
