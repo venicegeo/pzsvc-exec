@@ -17,16 +17,12 @@ package pzsvc
 import (
 	"bytes"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
 	"mime"
-	"mime/multipart"
 	"net/http"
 	"os"
-//	"path/filepath"
-	"time"
 )
 
 func locString(subFold, fname string ) string {
@@ -36,73 +32,11 @@ func locString(subFold, fname string ) string {
 	return fmt.Sprintf(`./%s/%s`, subFold, fname)	
 }
 
-// submitGet is essentially the standard http.Get() call with
-// an additional authKey parameter for Pz access. 
-func submitGet(payload, authKey string) (*http.Response, error) {
-	fileReq, err := http.NewRequest("GET", payload, nil)
-	if err != nil {
-		return nil, err
-	}
-
-	fileReq.Header.Add("Authorization", authKey)
-
-	client := &http.Client{}
-	return client.Do(fileReq)
-}
-
-// submitMultipart sends a multi-part POST call, including an optional uploaded file,
-// and returns the response.  Primarily intended to support Ingest calls.
-func submitMultipart(bodyStr, address, filename, authKey string, fileData []byte) (*http.Response, error) {
-
-	body := &bytes.Buffer{}
-	writer := multipart.NewWriter(body)
-
-	err := writer.WriteField("data", bodyStr)
-	if err != nil {
-		return nil, err
-	}
-
-	if fileData != nil {
-		part, err := writer.CreateFormFile("file", filename)
-		if err != nil {
-			return nil, err
-		}
-		if (part == nil) {
-			return nil, fmt.Errorf("Failure in Form File Creation.")
-		}
-
-		_, err = io.Copy(part, bytes.NewReader(fileData))
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	err = writer.Close()
-	if err != nil {
-		return nil, err
-	}
-
-	fileReq, err := http.NewRequest("POST", address, body)
-	if err != nil {
-		return nil, err
-	}
-
-	fileReq.Header.Add("Content-Type", writer.FormDataContentType())
-	fileReq.Header.Add("Authorization", authKey)
-
-	client := &http.Client{}
-	resp, err := client.Do(fileReq)
-	if err != nil {
-		return nil, err
-	}
-	return resp, err
-}
-
 // DownloadBytes retrieves a file from Pz using the file access API and then
 // returns the results as a byte slice
 func DownloadBytes(dataID, pzAddr, authKey string) ([]byte, error) {
 
-	resp, err := submitGet(pzAddr + "/file/" + dataID, authKey)
+	resp, err := SubmitGet(pzAddr + "/file/" + dataID, authKey)
 	if resp != nil {
 		defer resp.Body.Close()
 	}
@@ -121,7 +55,7 @@ func DownloadBytes(dataID, pzAddr, authKey string) ([]byte, error) {
 // Download retrieves a file from Pz using the file access API
 func Download(dataID, subFold, pzAddr, authKey string) (string, error) {
 
-	resp, err := submitGet(pzAddr + "/file/" + dataID, authKey)
+	resp, err := SubmitGet(pzAddr + "/file/" + dataID, authKey)
 	if resp != nil {
 		defer resp.Body.Close()
 	}
@@ -148,64 +82,6 @@ func Download(dataID, subFold, pzAddr, authKey string) (string, error) {
 	io.Copy(out, resp.Body)
 
 	return filename, nil
-}
-
-// GetJobResponse will repeatedly poll the job status on the given job Id
-// until job completion, then acquires and returns the DataResult.  
-func GetJobResponse(jobID, pzAddr, authKey string) (*DataResult, error) {
-
-	if jobID == "" {
-		return nil, fmt.Errorf(`JobID not provided after ingest.  Cannot acquire dataID.`)
-	}
-
-	for i := 0; i < 180; i++ { // will wait up to 3 minutes
-		resp, err := submitGet(pzAddr + "/job/" + jobID, authKey)
-		if resp == nil {
-			return nil, fmt.Errorf("getDataID: no response")
-		}
-		if err != nil {
-			resp.Body.Close()
-			return nil, err
-		}
-
-		respBuf := &bytes.Buffer{}
-
-		_, err = respBuf.ReadFrom(resp.Body)
-		resp.Body.Close()
-		if err != nil {
-			return nil, err
-		}
-
-		var respObj JobResp
-		err = json.Unmarshal(respBuf.Bytes(), &respObj)
-		if err != nil {
-			return nil, err
-		}
-
-		if	respObj.Status == "Submitted" ||
-			respObj.Status == "Running" ||
-			respObj.Status == "Pending" ||
-			( respObj.Status == "Error" && respObj.Message == "Job Not Found." ) ||
-			( respObj.Status == "Success" && respObj.Result == nil ) {
-			time.Sleep(1000 * time.Millisecond)
-		} else {
-			if respObj.Status == "Success" {
-
-outb, _ := json.Marshal(respObj.Result)
-fmt.Println("GetJobResponse: " + string(outb))
-				return respObj.Result, nil
-			}
-			if respObj.Status == "Fail" {
-				return nil, errors.New("Piazza failure when acquiring DataId.  Response json: " + respBuf.String())
-			}
-			if respObj.Status == "Error" {
-				return nil, errors.New("Piazza error when acquiring DataId.  Response json: " + respBuf.String())
-			}
-			return nil, errors.New("Unknown status when acquiring DataId.  Response json: " + respBuf.String())
-		}
-	}
-
-	return nil, fmt.Errorf("Never completed.  JobId: %s", jobID)
 }
 
 // Ingest ingests the given bytes to Pz.  
@@ -248,7 +124,7 @@ func Ingest(fName, fType, pzAddr, sourceName, version, authKey string,
 	}
 
 	if (fileData != nil) {
-		resp, err = submitMultipart(string(bbuff), (pzAddr + "/data/file"), fName, authKey, fileData)
+		resp, err = SubmitMultipart(string(bbuff), (pzAddr + "/data/file"), fName, authKey, fileData)
 	} else {
 		resp, err = SubmitSinglePart("POST", string(bbuff), (pzAddr + "/data"), authKey)
 	}
@@ -273,12 +149,8 @@ func Ingest(fName, fType, pzAddr, sourceName, version, authKey string,
 func IngestFile(fName, subFold, fType, pzAddr, sourceName, version, authKey string,
 				props map[string]string) (string, error) {
 
-//	absPath, err := filepath.Abs(locString(subFold, fName))
 	path := locString(subFold, fName)
-fmt.Println(path)
-/*	if err != nil {
-		return "", err
-	}*/
+
 	fData, err := ioutil.ReadFile(path)
 	if err != nil {
 		return "", err
@@ -293,26 +165,12 @@ fmt.Println(path)
 func GetFileMeta(dataID, pzAddr, authKey string) (*DataResource, error) {
 
 	call := fmt.Sprintf(`%s/data/%s`, pzAddr, dataID)
-	resp, err := submitGet(call, authKey)
-	if resp != nil {
-		defer resp.Body.Close()
-	}
-	if err != nil {
-		return nil, err
-	}
-
-	respBuf := &bytes.Buffer{}
-	_, err = respBuf.ReadFrom(resp.Body)
-	if err != nil {
-		return nil, err
-	}
-
 	var respObj IngJobType
-	err = json.Unmarshal(respBuf.Bytes(), &respObj)
+	_, err := SubmitGetKnownJSON( &respObj, call, authKey)
 	if err != nil {
 		return nil, err
 	}
-
+	
 	return &respObj.Data, nil
 }
 
@@ -330,9 +188,11 @@ func UpdateFileMeta(dataID, pzAddr, authKey string, newMeta map[string]string ) 
 	return err
 }
 
+// DeployToGeoServer calls the Pz "provision" endpoint - causing the file indicated
+// by dataId to be deployed to the local GeoServer instance.
 func DeployToGeoServer(dataID, pzAddr, authKey string) (string, error) {
 	outJSON := fmt.Sprintf(`{"dataId":"%s","deploymentType":"geoserver","type":"access"}`, dataID)
-fmt.Println(outJSON)
+
 	resp, err := SubmitSinglePart("POST", outJSON, fmt.Sprintf(`%s/deployment`, pzAddr), authKey)
 	if err != nil {
 		return "", err
@@ -350,8 +210,6 @@ fmt.Println(outJSON)
 
 	return result.Deployment.DeplID, nil
 }
-
-
 
 func getJobID (resp *http.Response) (string, error) {
 

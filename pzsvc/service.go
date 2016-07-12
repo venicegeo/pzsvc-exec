@@ -18,7 +18,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"net/url"
 )
@@ -28,21 +27,9 @@ import (
 // only able to search on service name.  Will be much more viable as a long-term answer
 // if/when it's able to search on both service name and submitting user.
 func FindMySvc(svcName, pzAddr, authKey string) (string, error) {
-
 	query := pzAddr + "/service?per_page=1000&keyword=" + url.QueryEscape(svcName)
-	
-	resp, err := submitGet(query, authKey)
-	if err != nil {
-		return "", err
-	}
-
-	respBuf, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return "", err
-	}
-
 	var respObj SvcWrapper
-	err = json.Unmarshal(respBuf, &respObj)
+	_, err := SubmitGetKnownJSON(&respObj, query, authKey)
 	if err != nil {
 		return "", err
 	}
@@ -54,33 +41,6 @@ func FindMySvc(svcName, pzAddr, authKey string) (string, error) {
 	}
 
 	return "", nil
-}
-
-// SubmitSinglePart sends a single-part POST or a PUT call to Pz and returns the
-// response.  May work on some other methods, but not yet tested for them.  Includes
-// the necessary headers.
-func SubmitSinglePart(method, bodyStr, address, authKey string) (*http.Response, error) {
-
-	fileReq, err := http.NewRequest(method, address, bytes.NewBuffer([]byte(bodyStr)))
-	if err != nil {
-		return nil, err
-	}
-
-	// The following header block is necessary for proper Pz function (as of 4 May 2016).
-	fileReq.Header.Add("Content-Type", "application/json")
-	fileReq.Header.Add("size", "30")
-	fileReq.Header.Add("from", "0")
-	fileReq.Header.Add("key", "stamp")
-	fileReq.Header.Add("order", "true")
-	fileReq.Header.Add("Authorization", authKey)
-
-	client := &http.Client{}
-	resp, err := client.Do(fileReq)
-	if err != nil {
-		return nil, err
-	}
-
-	return resp, err
 }
 
 // ManageRegistration Handles Pz registration for a service.  It checks the current
