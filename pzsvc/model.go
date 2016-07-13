@@ -14,6 +14,10 @@
 
 package pzsvc
 
+import (
+	"time"
+)
+
 // Intent: the following types are designed to correspond with the types
 // defined in piazza, in order to simplify the management of JSON - both
 // in interpreting the JSON that comes out of Piazza and in producing
@@ -188,7 +192,60 @@ type JobResp struct { //name
 // SvcWrapper is the Pz generic list wrapper, around a list of service objects.
 // It's the response object for a list/search services call
 type SvcWrapper struct {
-	Type       string			`json:"type,omitempty"`
-	Data       []Service		`json:"data,omitempty"`
-	Pagination map[string]int	`json:"pagination,omitempty"`
+	Type		string			`json:"type,omitempty"`
+	Data		[]Service		`json:"data,omitempty"`
+	Pagination	map[string]int	`json:"pagination,omitempty"`
+}
+
+
+/******** Event objects *******/
+
+// expresses the idea of "this ES query returns an event"
+// Query is specific to the event type
+type Condition struct {
+	EventTypeIDs []string         `json:"eventTypeIds" binding:"required"`
+	Query        map[string]interface{} `json:"query" binding:"required"`
+}
+
+// Job JSON struct
+type Job struct {
+	CreatedBy string                 `json:"createdBy" binding:"required"`
+	JobType   map[string]interface{} `json:"jobType" binding:"required"`
+}
+
+// when the set of Conditions are all true, do Something
+// Events are the results of the Conditions queries
+// Job is the JobMessage to submit back to Pz
+type Trigger struct {
+	TriggerID		string		`json:"triggerId"`
+	Title			string		`json:"title" binding:"required"`
+	Condition		Condition	`json:"condition" binding:"required"`
+	Job				Job			`json:"job" binding:"required"`
+	PercolationID	string		`json:"percolationId"`
+	CreatedBy		string		`json:"createdBy"`
+	CreatedOn		time.Time	`json:"createdOn"`
+	Disabled		byte		`json:"disabled"` // TODO: this will panic() if using a bool instead of a byte???
+}
+
+//---------------------------------------------------------------------------
+
+// posted by some source (service, user, etc) to indicate Something Happened
+// Data is specific to the event type
+// May not be currently necessary
+type Event struct {
+	EventID		string					`json:"eventId"`
+	EventTypeID	string					`json:"eventTypeId" binding:"required"`
+	Data		map[string]interface{}	`json:"data"`
+	CreatedBy	string					`json:"createdBy"`
+	CreatedOn	time.Time				`json:"createdOn"`
+}
+
+//---------------------------------------------------------------------------
+
+type EventType struct {
+	EventTypeID	string				`json:"eventTypeId"`
+	Name		string				`json:"name" binding:"required"`
+	Mapping		map[string]string	`json:"mapping" binding:"required"`
+	CreatedBy	string				`json:"createdBy"`
+	CreatedOn	time.Time			`json:"createdOn"`
 }

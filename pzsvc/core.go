@@ -25,27 +25,15 @@ import (
 	"time"
 )
 
-// SubmitGet is essentially the standard http.Get() call with
-// an additional authKey parameter for Pz access. 
-func SubmitGet(url, authKey string) (*http.Response, error) {
-	fileReq, err := http.NewRequest("GET", url, nil)
-	if err != nil {
-		return nil, err
-	}
-
-	fileReq.Header.Add("Authorization", authKey)
-
-	client := &http.Client{}
-	return client.Do(fileReq)
-}
-
-// SubmitGetKnownJSON submits a Get call where the response is assumed to be JSON
+// RequestKnownJSON submits an http request where the response is assumed to be JSON
 // for which the format is known.  Given an object of the appropriate format for
 // said response JSON, an address to call and an authKey to send, it will submit
 // the get request, demarshal the result into the given object, and return. It
 // returns the response buffer, in case it is needed for debugging purposes.
-func SubmitGetKnownJSON( outpObj interface{}, address, authKey string ) (*bytes.Buffer, error) {
-	resp, err := SubmitGet(address, authKey)
+func RequestKnownJSON(method, bodyStr, address, authKey string, outpObj interface{}) (*bytes.Buffer, error) {
+// TODO: could very easily refactor this to cover PUT/POST/DELETE as well
+
+	resp, err := SubmitSinglePart(method, bodyStr, address, authKey)
 	if resp == nil {
 		return nil, fmt.Errorf("GetPzObj: no response")
 	}
@@ -112,31 +100,38 @@ func SubmitMultipart(bodyStr, address, filename, authKey string, fileData []byte
 	if err != nil {
 		return nil, err
 	}
+	if resp.StatusCode < 200 || resp.StatusCode > 299 {
+		return nil, fmt.Errorf("Failed to POST multipart to " + address + " Status: " + resp.Status)
+	}
 	return resp, err
 }
 
-// SubmitSinglePart sends a single-part POST or a PUT call to Pz and returns the
-// response.  May work on some other methods, but not yet tested for them.  Includes
-// the necessary headers.
-func SubmitSinglePart(method, bodyStr, address, authKey string) (*http.Response, error) {
+// SubmitSinglePart sends a single-part GET/POST/PUT/DELETE call to Pz and returns the
+// Includes the necessary headers.
+func SubmitSinglePart(method, bodyStr, url, authKey string) (*http.Response, error) {
 
-	fileReq, err := http.NewRequest(method, address, bytes.NewBuffer([]byte(bodyStr)))
-	if err != nil {
-		return nil, err
+	var fileReq *http.Request
+	var err error
+
+	if bodyStr != "" {
+		fileReq, err = http.NewRequest(method, url, bytes.NewBuffer([]byte(bodyStr)))
+		if err != nil {
+			return nil, err
+		}
+		fileReq.Header.Add("Content-Type", "application/json")
+	} else {
+		fileReq, err = http.NewRequest(method, url, nil)
 	}
-
-	// The following header block is necessary for proper Pz function (as of 4 May 2016).
-	fileReq.Header.Add("Content-Type", "application/json")
-	fileReq.Header.Add("size", "30")
-	fileReq.Header.Add("from", "0")
-	fileReq.Header.Add("key", "stamp")
-	fileReq.Header.Add("order", "true")
+	
 	fileReq.Header.Add("Authorization", authKey)
 
 	client := &http.Client{}
 	resp, err := client.Do(fileReq)
 	if err != nil {
 		return nil, err
+	}
+	if resp.StatusCode < 200 || resp.StatusCode > 299 {
+		return nil, fmt.Errorf("Failed in " + method + " call to " + url + ".  Status : " + resp.Status)
 	}
 
 	return resp, err
@@ -153,7 +148,7 @@ func GetJobResponse(jobID, pzAddr, authKey string) (*DataResult, error) {
 	for i := 0; i < 180; i++ { // will wait up to 3 minutes
 
 		var respObj JobResp
-		respBuf, err := SubmitGetKnownJSON(&respObj, pzAddr + "/job/" + jobID, authKey)
+		respBuf, err := RequestKnownJSON("GET", "", pzAddr + "/job/" + jobID, authKey, &respObj)
 		if err != nil {
 			return nil, err
 		}

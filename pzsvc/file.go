@@ -36,7 +36,7 @@ func locString(subFold, fname string ) string {
 // returns the results as a byte slice
 func DownloadBytes(dataID, pzAddr, authKey string) ([]byte, error) {
 
-	resp, err := SubmitGet(pzAddr + "/file/" + dataID, authKey)
+	resp, err := SubmitSinglePart("GET", "", pzAddr + "/file/" + dataID, authKey)
 	if resp != nil {
 		defer resp.Body.Close()
 	}
@@ -55,7 +55,7 @@ func DownloadBytes(dataID, pzAddr, authKey string) ([]byte, error) {
 // Download retrieves a file from Pz using the file access API
 func Download(dataID, subFold, pzAddr, authKey string) (string, error) {
 
-	resp, err := SubmitGet(pzAddr + "/file/" + dataID, authKey)
+	resp, err := SubmitSinglePart("GET", "", pzAddr + "/file/" + dataID, authKey)
 	if resp != nil {
 		defer resp.Body.Close()
 	}
@@ -164,9 +164,9 @@ func IngestFile(fName, subFold, fType, pzAddr, sourceName, version, authKey stri
 // GetFileMeta retrieves the metadata for a given dataID in the S3 bucket
 func GetFileMeta(dataID, pzAddr, authKey string) (*DataResource, error) {
 
-	call := fmt.Sprintf(`%s/data/%s`, pzAddr, dataID)
+	url := fmt.Sprintf(`%s/data/%s`, pzAddr, dataID)
 	var respObj IngJobType
-	_, err := SubmitGetKnownJSON( &respObj, call, authKey)
+	_, err := RequestKnownJSON("GET", "", url, authKey, &respObj)
 	if err != nil {
 		return nil, err
 	}

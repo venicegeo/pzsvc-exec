@@ -29,7 +29,7 @@ import (
 func FindMySvc(svcName, pzAddr, authKey string) (string, error) {
 	query := pzAddr + "/service?per_page=1000&keyword=" + url.QueryEscape(svcName)
 	var respObj SvcWrapper
-	_, err := SubmitGetKnownJSON(&respObj, query, authKey)
+	_, err := RequestKnownJSON("GET", "", query, authKey, &respObj)
 	if err != nil {
 		return "", err
 	}
