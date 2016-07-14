@@ -28,7 +28,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/venicegeo/pzsvc-exec/pzsvc"
+	"github.com/venicegeo/pzsvc-lib"
 )
 
 type configType struct {
