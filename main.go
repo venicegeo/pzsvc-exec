@@ -18,12 +18,14 @@ import (
 	"bytes"
 	"crypto/rand"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
 	"os/exec"
+	"runtime"
 	"strconv"
 	"strings"
 	"time"
@@ -98,7 +100,8 @@ func main() {
 										configObj.PzAddr,
 										version,
 										authKey,
-										configObj.Attributes )
+										configObj.Attributes,
+										&http.Client{})
 		if err != nil {
 			fmt.Println("pzsvc-exec error in managing registration: ", err.Error())
 		}
@@ -159,10 +162,10 @@ func execute(w http.ResponseWriter, r *http.Request, configObj configType, authK
 	output.InFiles = make(map[string]string)
 	output.OutFiles = make(map[string]string)
 	output.httpStatus = http.StatusOK
+	client := &http.Client{}
 
 	if r.Method != "POST" {
-		output.Errors = append(output.Errors, "This endpoint does not support that method.  Please try again with POST.")
-		output.httpStatus = http.StatusMethodNotAllowed
+		handleError(&output, "", fmt.Errorf(r.Method + " not supported.  Please us POST."), w, http.StatusMethodNotAllowed)
 		return output
 	}
 
@@ -181,14 +184,12 @@ func execute(w http.ResponseWriter, r *http.Request, configObj configType, authK
 	}
 
 	if !canFile && (len(inFileSlice) + len(outTiffSlice) + len(outTxtSlice) + len(outGeoJSlice) != 0) {
-		output.Errors = append(output.Errors, "Cannot complete.  File up/download not enabled in config file.")
-		output.httpStatus = http.StatusForbidden
+		handleError(&output, "", fmt.Errorf("Cannot complete.  File up/download not enabled in config file."), w, http.StatusForbidden)
 		return output
 	}
 
 	if authKey == "" && (len(inFileSlice) + len(outTiffSlice) + len(outTxtSlice) + len(outGeoJSlice) != 0) {
-		output.Errors = append(output.Errors, "Cannot complete.  Auth Key not available.")
-		output.httpStatus = http.StatusForbidden
+		handleError(&output, "", fmt.Errorf("Cannot complete.  Auth Key not available."), w, http.StatusForbidden)
 		return output
 	}
 
@@ -207,13 +208,12 @@ func execute(w http.ResponseWriter, r *http.Request, configObj configType, authK
 	// our upload/download lists.  handleFList gets used a fair
 	// bit more after the execute call.
 	downlFunc := func(dataID, fType string) (string, error) {
-		return pzsvc.Download(dataID, runID, configObj.PzAddr, authKey)
+		return pzsvc.Download(dataID, runID, configObj.PzAddr, authKey, client)
 	}
 	handleFList(inFileSlice, downlFunc, "", &output, output.InFiles, w)
 
 	if len(cmdSlice) == 0 {
-		output.Errors = append(output.Errors, `No cmd or CliCmd.  Please provide "cmd" param.`)
-		output.httpStatus = http.StatusBadRequest
+		handleError(&output, "", errors.New(`No cmd or CliCmd.  Please provide "cmd" param.`), w, http.StatusBadRequest)
 		return output
 	}
 
@@ -256,7 +256,7 @@ func execute(w http.ResponseWriter, r *http.Request, configObj configType, authK
 	// same principles.
 
 	ingFunc := func(fName, fType string) (string, error) {
-		return pzsvc.IngestFile(fName, runID, fType, configObj.PzAddr, configObj.SvcName, version, authKey, attMap)
+		return pzsvc.IngestFile(fName, runID, fType, configObj.PzAddr, configObj.SvcName, version, authKey, attMap, client)
 	}
 
 /*
@@ -281,11 +281,9 @@ func handleFList(fList []string, lFunc rangeFunc, fType string, output *outStruc
 	for _, f := range fList {
 		outStr, err := lFunc(f, fType)
 		if err != nil {
-			output.Errors = append(output.Errors, "handleFlist error:" + err.Error())
-			output.httpStatus = http.StatusBadRequest
+			handleError(output, "handleFlist error: ", err, w, http.StatusBadRequest)
 		} else if outStr == "" {
-			output.Errors = append(output.Errors, `handleFlist error: type "` + fType + `", input "` + f + `" blank result.`)
-			output.httpStatus = http.StatusBadRequest
+			handleError(output, "handleFlist error: ", errors.New(`type "` + fType + `", input "` + f + `" blank result.`), w, http.StatusBadRequest)
 		} else {
 			fileRec[f] = outStr
 		}
@@ -294,7 +292,14 @@ func handleFList(fList []string, lFunc rangeFunc, fType string, output *outStruc
 
 func handleError(output *outStruct, addString string, err error, w http.ResponseWriter, httpStat int) {
 	if (err != nil) {
-		output.Errors = append(output.Errors, addString + err.Error())
+		var outErrStr string
+		_, _, line, ok := runtime.Caller(1)
+		if ok == true {
+			outErrStr = addString + `(pzsvc-exec/main.go, ` + strconv.Itoa(line) + `): ` + err.Error()
+		} else {
+			outErrStr = addString + `: ` + err.Error()
+		}
+		output.Errors = append(output.Errors, outErrStr)
 		output.httpStatus = httpStat
 	}
 	return
