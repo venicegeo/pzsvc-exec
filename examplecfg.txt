@@ -10,7 +10,7 @@
     "Attributes":{
         "SvcType":"beachfront",
         "Interface":"pzsvc-exec/ossim",
-        "ImgReq - CloudCover":"10%",
+        "ImgReq - CloudCover":"5%",
         "ImgReq - Bands":"3,6",
         "ImgReq - Coastline":"Yes"
     }
