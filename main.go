@@ -100,8 +100,7 @@ func main() {
 										configObj.PzAddr,
 										version,
 										authKey,
-										configObj.Attributes,
-										&http.Client{})
+										configObj.Attributes)
 		if err != nil {
 			fmt.Println("pzsvc-exec error in managing registration: ", err.Error())
 		}
@@ -162,7 +161,6 @@ func execute(w http.ResponseWriter, r *http.Request, configObj configType, authK
 	output.InFiles = make(map[string]string)
 	output.OutFiles = make(map[string]string)
 	output.httpStatus = http.StatusOK
-	client := &http.Client{}
 
 	if r.Method != "POST" {
 		handleError(&output, "", fmt.Errorf(r.Method + " not supported.  Please us POST."), w, http.StatusMethodNotAllowed)
@@ -208,7 +206,7 @@ func execute(w http.ResponseWriter, r *http.Request, configObj configType, authK
 	// our upload/download lists.  handleFList gets used a fair
 	// bit more after the execute call.
 	downlFunc := func(dataID, fType string) (string, error) {
-		return pzsvc.Download(dataID, runID, configObj.PzAddr, authKey, client)
+		return pzsvc.Download(dataID, runID, configObj.PzAddr, authKey)
 	}
 	handleFList(inFileSlice, downlFunc, "", &output, output.InFiles, w)
 
@@ -256,18 +254,9 @@ func execute(w http.ResponseWriter, r *http.Request, configObj configType, authK
 	// same principles.
 
 	ingFunc := func(fName, fType string) (string, error) {
-		return pzsvc.IngestFile(fName, runID, fType, configObj.PzAddr, configObj.SvcName, version, authKey, attMap, client)
+		return pzsvc.IngestFile(fName, runID, fType, configObj.PzAddr, configObj.SvcName, version, authKey, attMap)
 	}
 
-/*
-clc = exec.Command("ls", runID)
-var stdout2 bytes.Buffer
-var stderr2 bytes.Buffer
-clc.Stdout = &stdout2
-clc.Stderr = &stderr2
-_ = clc.Run()
-output.Errors = append(output.Errors, "ls result: " + stdout2.String())
-*/
 	handleFList(outTiffSlice, ingFunc, "raster", &output, output.OutFiles, w)
 	handleFList(outTxtSlice, ingFunc, "text", &output, output.OutFiles, w)
 	handleFList(outGeoJSlice, ingFunc, "geojson", &output, output.OutFiles, w)
