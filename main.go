@@ -35,24 +35,24 @@ import (
 
 type configType struct {
 	CliCmd      string
-	VersionCmd	string
-	VersionStr	string
+	VersionCmd  string
+	VersionStr  string
 	PzAddr      string
-	AuthEnVar	string
+	AuthEnVar   string
 	SvcName     string
 	URL         string
 	Port        int
-	Description	string
-	Attributes	map[string]string
+	Description string
+	Attributes  map[string]string
 }
 
 type outStruct struct {
-	InFiles		map[string]string
-	OutFiles	map[string]string
-	ProgStdOut	string
-	ProgStdErr	string
-	Errors		[]string
-	httpStatus	int
+	InFiles    map[string]string
+	OutFiles   map[string]string
+	ProgStdOut string
+	ProgStdErr string
+	Errors     []string
+	httpStatus int
 }
 
 func main() {
@@ -61,7 +61,7 @@ func main() {
 		fmt.Println("error: Insufficient parameters.  You must specify a config file.")
 		return
 	}
-	
+
 	// First argument after the base call should be the path to the config file.
 	// ReadFile returns the contents of the file as a byte buffer.
 	configBuf, err := ioutil.ReadFile(os.Args[1])
@@ -89,24 +89,24 @@ func main() {
 		configObj.Port = 8080
 	}
 	portStr := ":" + strconv.Itoa(configObj.Port)
-	
+
 	version := getVersion(configObj)
 
 	if canReg {
 		fmt.Println("About to manage registration.")
-		err = pzsvc.ManageRegistration(	configObj.SvcName,
-										configObj.Description,
-										configObj.URL + "/execute",
-										configObj.PzAddr,
-										version,
-										authKey,
-										configObj.Attributes)
+		err = pzsvc.ManageRegistration(configObj.SvcName,
+			configObj.Description,
+			configObj.URL+"/execute",
+			configObj.PzAddr,
+			version,
+			authKey,
+			configObj.Attributes)
 		if err != nil {
 			fmt.Println("pzsvc-exec error in managing registration: ", err.Error())
 		}
 		fmt.Println("Registration managed.")
 	}
-	
+
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		r.ParseForm()
 		switch r.URL.Path {
@@ -122,7 +122,7 @@ func main() {
 			{
 				// the other options are shallow and informational.  This is the
 				// place where the work gets done.
-				output := execute (w, r, configObj, authKey, version, canFile)
+				output := execute(w, r, configObj, authKey, version, canFile)
 				printJSON(w, output, output.httpStatus)
 			}
 		case "/description":
@@ -163,7 +163,7 @@ func execute(w http.ResponseWriter, r *http.Request, configObj configType, authK
 	output.httpStatus = http.StatusOK
 
 	if r.Method != "POST" {
-		handleError(&output, "", fmt.Errorf(r.Method + " not supported.  Please us POST."), w, http.StatusMethodNotAllowed)
+		handleError(&output, "", fmt.Errorf(r.Method+" not supported.  Please us POST."), w, http.StatusMethodNotAllowed)
 		return output
 	}
 
@@ -176,17 +176,17 @@ func execute(w http.ResponseWriter, r *http.Request, configObj configType, authK
 	outTiffSlice := splitOrNil(r.FormValue("outTiffs"), ",")
 	outTxtSlice := splitOrNil(r.FormValue("outTxts"), ",")
 	outGeoJSlice := splitOrNil(r.FormValue("outGeoJson"), ",")
-	
-	if 	r.FormValue("authKey") != "" {
+
+	if r.FormValue("authKey") != "" {
 		authKey = r.FormValue("authKey")
 	}
 
-	if !canFile && (len(inFileSlice) + len(outTiffSlice) + len(outTxtSlice) + len(outGeoJSlice) != 0) {
+	if !canFile && (len(inFileSlice)+len(outTiffSlice)+len(outTxtSlice)+len(outGeoJSlice) != 0) {
 		handleError(&output, "", fmt.Errorf("Cannot complete.  File up/download not enabled in config file."), w, http.StatusForbidden)
 		return output
 	}
 
-	if authKey == "" && (len(inFileSlice) + len(outTiffSlice) + len(outTxtSlice) + len(outGeoJSlice) != 0) {
+	if authKey == "" && (len(inFileSlice)+len(outTiffSlice)+len(outTxtSlice)+len(outGeoJSlice) != 0) {
 		handleError(&output, "", fmt.Errorf("Cannot complete.  Auth Key not available."), w, http.StatusForbidden)
 		return output
 	}
@@ -221,7 +221,7 @@ func execute(w http.ResponseWriter, r *http.Request, configObj configType, authK
 	// program called exists inside the initial pzsvc-exec folder, that's
 	// probably where it's called from, and we need to acccess it directly.
 	_, err = os.Stat(fmt.Sprintf("./%s", cmdSlice[0]))
-	if err == nil || !(os.IsNotExist(err)){
+	if err == nil || !(os.IsNotExist(err)) {
 		// ie, if there's a file in the start folder named the same thing
 		// as the base command
 		cmdSlice[0] = ("../" + cmdSlice[0])
@@ -237,10 +237,10 @@ func execute(w http.ResponseWriter, r *http.Request, configObj configType, authK
 
 	err = clc.Run()
 	handleError(&output, "clc.Run error: ", err, w, http.StatusBadRequest)
-	
+
 	output.ProgStdOut = stdout.String()
 	output.ProgStdErr = stderr.String()
-				
+
 	fmt.Printf("Program stdout: %s\n", output.ProgStdOut)
 	fmt.Printf("Program stderr: %s\n", output.ProgStdErr)
 
@@ -249,7 +249,7 @@ func execute(w http.ResponseWriter, r *http.Request, configObj configType, authK
 	attMap["algoVersion"] = version
 	attMap["algoCmd"] = configObj.CliCmd + " " + cmdParam
 	attMap["algoProcTime"] = time.Now().UTC().Format("20060102.150405.99999")
-	
+
 	// this is the other spot that handleFlist gets used, and works on the
 	// same principles.
 
@@ -260,7 +260,7 @@ func execute(w http.ResponseWriter, r *http.Request, configObj configType, authK
 	handleFList(outTiffSlice, ingFunc, "raster", &output, output.OutFiles, w)
 	handleFList(outTxtSlice, ingFunc, "text", &output, output.OutFiles, w)
 	handleFList(outGeoJSlice, ingFunc, "geojson", &output, output.OutFiles, w)
-	
+
 	return output
 }
 
@@ -272,7 +272,7 @@ func handleFList(fList []string, lFunc rangeFunc, fType string, output *outStruc
 		if err != nil {
 			handleError(output, "handleFlist error: ", err, w, http.StatusBadRequest)
 		} else if outStr == "" {
-			handleError(output, "handleFlist error: ", errors.New(`type "` + fType + `", input "` + f + `" blank result.`), w, http.StatusBadRequest)
+			handleError(output, "handleFlist error: ", errors.New(`type "`+fType+`", input "`+f+`" blank result.`), w, http.StatusBadRequest)
 		} else {
 			fileRec[f] = outStr
 		}
@@ -280,7 +280,7 @@ func handleFList(fList []string, lFunc rangeFunc, fType string, output *outStruc
 }
 
 func handleError(output *outStruct, addString string, err error, w http.ResponseWriter, httpStat int) {
-	if (err != nil) {
+	if err != nil {
 		var outErrStr string
 		_, _, line, ok := runtime.Caller(1)
 		if ok == true {
@@ -314,18 +314,16 @@ func psuUUID() (string, error) {
 func printJSON(w http.ResponseWriter, output interface{}, httpStatus int) {
 	outBuf, err := json.Marshal(output)
 	if err != nil {
-		http.Error(w, `{"Errors":"Json marshalling failure.  Data not reportable."}`, http.StatusInternalServerError)
-	} else if httpStatus != http.StatusOK {
-		http.Error(w, string(outBuf), httpStatus)
+		pzsvc.HTTPOut(w, `{"Errors":"Json marshalling failure.  Data not reportable."}`, http.StatusInternalServerError)
 	} else {
-		fmt.Fprintf(w, "%s", string(outBuf))
+		pzsvc.HTTPOut(w, string(outBuf), httpStatus)
 	}
 }
 
 func getVersion(configObj configType) string {
 	vCmdSlice := splitOrNil(configObj.VersionCmd, " ")
 	if vCmdSlice != nil {
-		vCmd := exec.Command (vCmdSlice[0], vCmdSlice[1:]...)
+		vCmd := exec.Command(vCmdSlice[0], vCmdSlice[1:]...)
 		verB, err := vCmd.Output()
 		if err != nil {
 			fmt.Println("error: VersionCmd failed: " + err.Error())
@@ -339,14 +337,14 @@ func getVersion(configObj configType) string {
 // and outputs any issues or concerns to std.out.  It returns whether
 // or not the config file permits autoregistration, and whether or not
 // it permits file upload/download.
-func checkConfig (configObj *configType) (bool, bool, bool) {
+func checkConfig(configObj *configType) (bool, bool, bool) {
 	canReg := true
 	canFile := true
 	hasAuth := true
 	if configObj.CliCmd == "" {
 		fmt.Println(`Config: Warning: CliCmd is blank.  This is a major security vulnerability.`)
 	}
-	
+
 	if configObj.PzAddr == "" {
 		fmt.Println(`Config: PzAddr not specified.  Autoregistration and file upload/download disabled.`)
 		canFile = false
@@ -363,7 +361,7 @@ func checkConfig (configObj *configType) (bool, bool, bool) {
 		fmt.Println(`Config: URL not specified for this service.  Autoregistration disabled.`)
 		canReg = false
 	}
-	
+
 	if !canFile {
 		if configObj.PzAddr != "" {
 			fmt.Println(`Config: PzAddr was specified, but is meaningless without upload/download/autoregistration.`)
@@ -376,7 +374,7 @@ func checkConfig (configObj *configType) (bool, bool, bool) {
 		}
 		if configObj.AuthEnVar != "" {
 			fmt.Println(`Config: AuthEnVar was specified, but is meaningless without upload/download/autoregistration.`)
-		}	
+		}
 	} else {
 		if configObj.VersionCmd == "" && configObj.VersionStr == "" {
 			fmt.Println(`Config: neither VersionCmd nor VersionStr was specified.  Version will be left blank.`)
@@ -385,7 +383,7 @@ func checkConfig (configObj *configType) (bool, bool, bool) {
 			fmt.Println(`Config: Both VersionCmd and VersionStr were specified.  Redundant.  Default to VersionCmd.`)
 		}
 	}
-	
+
 	if !canReg {
 		if configObj.SvcName != "" {
 			fmt.Println(`Config: SvcName was specified, but is meaningless without autoregistration.`)
@@ -402,7 +400,7 @@ func checkConfig (configObj *configType) (bool, bool, bool) {
 	if configObj.Port <= 0 {
 		fmt.Println(`Config: Port not specified, or incorrect format.  Default to 8080.`)
 	}
-	
+
 	return canReg, canFile, hasAuth
 }
 
