@@ -142,7 +142,7 @@ func main() {
 		case "/version":
 			fmt.Fprintf(w, version)
 		default:
-			fmt.Fprintf(w, "Endpoint undefined.  Try /help?\n")
+			fmt.Fprintln(w, "Endpoint undefined.  Try /help?")
 		}
 	})
 
@@ -155,7 +155,7 @@ func main() {
 // the command indicated by the combination of request and configs, uploads
 // any files indicated by the request (if the configs support it) and cleans
 // up after itself
-func execute(w http.ResponseWriter, r *http.Request, configObj configType, authKey, version string, canFile bool) outStruct {
+func execute(w http.ResponseWriter, r *http.Request, configObj configType, pzAuth, version string, canFile bool) outStruct {
 
 	var output outStruct
 	output.InFiles = make(map[string]string)
@@ -172,21 +172,23 @@ func execute(w http.ResponseWriter, r *http.Request, configObj configType, authK
 	cmdConfigSlice := splitOrNil(configObj.CliCmd, " ")
 	cmdSlice := append(cmdConfigSlice, cmdParamSlice...)
 
-	inFileSlice := splitOrNil(r.FormValue("inFiles"), ",")
-	outTiffSlice := splitOrNil(r.FormValue("outTiffs"), ",")
-	outTxtSlice := splitOrNil(r.FormValue("outTxts"), ",")
-	outGeoJSlice := splitOrNil(r.FormValue("outGeoJson"), ",")
+	inFileIDs := splitOrNil(r.FormValue("inFiles"), ",")
+	inURLs := splitOrNil(r.FormValue("inURLs"), ",")
+	outTiffs := splitOrNil(r.FormValue("outTiffs"), ",")
+	outTxts := splitOrNil(r.FormValue("outTxts"), ",")
+	outGeoJs := splitOrNil(r.FormValue("outGeoJson"), ",")
 
+	urlAuth := r.FormValue("inUrlAuthKey")
 	if r.FormValue("authKey") != "" {
-		authKey = r.FormValue("authKey")
+		pzAuth = r.FormValue("authKey")
 	}
 
-	if !canFile && (len(inFileSlice)+len(outTiffSlice)+len(outTxtSlice)+len(outGeoJSlice) != 0) {
+	if !canFile && (len(inFileIDs)+len(outTiffs)+len(outTxts)+len(outGeoJs) != 0) {
 		handleError(&output, "", fmt.Errorf("Cannot complete.  File up/download not enabled in config file."), w, http.StatusForbidden)
 		return output
 	}
 
-	if authKey == "" && (len(inFileSlice)+len(outTiffSlice)+len(outTxtSlice)+len(outGeoJSlice) != 0) {
+	if pzAuth == "" && (len(inFileIDs)+len(outTiffs)+len(outTxts)+len(outGeoJs) != 0) {
 		handleError(&output, "", fmt.Errorf("Cannot complete.  Auth Key not available."), w, http.StatusForbidden)
 		return output
 	}
@@ -205,17 +207,22 @@ func execute(w http.ResponseWriter, r *http.Request, configObj configType, authK
 	// reduce a fair bit of code duplication in plowing through
 	// our upload/download lists.  handleFList gets used a fair
 	// bit more after the execute call.
-	downlFunc := func(dataID, fType string) (string, error) {
-		return pzsvc.Download(dataID, runID, configObj.PzAddr, authKey)
+	pzDownlFunc := func(dataID, fType string) (string, error) {
+		return pzsvc.Download(dataID, runID, configObj.PzAddr, pzAuth)
 	}
-	handleFList(inFileSlice, downlFunc, "", &output, output.InFiles, w)
+	handleFList(inFileIDs, pzDownlFunc, "", &output, output.InFiles, w)
+
+	extDownlFunc := func(url, fType string) (string, error) {
+		return pzsvc.DownloadByURL(url, runID, urlAuth)
+	}
+	handleFList(inURLs, extDownlFunc, "", &output, output.InFiles, w)
 
 	if len(cmdSlice) == 0 {
 		handleError(&output, "", errors.New(`No cmd or CliCmd.  Please provide "cmd" param.`), w, http.StatusBadRequest)
 		return output
 	}
 
-	fmt.Printf("Executing \"%s\".\n", configObj.CliCmd+" "+cmdParam)
+	fmt.Println(`Executing "` + configObj.CliCmd + ` ` + cmdParam + `".`)
 
 	// we're calling this from inside a temporary subfolder.  If the
 	// program called exists inside the initial pzsvc-exec folder, that's
@@ -241,8 +248,8 @@ func execute(w http.ResponseWriter, r *http.Request, configObj configType, authK
 	output.ProgStdOut = stdout.String()
 	output.ProgStdErr = stderr.String()
 
-	fmt.Printf("Program stdout: %s\n", output.ProgStdOut)
-	fmt.Printf("Program stderr: %s\n", output.ProgStdErr)
+	fmt.Println(`Program stdout: ` + output.ProgStdOut)
+	fmt.Println(`Program stderr: ` + output.ProgStdErr)
 
 	attMap := make(map[string]string)
 	attMap["algoName"] = configObj.SvcName
@@ -254,12 +261,12 @@ func execute(w http.ResponseWriter, r *http.Request, configObj configType, authK
 	// same principles.
 
 	ingFunc := func(fName, fType string) (string, error) {
-		return pzsvc.IngestFile(fName, runID, fType, configObj.PzAddr, configObj.SvcName, version, authKey, attMap)
+		return pzsvc.IngestFile(fName, runID, fType, configObj.PzAddr, configObj.SvcName, version, pzAuth, attMap)
 	}
 
-	handleFList(outTiffSlice, ingFunc, "raster", &output, output.OutFiles, w)
-	handleFList(outTxtSlice, ingFunc, "text", &output, output.OutFiles, w)
-	handleFList(outGeoJSlice, ingFunc, "geojson", &output, output.OutFiles, w)
+	handleFList(outTiffs, ingFunc, "raster", &output, output.OutFiles, w)
+	handleFList(outTxts, ingFunc, "text", &output, output.OutFiles, w)
+	handleFList(outGeoJs, ingFunc, "geojson", &output, output.OutFiles, w)
 
 	return output
 }
