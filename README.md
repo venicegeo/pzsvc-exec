@@ -9,7 +9,6 @@
 - Config File Format: You need this if you want to have any control over the instance you're running.  May be useful for understanding how pzsvc-exec works.
 - Service Endpoints: a listing of the service endpoints that pzsvc-exec makes available and what they are useful for.
 - Execute Endpoint Request Format: You need this if you want to make use of the /execute endpoint of pzsvc-exec with any control at all.
--- Example http calls: examples that put the "using" section into practice.
 
 ## What and Why
 
@@ -95,21 +94,3 @@ outGeoJson: as with outTiffs and outTxts, but with GeoJson files.  Must be in pr
 authKey: a replacement or override for the auth key stored in the config file's AuthEnVar.  Used as a Pz auth key for file downloads and ingests associated with the current call.
 
 inUrlAuthKey: an auth key for use with the inURLs parameter.  Will be offered as authorization key to all URLs listed in inURLs.  For security reasons, this calls for a bit of care to ensure that you are not sending your PlanetLabs auth key (for example) to a third party.
-
-### Example http calls
-
-`https://<address:port>/execute`
-- No uploads, no downloads, direct access rather than through piazza, just running whatever command CliCmd has to offer
-
-`https://<address:port>/execute?cmd=ls -l`
-- Assumes that CliCmd is blank.  Makes no uploads and no downloads.  Returns the contents of the local directory.
-
-`http://<address:port>/execute?cmd=ls -l;inFiles=a10e6611-b996-4491-8988-ad0624ae8b6a,f71159c8-836d-4fcc-b8d9-4e9fb032e7a6,10fa1980-f0b5-4138-9f64-64b6fe7f73b2`
-- As above, but downloads 3 files prior to running `ls -l`.  Results should include the identity of the downloaded files in addition to the standard output for ls (a list of the files downloaded) and the Piazza wrapper.
-
-`http://<address:port>/execute?inFiles=a10e6611-b996-4491-8988-ad0624ae8b6a,f71159c8-836d-4fcc-b8d9-4e9fb032e7a6,10fa1980-f0b5-4138-9f64-64b6fe7f73b2;outTiffs=garden_rgb.tif,garden_b6.tif,garden_b3.tif;outTxts=testSend.txt;outGeoJson=tester.json`
-
-Downloads 3 files, then runs whatever command CmdCli has to offer without addition, then attempts to upload 3 tiffs, a txt file, and a GeoJson.  Results should include a list of files downloaded, a list of files uploaded, and whatever the results of the CliCmd call is.
-
-
-
