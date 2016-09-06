@@ -412,7 +412,7 @@ func checkConfig(configObj *configType) (bool, bool, bool) {
 }
 
 func printHelp(w http.ResponseWriter) {
-	fmt.Fprintln(w, `pzsvc-exec endpoints as follows:`)
+	fmt.Fprintln(w, `The pzsvc-exec service endpoints are as follows:`)
 	fmt.Fprintln(w, `- '/': entry point.  Displays base command if any, and suggests other endpoints.`)
 	fmt.Fprintln(w, `- '/execute': The meat of the program.  Downloads files, executes on them, and uploads the results.`)
 	fmt.Fprintln(w, `See the Service Request Format section of the Readme for interface details.`)

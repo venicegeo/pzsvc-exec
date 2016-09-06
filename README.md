@@ -7,7 +7,8 @@
 - What and Why: Useful background information and overview.
 - Installing and Running: You need this if you want to run/administrate a pzsvc-exec instance
 - Config File Format: You need this if you want to have any control over the instance you're running.  May be useful for understanding how pzsvc-exec works.
-- Service Request Format: You need this if you want to access an existing instance of pzsvc-exec with any control at all.
+- Service Endpoints: a listing of the service endpoints that pzsvc-exec makes available and what they are useful for.
+- Execute Endpoint Request Format: You need this if you want to make use of the /execute endpoint of pzsvc-exec with any control at all.
 -- Example http calls: examples that put the "using" section into practice.
 
 ## What and Why
@@ -63,13 +64,27 @@ Description: A simple text description of your service.  Used in registration, a
 
 Attributes: A block of freeform key/value pairs for you to set additional descriptive attributes.  Used in registration, and also available through the "/attributes" endpoint.  Primarily intended to aid communication between services and service consumers with respect to the details of a service.  Information provided might be things like service type (so that the correct service consumers can identify you), interface (so they know how to interact with you) and image requirements (so they know what sorts of images to send you).
 
-## Service Request Format
+## Service Endpoints
 
-Intended use is through the Piazza service, though it can also be used as a standalone service.  Currently accepts both GET and POST calls, with identical parameters.  Actually using the service requires that you call the "execute" endpoint of whatever base the service is called on (example: "http://localhost:8080/execute", if running locally on port 8080).  Beyond that, valid and accepted parameters (query parameters for Get, form parameters for POST) are as follows:
+The pzsvc-exec service endpoints are as follows:
+
+- '/': The entry point.  Displays the 'CliCmd' parameter, if any, and suggests other endpoints.
+- '/execute': The meat of the program.  Downloads files, executes on them, and uploads the results.
+See the Execute Endpoint Request Format section of this Readme for interface details.
+- '/description': When enabled, provides a description of this particular pzsvc-exec instance.
+- '/attributes': When enabled, provides a list of key/value attributes for this pzsvc-exec instance.
+- '/version': When enabled, provides version number for the application served by this pzsvc-exec instance.
+- '/help': Provides the Service Endpoint data available here.
+
+## Execute Endpoint Request Format
+
+The intended use of the '/execute' endpoint is through the Piazza service, but it can also be used as a standalone service.  Currently accepts only POST calls.  Beyond that, valid and accepted form parameters are as follows:
 
 cmd: The second part of the exec call (following CliCmd).  Additional commands after the first are not supported.  Allows the user some control over the process by influencing input params.  Should be spaced normally, as if entering into the command line directly.
 
 inFiles: a comma separated list (no spaces) of Piazza dataIds.  the files corresponding to those dataIds will be downloaded into the same directory as the program being served prior to execution, allowing for remote file inputs to the process.
+
+inURLs: a comma separated list (no spaces) of file download URLs.  The files that those URLs are pointing to will be downloaded in a manner similar to those referred to by inFiles.
 
 outTiffs: a comma separated list (no spaces) of filenames.  Those filenames should correspond to .tif files that will be in the same directory as the program being served after the program has finished execution.  They will be uploaded to the chosen Piazza instance, and the resulting dataIds will be returned with the service results, allowing for file-based returns of images.  Must be in proper TIFF format
 
@@ -77,12 +92,16 @@ outTxts: as with outTiffs, but text files.  Actual extension doesn't matter as l
 
 outGeoJson: as with outTiffs and outTxts, but with GeoJson files.  Must be in proper GeoJson format.
 
+authKey: a replacement or override for the auth key stored in the config file's AuthEnVar.  Used as a Pz auth key for file downloads and ingests associated with the current call.
+
+inUrlAuthKey: an auth key for use with the inURLs parameter.  Will be offered as authorization key to all URLs listed in inURLs.  For security reasons, this calls for a bit of care to ensure that you are not sending your PlanetLabs auth key (for example) to a third party.
+
 ### Example http calls
 
-`http://<address:port>/execute`
+`https://<address:port>/execute`
 - No uploads, no downloads, direct access rather than through piazza, just running whatever command CliCmd has to offer
 
-`http://<address:port>/execute?cmd=ls -l`
+`https://<address:port>/execute?cmd=ls -l`
 - Assumes that CliCmd is blank.  Makes no uploads and no downloads.  Returns the contents of the local directory.
 
 `http://<address:port>/execute?cmd=ls -l;inFiles=a10e6611-b996-4491-8988-ad0624ae8b6a,f71159c8-836d-4fcc-b8d9-4e9fb032e7a6,10fa1980-f0b5-4138-9f64-64b6fe7f73b2`
@@ -91,4 +110,6 @@ outGeoJson: as with outTiffs and outTxts, but with GeoJson files.  Must be in pr
 `http://<address:port>/execute?inFiles=a10e6611-b996-4491-8988-ad0624ae8b6a,f71159c8-836d-4fcc-b8d9-4e9fb032e7a6,10fa1980-f0b5-4138-9f64-64b6fe7f73b2;outTiffs=garden_rgb.tif,garden_b6.tif,garden_b3.tif;outTxts=testSend.txt;outGeoJson=tester.json`
 
 Downloads 3 files, then runs whatever command CmdCli has to offer without addition, then attempts to upload 3 tiffs, a txt file, and a GeoJson.  Results should include a list of files downloaded, a list of files uploaded, and whatever the results of the CliCmd call is.
+
+
 
