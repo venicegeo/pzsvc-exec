@@ -30,7 +30,6 @@ import (
 	"strings"
 	"time"
 
-
 	"github.com/venicegeo/pzsvc-lib"
 )
 
