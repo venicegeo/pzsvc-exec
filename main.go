@@ -281,7 +281,6 @@ func handleFList(fList, nameList []string, lFunc rangeFunc, fType string, output
 		if len(nameList) > i {
 			name = nameList[i]
 		}
-		handleError(output, "", errors.New(`nonerror: handleFList name "`+name+`".`), w, http.StatusOK)
 		outStr, err := lFunc(f, name, fType)
 		if err != nil {
 			handleError(output, "handleFlist error: ", err, w, http.StatusBadRequest)
