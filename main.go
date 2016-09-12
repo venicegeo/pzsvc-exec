@@ -172,8 +172,10 @@ func execute(w http.ResponseWriter, r *http.Request, configObj configType, pzAut
 	cmdConfigSlice := splitOrNil(configObj.CliCmd, " ")
 	cmdSlice := append(cmdConfigSlice, cmdParamSlice...)
 
-	inFileIDs := splitOrNil(r.FormValue("inFiles"), ",")
-	inURLs := splitOrNil(r.FormValue("inURLs"), ",")
+	inPzFileIDs := splitOrNil(r.FormValue("inFiles"), ",")
+	inExtFileURLs := splitOrNil(r.FormValue("inFileURLs"), ",")
+	inPzFileNames := splitOrNil(r.FormValue("inPzFileNames"), ",")
+	inExtFileNames := splitOrNil(r.FormValue("inExtFileNames"), ",")
 	outTiffs := splitOrNil(r.FormValue("outTiffs"), ",")
 	outTxts := splitOrNil(r.FormValue("outTxts"), ",")
 	outGeoJs := splitOrNil(r.FormValue("outGeoJson"), ",")
@@ -183,12 +185,12 @@ func execute(w http.ResponseWriter, r *http.Request, configObj configType, pzAut
 		pzAuth = r.FormValue("authKey")
 	}
 
-	if !canFile && (len(inFileIDs)+len(outTiffs)+len(outTxts)+len(outGeoJs) != 0) {
+	if !canFile && (len(inPzFileIDs)+len(outTiffs)+len(outTxts)+len(outGeoJs) != 0) {
 		handleError(&output, "", fmt.Errorf("Cannot complete.  File up/download not enabled in config file."), w, http.StatusForbidden)
 		return output
 	}
 
-	if pzAuth == "" && (len(inFileIDs)+len(outTiffs)+len(outTxts)+len(outGeoJs) != 0) {
+	if pzAuth == "" && (len(inPzFileIDs)+len(outTiffs)+len(outTxts)+len(outGeoJs) != 0) {
 		handleError(&output, "", fmt.Errorf("Cannot complete.  Auth Key not available."), w, http.StatusForbidden)
 		return output
 	}
@@ -207,15 +209,15 @@ func execute(w http.ResponseWriter, r *http.Request, configObj configType, pzAut
 	// reduce a fair bit of code duplication in plowing through
 	// our upload/download lists.  handleFList gets used a fair
 	// bit more after the execute call.
-	pzDownlFunc := func(dataID, fType string) (string, error) {
-		return pzsvc.Download(dataID, runID, configObj.PzAddr, pzAuth)
+	pzDownlFunc := func(dataID, fname, fType string) (string, error) {
+		return pzsvc.DownloadByID(dataID, fname, runID, configObj.PzAddr, pzAuth)
 	}
-	handleFList(inFileIDs, pzDownlFunc, "", &output, output.InFiles, w)
+	handleFList(inPzFileIDs, inPzFileNames, pzDownlFunc, "", &output, output.InFiles, w)
 
-	extDownlFunc := func(url, fType string) (string, error) {
-		return pzsvc.DownloadByURL(url, runID, urlAuth)
+	extDownlFunc := func(url, fname, fType string) (string, error) {
+		return pzsvc.DownloadByURL(url, fname, runID, urlAuth)
 	}
-	handleFList(inURLs, extDownlFunc, "", &output, output.InFiles, w)
+	handleFList(inExtFileURLs, inExtFileNames, extDownlFunc, "", &output, output.InFiles, w)
 
 	if len(cmdSlice) == 0 {
 		handleError(&output, "", errors.New(`No cmd or CliCmd.  Please provide "cmd" param.`), w, http.StatusBadRequest)
@@ -260,22 +262,26 @@ func execute(w http.ResponseWriter, r *http.Request, configObj configType, pzAut
 	// this is the other spot that handleFlist gets used, and works on the
 	// same principles.
 
-	ingFunc := func(fName, fType string) (string, error) {
+	ingFunc := func(fName, dummy, fType string) (string, error) {
 		return pzsvc.IngestFile(fName, runID, fType, configObj.PzAddr, configObj.SvcName, version, pzAuth, attMap)
 	}
 
-	handleFList(outTiffs, ingFunc, "raster", &output, output.OutFiles, w)
-	handleFList(outTxts, ingFunc, "text", &output, output.OutFiles, w)
-	handleFList(outGeoJs, ingFunc, "geojson", &output, output.OutFiles, w)
+	handleFList(outTiffs, nil, ingFunc, "raster", &output, output.OutFiles, w)
+	handleFList(outTxts, nil, ingFunc, "text", &output, output.OutFiles, w)
+	handleFList(outGeoJs, nil, ingFunc, "geojson", &output, output.OutFiles, w)
 
 	return output
 }
 
-type rangeFunc func(string, string) (string, error)
+type rangeFunc func(string, string, string) (string, error)
 
-func handleFList(fList []string, lFunc rangeFunc, fType string, output *outStruct, fileRec map[string]string, w http.ResponseWriter) {
-	for _, f := range fList {
-		outStr, err := lFunc(f, fType)
+func handleFList(fList, nameList []string, lFunc rangeFunc, fType string, output *outStruct, fileRec map[string]string, w http.ResponseWriter) {
+	for i, f := range fList {
+		name := ""
+		if len(nameList) > i {
+			name = nameList[i]
+		}
+		outStr, err := lFunc(f, name, fType)
 		if err != nil {
 			handleError(output, "handleFlist error: ", err, w, http.StatusBadRequest)
 		} else if outStr == "" {
