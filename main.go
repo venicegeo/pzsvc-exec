@@ -44,6 +44,7 @@ type configType struct {
 	Port        int
 	Description string
 	Attributes  map[string]string
+	NumProcs    int
 }
 
 type outStruct struct {
@@ -92,6 +93,11 @@ func main() {
 
 	version := getVersion(configObj)
 
+	var procPool = pzsvc.Semaphore(nil)
+	if configObj.NumProcs > 0 {
+		procPool = make(pzsvc.Semaphore, configObj.NumProcs)
+	}
+
 	if canReg {
 		fmt.Println("About to manage registration.")
 		err = pzsvc.ManageRegistration(configObj.SvcName,
@@ -122,7 +128,7 @@ func main() {
 			{
 				// the other options are shallow and informational.  This is the
 				// place where the work gets done.
-				output := execute(w, r, configObj, authKey, version, canFile)
+				output := execute(w, r, configObj, authKey, version, canFile, procPool)
 				printJSON(w, output, output.httpStatus)
 			}
 		case "/description":
@@ -155,7 +161,13 @@ func main() {
 // the command indicated by the combination of request and configs, uploads
 // any files indicated by the request (if the configs support it) and cleans
 // up after itself
-func execute(w http.ResponseWriter, r *http.Request, configObj configType, pzAuth, version string, canFile bool) outStruct {
+func execute(w http.ResponseWriter, r *http.Request, configObj configType, pzAuth, version string, canFile bool, procPool pzsvc.Semaphore) outStruct {
+
+	// Makes sure that you only have a certain number of execution tasks firing at once.
+	// pzsvc-exec calls can get pretty resource-intensive, and this keeps them from
+	// trampling each other into messy deadlock
+	procPool.Lock()
+	defer procPool.Unlock()
 
 	var output outStruct
 	output.InFiles = make(map[string]string)
