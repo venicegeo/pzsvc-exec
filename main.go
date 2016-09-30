@@ -16,7 +16,6 @@ package main
 
 import (
 	"bytes"
-	"crypto/rand"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -207,7 +206,7 @@ func execute(w http.ResponseWriter, r *http.Request, configObj configType, pzAut
 		return output
 	}
 
-	runID, err := psuUUID()
+	runID, err := pzsvc.PsuUUID()
 	handleError(&output, "psuUUID error: ", err, w, http.StatusInternalServerError)
 
 	err = os.Mkdir("./"+runID, 0777)
@@ -324,16 +323,6 @@ func splitOrNil(inString, knife string) []string {
 		return nil
 	}
 	return strings.Split(inString, knife)
-}
-
-func psuUUID() (string, error) {
-	b := make([]byte, 16)
-	_, err := rand.Read(b)
-	if err != nil {
-		return "", err
-	}
-
-	return fmt.Sprintf("%X-%X-%X-%X-%X", b[0:4], b[4:6], b[6:8], b[8:10], b[10:]), nil
 }
 
 func printJSON(w http.ResponseWriter, output interface{}, httpStatus int) {
