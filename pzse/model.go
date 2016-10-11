@@ -14,6 +14,8 @@
 
 package pzse
 
+import "github.com/venicegeo/pzsvc-lib"
+
 // ConfigType represents and contains the information from a pzsvc-exec config file.
 type ConfigType struct {
 	CliCmd      string
@@ -37,6 +39,16 @@ type OutStruct struct {
 	ProgStdErr string
 	Errors     []string
 	HTTPStatus int
+}
+
+// ConfigParseOut is a handy struct to organize all of the outputs
+// for pzse.ConfigParse() and prevent potential confusion.
+type ConfigParseOut struct {
+	AuthKey  string
+	PortStr  string
+	Version  string
+	CanFile  bool
+	ProcPool pzsvc.Semaphore
 }
 
 type rangeFunc func(string, string, string) (string, error)

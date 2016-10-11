@@ -21,10 +21,56 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	"strconv"
 	"time"
 
 	"github.com/venicegeo/pzsvc-lib"
 )
+
+// ParseConfig parses the config file on starting up
+func ParseConfig(configObj *ConfigType) ConfigParseOut {
+
+	canReg, canFile, hasAuth := CheckConfig(configObj)
+
+	var authKey string
+	if hasAuth {
+		authKey = os.Getenv(configObj.AuthEnVar)
+		if authKey == "" {
+			fmt.Println("Error: no auth key at AuthEnVar.  Registration disabled, and client will have to provide authKey.")
+			hasAuth = false
+			canReg = false
+		}
+	}
+
+	if configObj.Port <= 0 {
+		configObj.Port = 8080
+	}
+	portStr := ":" + strconv.Itoa(configObj.Port)
+
+	version := GetVersion(configObj)
+
+	if canReg {
+		fmt.Println("About to manage registration.")
+		err := pzsvc.ManageRegistration(configObj.SvcName,
+			configObj.Description,
+			configObj.URL+"/execute",
+			configObj.PzAddr,
+			version,
+			authKey,
+			configObj.Attributes)
+		if err != nil {
+			fmt.Println("pzsvc-exec error in managing registration: ", err.Error())
+		}
+		fmt.Println("Registration managed.")
+	}
+
+	var procPool = pzsvc.Semaphore(nil)
+	if configObj.NumProcs > 0 {
+		procPool = make(pzsvc.Semaphore, configObj.NumProcs)
+	}
+
+	return ConfigParseOut{authKey, portStr, version, canFile, procPool}
+}
 
 // Execute does the primary work for pzsvc-exec.  Given a request and various
 // blocks of config data, it creates a temporary folder to work in, downloads

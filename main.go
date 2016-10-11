@@ -21,7 +21,6 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"strconv"
 
 	"github.com/venicegeo/pzsvc-exec/pzse"
 	"github.com/venicegeo/pzsvc-lib"
@@ -39,50 +38,16 @@ func main() {
 	configBuf, err := ioutil.ReadFile(os.Args[1])
 	if err != nil {
 		fmt.Println("pzsvc-exec error in reading config: " + err.Error())
+		return
 	}
 	var configObj pzse.ConfigType
 	err = json.Unmarshal(configBuf, &configObj)
 	if err != nil {
 		fmt.Println("pzsvc-exec error in unmarshalling config: " + err.Error())
-	}
-	canReg, canFile, hasAuth := pzse.CheckConfig(&configObj)
-
-	var authKey string
-	if hasAuth {
-		authKey = os.Getenv(configObj.AuthEnVar)
-		if authKey == "" {
-			fmt.Println("Error: no auth key at AuthEnVar.  Registration disabled, and client will have to provide authKey.")
-			hasAuth = false
-			canReg = false
-		}
+		return
 	}
 
-	if configObj.Port <= 0 {
-		configObj.Port = 8080
-	}
-	portStr := ":" + strconv.Itoa(configObj.Port)
-
-	version := pzse.GetVersion(configObj)
-
-	var procPool = pzsvc.Semaphore(nil)
-	if configObj.NumProcs > 0 {
-		procPool = make(pzsvc.Semaphore, configObj.NumProcs)
-	}
-
-	if canReg {
-		fmt.Println("About to manage registration.")
-		err = pzsvc.ManageRegistration(configObj.SvcName,
-			configObj.Description,
-			configObj.URL+"/execute",
-			configObj.PzAddr,
-			version,
-			authKey,
-			configObj.Attributes)
-		if err != nil {
-			fmt.Println("pzsvc-exec error in managing registration: ", err.Error())
-		}
-		fmt.Println("Registration managed.")
-	}
+	pRes := pzse.ParseConfig(&configObj)
 
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		r.ParseForm()
@@ -99,7 +64,7 @@ func main() {
 			{
 				// the other options are shallow and informational.  This is the
 				// place where the work gets done.
-				output := pzse.Execute(w, r, configObj, authKey, version, canFile, procPool)
+				output := pzse.Execute(w, r, configObj, pRes.AuthKey, pRes.Version, pRes.CanFile, pRes.ProcPool)
 				pzsvc.PrintJSON(w, output, output.HTTPStatus)
 			}
 		case "/description":
@@ -117,11 +82,11 @@ func main() {
 		case "/help":
 			pzse.PrintHelp(w)
 		case "/version":
-			fmt.Fprintf(w, version)
+			fmt.Fprintf(w, pRes.Version)
 		default:
 			fmt.Fprintln(w, "Endpoint undefined.  Try /help?")
 		}
 	})
 
-	log.Fatal(http.ListenAndServe(portStr, nil))
+	log.Fatal(http.ListenAndServe(pRes.PortStr, nil))
 }

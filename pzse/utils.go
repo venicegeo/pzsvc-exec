@@ -63,9 +63,9 @@ func splitOrNil(inString, knife string) []string {
 	return strings.Split(inString, knife)
 }
 
-// GetVersion spits out the best availabel version for the
+// GetVersion spits out the best available version for the
 // current software, based on the contents fo the config file
-func GetVersion(configObj ConfigType) string {
+func GetVersion(configObj *ConfigType) string {
 	vCmdSlice := splitOrNil(configObj.VersionCmd, " ")
 	if vCmdSlice != nil {
 		vCmd := exec.Command(vCmdSlice[0], vCmdSlice[1:]...)
@@ -73,7 +73,9 @@ func GetVersion(configObj ConfigType) string {
 		if err != nil {
 			fmt.Println("error: VersionCmd failed: " + err.Error())
 		}
-		return string(verB)
+		if string(verB) != "" {
+			return string(verB)
+		}
 	}
 	return configObj.VersionStr
 }
@@ -108,9 +110,6 @@ func CheckConfig(configObj *ConfigType) (bool, bool, bool) {
 	}
 
 	if !canFile {
-		if configObj.PzAddr != "" {
-			fmt.Println(`Config: PzAddr was specified, but is meaningless without upload/download/autoregistration.`)
-		}
 		if configObj.VersionCmd != "" {
 			fmt.Println(`Config: VersionCmd was specified, but is meaningless without upload/download/autoregistration.`)
 		}
