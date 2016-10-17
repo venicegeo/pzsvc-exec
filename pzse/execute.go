@@ -128,7 +128,6 @@ func Execute(w http.ResponseWriter, r *http.Request, configObj ConfigType, pzAut
 	cmdParamSlice := splitOrNil(inpObj.Command, " ")
 	cmdConfigSlice := splitOrNil(configObj.CliCmd, " ")
 	cmdSlice := append(cmdConfigSlice, cmdParamSlice...)
-	fmt.Println(configObj.CliCmd + inpObj.Command)
 
 	if inpObj.PzAuth != "" {
 		pzAuth = inpObj.PzAuth
