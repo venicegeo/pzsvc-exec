@@ -27,6 +27,19 @@ import (
 	"github.com/venicegeo/pzsvc-lib"
 )
 
+type inpStruct struct {
+	Command    string   `json:"cmd"`
+	InPzFiles  []string `json:"inPzFiles"`    // slice: Pz dataIds
+	InExtFiles []string `json:"inExtFiles"`   // slice: external URL
+	InPzNames  []string `json:"inPzNames"`    // slice: name for the InPzFile of the same index
+	InExtNames []string `json:"inExtNames"`   // slice: name for the InExtFile of the same index
+	OutTiffs   []string `json:"outTiffs"`     // slice: filenames of GeoTIFFs to be ingested
+	OutTxts    []string `json:"outTxts"`      // slice: filenames of text files to be ingested
+	OutGeoJs   []string `json:"outGeoJson"`   // slice: filenames of GeoJSON files to be ingested
+	ExtAuth    string   `json:"inExtAuthKey"` // string: auth key for accessing external files
+	PzAuth     string   `json:"pzAuthKey"`    // string: suth key for accessing Piazza
+}
+
 // ParseConfig parses the config file on starting up
 func ParseConfig(configObj *ConfigType) ConfigParseOut {
 
@@ -96,30 +109,36 @@ func Execute(w http.ResponseWriter, r *http.Request, configObj ConfigType, pzAut
 		return output
 	}
 
-	cmdParam := r.FormValue("cmd")
-	cmdParamSlice := splitOrNil(cmdParam, " ")
+	var inpObj inpStruct
+
+	if _, err := pzsvc.ReadBodyJSON(&inpObj, r.Body); err != nil {
+		inpObj.Command = r.FormValue("cmd")
+
+		inpObj.InPzFiles = splitOrNil(r.FormValue("inFiles"), ",")
+		inpObj.InExtFiles = splitOrNil(r.FormValue("inFileURLs"), ",")
+		inpObj.InPzNames = splitOrNil(r.FormValue("inPzFileNames"), ",")
+		inpObj.InExtNames = splitOrNil(r.FormValue("inExtFileNames"), ",")
+		inpObj.OutTiffs = splitOrNil(r.FormValue("outTiffs"), ",")
+		inpObj.OutTxts = splitOrNil(r.FormValue("outTxts"), ",")
+		inpObj.OutGeoJs = splitOrNil(r.FormValue("outGeoJson"), ",")
+		inpObj.ExtAuth = r.FormValue("inUrlAuthKey")
+		inpObj.PzAuth = r.FormValue("authKey")
+	}
+
+	cmdParamSlice := splitOrNil(inpObj.Command, " ")
 	cmdConfigSlice := splitOrNil(configObj.CliCmd, " ")
 	cmdSlice := append(cmdConfigSlice, cmdParamSlice...)
 
-	inPzFileIDs := splitOrNil(r.FormValue("inFiles"), ",")
-	inExtFileURLs := splitOrNil(r.FormValue("inFileURLs"), ",")
-	inPzFileNames := splitOrNil(r.FormValue("inPzFileNames"), ",")
-	inExtFileNames := splitOrNil(r.FormValue("inExtFileNames"), ",")
-	outTiffs := splitOrNil(r.FormValue("outTiffs"), ",")
-	outTxts := splitOrNil(r.FormValue("outTxts"), ",")
-	outGeoJs := splitOrNil(r.FormValue("outGeoJson"), ",")
-
-	urlAuth := r.FormValue("inUrlAuthKey")
-	if r.FormValue("authKey") != "" {
-		pzAuth = r.FormValue("authKey")
+	if inpObj.PzAuth != "" {
+		pzAuth = inpObj.PzAuth
 	}
 
-	if !canFile && (len(inPzFileIDs)+len(outTiffs)+len(outTxts)+len(outGeoJs) != 0) {
+	if !canFile && (len(inpObj.InPzFiles)+len(inpObj.OutTiffs)+len(inpObj.OutTxts)+len(inpObj.OutGeoJs) != 0) {
 		handleError(&output, "", fmt.Errorf("Cannot complete.  File up/download not enabled in config file."), w, http.StatusForbidden)
 		return output
 	}
 
-	if pzAuth == "" && (len(inPzFileIDs)+len(outTiffs)+len(outTxts)+len(outGeoJs) != 0) {
+	if pzAuth == "" && (len(inpObj.InPzFiles)+len(inpObj.OutTiffs)+len(inpObj.OutTxts)+len(inpObj.OutGeoJs) != 0) {
 		handleError(&output, "", fmt.Errorf("Cannot complete.  Auth Key not available."), w, http.StatusForbidden)
 		return output
 	}
@@ -141,19 +160,19 @@ func Execute(w http.ResponseWriter, r *http.Request, configObj ConfigType, pzAut
 	pzDownlFunc := func(dataID, fname, fType string) (string, error) {
 		return pzsvc.DownloadByID(dataID, fname, runID, configObj.PzAddr, pzAuth)
 	}
-	handleFList(inPzFileIDs, inPzFileNames, pzDownlFunc, "", &output, output.InFiles, w)
+	handleFList(inpObj.InPzFiles, inpObj.InPzNames, pzDownlFunc, "", &output, output.InFiles, w)
 
 	extDownlFunc := func(url, fname, fType string) (string, error) {
-		return pzsvc.DownloadByURL(url, fname, runID, urlAuth)
+		return pzsvc.DownloadByURL(url, fname, runID, inpObj.ExtAuth)
 	}
-	handleFList(inExtFileURLs, inExtFileNames, extDownlFunc, "", &output, output.InFiles, w)
+	handleFList(inpObj.InExtFiles, inpObj.InExtNames, extDownlFunc, "", &output, output.InFiles, w)
 
 	if len(cmdSlice) == 0 {
 		handleError(&output, "", errors.New(`No cmd or CliCmd.  Please provide "cmd" param.`), w, http.StatusBadRequest)
 		return output
 	}
 
-	fmt.Println(`Executing "` + configObj.CliCmd + ` ` + cmdParam + `".`)
+	fmt.Println(`Executing "` + configObj.CliCmd + ` ` + inpObj.Command + `".`)
 
 	// we're calling this from inside a temporary subfolder.  If the
 	// program called exists inside the initial pzsvc-exec folder, that's
@@ -185,7 +204,7 @@ func Execute(w http.ResponseWriter, r *http.Request, configObj ConfigType, pzAut
 	attMap := make(map[string]string)
 	attMap["algoName"] = configObj.SvcName
 	attMap["algoVersion"] = version
-	attMap["algoCmd"] = configObj.CliCmd + " " + cmdParam
+	attMap["algoCmd"] = configObj.CliCmd + " " + inpObj.Command
 	attMap["algoProcTime"] = time.Now().UTC().Format("20060102.150405.99999")
 
 	// this is the other spot that handleFlist gets used, and works on the
@@ -195,9 +214,9 @@ func Execute(w http.ResponseWriter, r *http.Request, configObj ConfigType, pzAut
 		return pzsvc.IngestFile(fName, runID, fType, configObj.PzAddr, configObj.SvcName, version, pzAuth, attMap)
 	}
 
-	handleFList(outTiffs, nil, ingFunc, "raster", &output, output.OutFiles, w)
-	handleFList(outTxts, nil, ingFunc, "text", &output, output.OutFiles, w)
-	handleFList(outGeoJs, nil, ingFunc, "geojson", &output, output.OutFiles, w)
+	handleFList(inpObj.OutTiffs, nil, ingFunc, "raster", &output, output.OutFiles, w)
+	handleFList(inpObj.OutTxts, nil, ingFunc, "text", &output, output.OutFiles, w)
+	handleFList(inpObj.OutGeoJs, nil, ingFunc, "geojson", &output, output.OutFiles, w)
 
 	return output
 }

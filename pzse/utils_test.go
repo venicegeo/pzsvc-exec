@@ -22,6 +22,6 @@ import (
 
 // PrintHelp prints out a basic helpfile to make things easier on direct users
 func TestPrintHelp(t *testing.T) {
-	w := pzsvc.GetMockResponseWriter()
+	w, _, _ := pzsvc.GetMockResponseWriter()
 	PrintHelp(w)
 }

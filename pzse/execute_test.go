@@ -15,7 +15,7 @@
 package pzse
 
 import (
-	//"encoding/json"
+	"encoding/json"
 	//"fmt"
 	//"io"
 	//"io/ioutil"
@@ -62,16 +62,29 @@ func TestExecute(t *testing.T) {
 	testResList := []string{"", `{"data":{"jobId":"testID"}}`, `{"data":{"status":"Success", "Result":{"message":"testStatus", "dataId":"testId"}}}`}
 	pzsvc.SetMockClient(testResList, 200)
 
-	w := pzsvc.GetMockResponseWriter()
+	w, _, _ := pzsvc.GetMockResponseWriter()
 	r := http.Request{}
 	r.Method = "POST"
-	r.Form = map[string][]string{}
-	r.Form.Add("cmd", "-l")
-	r.Form.Add("inFileURLs", "https://avatars0.githubusercontent.com/u/15457149?v=3&s=200")
-	r.Form.Add("inExtFileNames", "icon.png")
-	r.Form.Add("outTiffs", "icon.png")
-	r.Form.Add("authKey", "aaaa")
+	inpObj := inpStruct{Command: "-l",
+		InExtFiles: []string{"https://avatars0.githubusercontent.com/u/15457149?v=3&s=200"},
+		InExtNames: []string{"icon.png"},
+		OutTiffs:   []string{"icon.png"},
+		PzAuth:     "aaa"}
 
+	byts, err := json.Marshal(inpObj)
+	if err != nil {
+		t.Error(`TestExecute: failed to marshal static object.  errStr: ` + err.Error())
+	}
+
+	r.Body = pzsvc.GetMockReadCloser(string(byts))
+	/*
+		r.Form = map[string][]string{}
+		r.Form.Add("cmd", "-l")
+		r.Form.Add("inFileURLs", "https://avatars0.githubusercontent.com/u/15457149?v=3&s=200")
+		r.Form.Add("inExtFileNames", "icon.png")
+		r.Form.Add("outTiffs", "icon.png")
+		r.Form.Add("authKey", "aaaa")
+	*/
 	outObj := Execute(w, &r, config, parsConfig.AuthKey, parsConfig.Version, parsConfig.CanFile, parsConfig.ProcPool)
 
 	if outObj.Errors != nil {
