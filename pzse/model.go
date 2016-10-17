@@ -51,4 +51,18 @@ type ConfigParseOut struct {
 	ProcPool pzsvc.Semaphore
 }
 
+// InpStruct is the format that pzsvc-exec demarshals input data into
+type InpStruct struct {
+	Command    string   `json:"cmd"`
+	InPzFiles  []string `json:"inPzFiles"`    // slice: Pz dataIds
+	InExtFiles []string `json:"inExtFiles"`   // slice: external URL
+	InPzNames  []string `json:"inPzNames"`    // slice: name for the InPzFile of the same index
+	InExtNames []string `json:"inExtNames"`   // slice: name for the InExtFile of the same index
+	OutTiffs   []string `json:"outTiffs"`     // slice: filenames of GeoTIFFs to be ingested
+	OutTxts    []string `json:"outTxts"`      // slice: filenames of text files to be ingested
+	OutGeoJs   []string `json:"outGeoJson"`   // slice: filenames of GeoJSON files to be ingested
+	ExtAuth    string   `json:"inExtAuthKey"` // string: auth key for accessing external files
+	PzAuth     string   `json:"pzAuthKey"`    // string: suth key for accessing Piazza
+}
+
 type rangeFunc func(string, string, string) (string, error)

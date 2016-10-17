@@ -27,19 +27,6 @@ import (
 	"github.com/venicegeo/pzsvc-lib"
 )
 
-type inpStruct struct {
-	Command    string   `json:"cmd"`
-	InPzFiles  []string `json:"inPzFiles"`    // slice: Pz dataIds
-	InExtFiles []string `json:"inExtFiles"`   // slice: external URL
-	InPzNames  []string `json:"inPzNames"`    // slice: name for the InPzFile of the same index
-	InExtNames []string `json:"inExtNames"`   // slice: name for the InExtFile of the same index
-	OutTiffs   []string `json:"outTiffs"`     // slice: filenames of GeoTIFFs to be ingested
-	OutTxts    []string `json:"outTxts"`      // slice: filenames of text files to be ingested
-	OutGeoJs   []string `json:"outGeoJson"`   // slice: filenames of GeoJSON files to be ingested
-	ExtAuth    string   `json:"inExtAuthKey"` // string: auth key for accessing external files
-	PzAuth     string   `json:"pzAuthKey"`    // string: suth key for accessing Piazza
-}
-
 // ParseConfig parses the config file on starting up
 func ParseConfig(configObj *ConfigType) ConfigParseOut {
 
@@ -109,7 +96,7 @@ func Execute(w http.ResponseWriter, r *http.Request, configObj ConfigType, pzAut
 		return output
 	}
 
-	var inpObj inpStruct
+	var inpObj InpStruct
 
 	if _, err := pzsvc.ReadBodyJSON(&inpObj, r.Body); err != nil {
 		handleError(&output, "could not interpret body as json: ", err, w, 200)

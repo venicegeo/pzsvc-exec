@@ -65,7 +65,7 @@ func TestExecute(t *testing.T) {
 	w, _, _ := pzsvc.GetMockResponseWriter()
 	r := http.Request{}
 	r.Method = "POST"
-	inpObj := inpStruct{Command: "-l",
+	inpObj := InpStruct{Command: "-l",
 		InExtFiles: []string{"https://avatars0.githubusercontent.com/u/15457149?v=3&s=200"},
 		InExtNames: []string{"icon.png"},
 		OutTiffs:   []string{"icon.png"},
