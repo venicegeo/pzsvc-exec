@@ -112,8 +112,8 @@ func Execute(w http.ResponseWriter, r *http.Request, configObj ConfigType, pzAut
 	var inpObj inpStruct
 
 	if _, err := pzsvc.ReadBodyJSON(&inpObj, r.Body); err != nil {
+		handleError(&output, "could not interpret body as json: ", err, w, 200)
 		inpObj.Command = r.FormValue("cmd")
-
 		inpObj.InPzFiles = splitOrNil(r.FormValue("inFiles"), ",")
 		inpObj.InExtFiles = splitOrNil(r.FormValue("inFileURLs"), ",")
 		inpObj.InPzNames = splitOrNil(r.FormValue("inPzFileNames"), ",")
