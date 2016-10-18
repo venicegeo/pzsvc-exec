@@ -77,14 +77,6 @@ func TestExecute(t *testing.T) {
 	}
 
 	r.Body = pzsvc.GetMockReadCloser(string(byts))
-	/*
-		r.Form = map[string][]string{}
-		r.Form.Add("cmd", "-l")
-		r.Form.Add("inFileURLs", "https://avatars0.githubusercontent.com/u/15457149?v=3&s=200")
-		r.Form.Add("inExtFileNames", "icon.png")
-		r.Form.Add("outTiffs", "icon.png")
-		r.Form.Add("authKey", "aaaa")
-	*/
 	outObj := Execute(w, &r, config, parsConfig.AuthKey, parsConfig.Version, parsConfig.CanFile, parsConfig.ProcPool)
 
 	if outObj.Errors != nil {
