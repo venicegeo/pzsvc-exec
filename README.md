@@ -77,20 +77,31 @@ See the Execute Endpoint Request Format section of this Readme for interface det
 
 ## Execute Endpoint Request Format
 
-The intended use of the '/execute' endpoint is through the Piazza service, but it can also be used as a standalone service.  Currently accepts only POST calls.  Beyond that, valid and accepted form parameters are as follows:
+The intended use of the '/execute' endpoint is through the Piazza service, but it can also be used as a standalone service.  It currently requires POST calls.  Parameters should be as a json-formatted body. Format as follows:
 
-cmd: The second part of the exec call (following CliCmd).  Additional commands after the first are not supported.  Allows the user some control over the process by influencing input params.  Should be spaced normally, as if entering into the command line directly.
 
-inFiles: a comma separated list (no spaces) of Piazza dataIds.  the files corresponding to those dataIds will be downloaded into the same directory as the program being served prior to execution, allowing for remote file inputs to the process.
+Input Format:
+```
+cmd           string    // Command string - appended to CliCmd from the config file
+inPzFiles     []string  // Pz dataIds for files to download before processing
+inExtFiles    []string  // URLs for external files to download before processing
+inPzNames     []string  // Parallel to InPzFiles - name for each file
+inExtNames    []string  // Parallel to inExtFiles - name for each file
+outTiffs      []string  // Filenames of GeoTIFFs to ingest after processing
+outTxts       []string  // Filenames of text files to ingest after processing
+outGeoJson    []string  // Filenames of GeoJSON files to ingest after processing
+inExtAuthKey  string    // Auth key for accessing external files
+pzAuthKey     string    // Auth key for accessing Piazza
+```
 
-inURLs: a comma separated list (no spaces) of file download URLs.  The files that those URLs are pointing to will be downloaded in a manner similar to those referred to by inFiles.
-
-outTiffs: a comma separated list (no spaces) of filenames.  Those filenames should correspond to .tif files that will be in the same directory as the program being served after the program has finished execution.  They will be uploaded to the chosen Piazza instance, and the resulting dataIds will be returned with the service results, allowing for file-based returns of images.  Must be in proper TIFF format
-
-outTxts: as with outTiffs, but text files.  Actual extension doesn't matter as long as the result can be meaningfully interpreted as raw text.  Not suitable for large files.
-
-outGeoJson: as with outTiffs and outTxts, but with GeoJson files.  Must be in proper GeoJson format.
-
-authKey: a replacement or override for the auth key stored in the config file's AuthEnVar.  Used as a Pz auth key for file downloads and ingests associated with the current call.
-
-inUrlAuthKey: an auth key for use with the inURLs parameter.  Will be offered as authorization key to all URLs listed in inURLs.  For security reasons, this calls for a bit of care to ensure that you are not sending your PlanetLabs auth key (for example) to a third party.
+As an example (fully functional as an input to pzsvc-ossim, other than the auth key):
+```
+{
+"cmd":"shoreline --image coastal.TIF,swir1.TIF --projection geo-scaled shoreline.json",
+"inExtFiles":["https://landsat-pds.s3.amazonaws.com/L8/090/089/LC80900892015290LGN00/LC80900892015290LGN00_B1.TIF","https://landsat-pds.s3.amazonaws.com/L8/090/089/LC80900892015290LGN00/LC80900892015290LGN00_B6.TIF"],
+"inExtNames":["coastal.TIF","swir1.TIF"],
+"outGeoJson":["shoreline.json"],
+"pzAuthKey":"aaaaa"
+"inExtAuthKey":"bbbbb"
+}
+```
