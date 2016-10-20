@@ -63,6 +63,7 @@ type InpStruct struct {
 	OutGeoJs   []string `json:"outGeoJson"`   // slice: filenames of GeoJSON files to be ingested
 	ExtAuth    string   `json:"inExtAuthKey"` // string: auth key for accessing external files
 	PzAuth     string   `json:"pzAuthKey"`    // string: auth key for accessing Piazza
+	PzAddr     string   `json:"pzAddr"`       // string: URL for the targeted Pz instance
 }
 
 type rangeFunc func(string, string, string) (string, error)

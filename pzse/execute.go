@@ -110,22 +110,29 @@ func Execute(w http.ResponseWriter, r *http.Request, configObj ConfigType, pzAut
 		inpObj.OutGeoJs = splitOrNil(r.FormValue("outGeoJson"), ",")
 		inpObj.ExtAuth = r.FormValue("inUrlAuthKey")
 		inpObj.PzAuth = r.FormValue("authKey")
+		inpObj.PzAddr = r.FormValue("pzAddr")
 	}
 
 	cmdParamSlice := splitOrNil(inpObj.Command, " ")
 	cmdConfigSlice := splitOrNil(configObj.CliCmd, " ")
 	cmdSlice := append(cmdConfigSlice, cmdParamSlice...)
 
-	if inpObj.PzAuth != "" {
-		pzAuth = inpObj.PzAuth
+	if inpObj.PzAuth == "" {
+		inpObj.PzAuth = pzAuth
+	}
+	if inpObj.PzAddr == "" {
+		inpObj.PzAddr = configObj.PzAddr
+	}
+	if inpObj.PzAuth != "" && inpObj.PzAddr != "" {
+		canFile = true
 	}
 
-	if !canFile && (len(inpObj.InPzFiles)+len(inpObj.OutTiffs)+len(inpObj.OutTxts)+len(inpObj.OutGeoJs) != 0) {
-		handleError(&output, "", fmt.Errorf("Cannot complete.  File up/download not enabled in config file."), w, http.StatusForbidden)
+	if inpObj.PzAddr == "" && (len(inpObj.InPzFiles)+len(inpObj.OutTiffs)+len(inpObj.OutTxts)+len(inpObj.OutGeoJs) != 0) {
+		handleError(&output, "", fmt.Errorf("Cannot complete.  No Piazza address provided for file upload/download."), w, http.StatusForbidden)
 		return output
 	}
 
-	if pzAuth == "" && (len(inpObj.InPzFiles)+len(inpObj.OutTiffs)+len(inpObj.OutTxts)+len(inpObj.OutGeoJs) != 0) {
+	if inpObj.PzAuth == "" && (len(inpObj.InPzFiles)+len(inpObj.OutTiffs)+len(inpObj.OutTxts)+len(inpObj.OutGeoJs) != 0) {
 		handleError(&output, "", fmt.Errorf("Cannot complete.  Auth Key not available."), w, http.StatusForbidden)
 		return output
 	}
@@ -145,7 +152,7 @@ func Execute(w http.ResponseWriter, r *http.Request, configObj ConfigType, pzAut
 	// our upload/download lists.  handleFList gets used a fair
 	// bit more after the execute call.
 	pzDownlFunc := func(dataID, fname, fType string) (string, error) {
-		return pzsvc.DownloadByID(dataID, fname, runID, configObj.PzAddr, pzAuth)
+		return pzsvc.DownloadByID(dataID, fname, runID, inpObj.PzAddr, pzAuth)
 	}
 	handleFList(inpObj.InPzFiles, inpObj.InPzNames, pzDownlFunc, "", &output, output.InFiles, w)
 
@@ -198,7 +205,7 @@ func Execute(w http.ResponseWriter, r *http.Request, configObj ConfigType, pzAut
 	// same principles.
 
 	ingFunc := func(fName, dummy, fType string) (string, error) {
-		return pzsvc.IngestFile(fName, runID, fType, configObj.PzAddr, configObj.SvcName, version, pzAuth, attMap)
+		return pzsvc.IngestFile(fName, runID, fType, inpObj.PzAddr, configObj.SvcName, version, pzAuth, attMap)
 	}
 
 	handleFList(inpObj.OutTiffs, nil, ingFunc, "raster", &output, output.OutFiles, w)

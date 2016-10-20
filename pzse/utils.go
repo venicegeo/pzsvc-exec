@@ -93,12 +93,12 @@ func CheckConfig(configObj *ConfigType) (bool, bool, bool) {
 	}
 
 	if configObj.PzAddr == "" {
-		fmt.Println(`Config: PzAddr not specified.  Autoregistration and file upload/download disabled.`)
+		fmt.Println(`Config: PzAddr not specified.  Client will have to provide Piazza Address for upload/download.  Autoregistration and file upload/download disabled.`)
 		canFile = false
 		hasAuth = false
 		canReg = false
 	} else if configObj.AuthEnVar == "" {
-		fmt.Println(`Config: AuthEnVar was not specified.  Client will have to provide authKey.  Autoregistration disabled.`)
+		fmt.Println(`Config: AuthEnVar was not specified.  Client will have to provide authKey for upload/download.  Autoregistration disabled.`)
 		hasAuth = false
 		canReg = false
 	} else if configObj.SvcName == "" {
@@ -111,10 +111,10 @@ func CheckConfig(configObj *ConfigType) (bool, bool, bool) {
 
 	if !canFile {
 		if configObj.VersionCmd != "" {
-			fmt.Println(`Config: VersionCmd was specified, but is meaningless without upload/download/autoregistration.`)
+			fmt.Println(`Config: VersionCmd was specified, but is much less useful without autoregistration.`)
 		}
 		if configObj.VersionStr != "" {
-			fmt.Println(`Config: VersionStr was specified, but is meaningless without upload/download/autoregistration.`)
+			fmt.Println(`Config: VersionStr was specified, but is much less useful without without autoregistration.`)
 		}
 		if configObj.AuthEnVar != "" {
 			fmt.Println(`Config: AuthEnVar was specified, but is meaningless without upload/download/autoregistration.`)
