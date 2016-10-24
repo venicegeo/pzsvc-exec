@@ -78,7 +78,7 @@ func ParseConfig(configObj *ConfigType) ConfigParseOut {
 // the command indicated by the combination of request and configs, uploads
 // any files indicated by the request (if the configs support it) and cleans
 // up after itself
-func Execute(w http.ResponseWriter, r *http.Request, configObj ConfigType, pzAuth, version string, canFile bool, procPool pzsvc.Semaphore) OutStruct {
+func Execute(w http.ResponseWriter, r *http.Request, configObj ConfigType, pzConfigAuth, version string, canFile bool, procPool pzsvc.Semaphore) OutStruct {
 
 	// Makes sure that you only have a certain number of execution tasks firing at once.
 	// pzsvc-exec calls can get pretty resource-intensive, and this keeps them from
@@ -118,7 +118,7 @@ func Execute(w http.ResponseWriter, r *http.Request, configObj ConfigType, pzAut
 	cmdSlice := append(cmdConfigSlice, cmdParamSlice...)
 
 	if inpObj.PzAuth == "" {
-		inpObj.PzAuth = pzAuth
+		inpObj.PzAuth = pzConfigAuth
 	}
 	if inpObj.PzAddr == "" {
 		inpObj.PzAddr = configObj.PzAddr
@@ -152,7 +152,7 @@ func Execute(w http.ResponseWriter, r *http.Request, configObj ConfigType, pzAut
 	// our upload/download lists.  handleFList gets used a fair
 	// bit more after the execute call.
 	pzDownlFunc := func(dataID, fname, fType string) (string, error) {
-		return pzsvc.DownloadByID(dataID, fname, runID, inpObj.PzAddr, pzAuth)
+		return pzsvc.DownloadByID(dataID, fname, runID, inpObj.PzAddr, inpObj.PzAuth)
 	}
 	handleFList(inpObj.InPzFiles, inpObj.InPzNames, pzDownlFunc, "", &output, output.InFiles, w)
 
@@ -205,7 +205,7 @@ func Execute(w http.ResponseWriter, r *http.Request, configObj ConfigType, pzAut
 	// same principles.
 
 	ingFunc := func(fName, dummy, fType string) (string, error) {
-		return pzsvc.IngestFile(fName, runID, fType, inpObj.PzAddr, configObj.SvcName, version, pzAuth, attMap)
+		return pzsvc.IngestFile(fName, runID, fType, inpObj.PzAddr, configObj.SvcName, version, inpObj.PzAuth, attMap)
 	}
 
 	handleFList(inpObj.OutTiffs, nil, ingFunc, "raster", &output, output.OutFiles, w)
