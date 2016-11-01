@@ -5,11 +5,54 @@ root=$(pwd -P)
 popd > /dev/null
 
 export GOPATH=$root/gopath
-mkdir -p $GOPATH
-lsb_release -a || cat /proc/version || cat /etc/*-release
+
 source $root/ci/vars.sh
 
-go get -v github.com/venicegeo/pzsvc-exec/...
-cp $GOPATH/src/github.com/venicegeo/pzsvc-exec/examplecfg.txt $GOPATH/bin/
+mkdir -p $GOPATH $GOPATH/bin $GOPATH/src $GOPATH/pkg
 
-tar -czfn $APP.$EXT -C $GOPATH/bin .
+PATH=$PATH:$GOPATH/bin
+
+go version
+
+# install metalinter
+go get -u github.com/alecthomas/gometalinter
+gometalinter --install
+
+go get -v github.com/venicegeo/pzsvc-exec/...
+
+
+cd $GOPATH/src/github.com/venicegeo/pzsvc-exec/pzse
+
+# run unit tests w/ coverage collection
+go test -v -coverprofile=$root/pzsvc-exec.cov github.com/venicegeo/pzsvc-exec/pzse
+
+
+# lint
+gometalinter \
+--deadline=60s \
+--concurrency=6 \
+--vendor \
+--exclude="exported (var)|(method)|(const)|(type)|(function) [A-Za-z\.0-9]* should have comment" \
+--exclude="comment on exported function [A-Za-z\.0-9]* should be of the form" \
+--exclude="Api.* should be .*API" \
+--exclude="Http.* should be .*HTTP" \
+--exclude="Id.* should be .*ID" \
+--exclude="Json.* should be .*JSON" \
+--exclude="Url.* should be .*URL" \
+--exclude="[iI][dD] can be fmt\.Stringer" \
+--exclude=" duplicate of [A-Za-z\._0-9]*" \
+./... | tee $root/lint.txt
+wc -l $root/lint.txt
+
+# gather some data about the repo
+
+
+
+cd $root
+cp $GOPATH/bin/$APP ./$APP.bin
+tar cvzf $APP.$EXT \
+    $APP.bin \
+    pzsvc-exec.cov \
+    lint.txt
+tar tzf $APP.$EXT
+
