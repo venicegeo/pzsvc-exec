@@ -14,4 +14,8 @@
         "ImgReq - Bands":"3,6",
         "ImgReq - Coastline":"Yes"
     }
+    "NumProcs": 3
+    "CanUpload": true
+    "CanDownlPz": true
+    "CanDownlExt": true 
 }

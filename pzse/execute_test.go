@@ -47,11 +47,6 @@ func TestParseConfiguration(t *testing.T) {
 			t.Error(`TestParseConfiguration: Version mismatch on run #` + strconv.Itoa(i) +
 				`.  actual: ` + runOut.Version + `.  expected: ` + planOut.Version + `.`)
 		}
-		if planOut.CanFile != runOut.CanFile {
-			t.Error(`TestParseConfiguration: CanFile mismatch on run #` + strconv.Itoa(i) +
-				`.  actual: ` + strconv.FormatBool(runOut.CanFile) +
-				`.  expected: ` + strconv.FormatBool(planOut.CanFile) + `.`)
-		}
 	}
 	os.Setenv(authEnv, holdEnv)
 }
@@ -77,7 +72,7 @@ func TestExecute(t *testing.T) {
 	}
 
 	r.Body = pzsvc.GetMockReadCloser(string(byts))
-	outObj := Execute(w, &r, config, parsConfig.AuthKey, parsConfig.Version, parsConfig.CanFile, parsConfig.ProcPool)
+	outObj := Execute(w, &r, config, parsConfig.AuthKey, parsConfig.Version, parsConfig.ProcPool)
 
 	if outObj.Errors != nil {
 		for _, errStr := range outObj.Errors {

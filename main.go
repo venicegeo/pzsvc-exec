@@ -64,7 +64,7 @@ func main() {
 			{
 				// the other options are shallow and informational.  This is the
 				// place where the work gets done.
-				output := pzse.Execute(w, r, configObj, pRes.AuthKey, pRes.Version, pRes.CanFile, pRes.ProcPool)
+				output := pzse.Execute(w, r, configObj, pRes.AuthKey, pRes.Version, pRes.ProcPool)
 				pzsvc.PrintJSON(w, output, output.HTTPStatus)
 			}
 		case "/description":

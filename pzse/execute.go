@@ -30,14 +30,21 @@ import (
 // ParseConfig parses the config file on starting up
 func ParseConfig(configObj *ConfigType) ConfigParseOut {
 
-	canReg, canFile, hasAuth := CheckConfig(configObj)
+	canReg := CheckConfig(configObj)
+	canPzFile := configObj.CanUpload || configObj.CanDownlPz
 
 	var authKey string
-	if hasAuth {
+	if configObj.AuthEnVar != "" && (canReg || canPzFile) {
 		authKey = os.Getenv(configObj.AuthEnVar)
 		if authKey == "" {
-			fmt.Println("Error: no auth key at AuthEnVar.  Registration disabled, and client will have to provide authKey.")
-			hasAuth = false
+			errStr := "Error: no auth key at AuthEnVar."
+			if canReg {
+				errStr += "  Registration disabled."
+			}
+			if canPzFile {
+				errStr += "  Client will have to provide authKey for Pz file interactions."
+			}
+			fmt.Println(errStr)
 			canReg = false
 		}
 	}
@@ -69,7 +76,7 @@ func ParseConfig(configObj *ConfigType) ConfigParseOut {
 		procPool = make(pzsvc.Semaphore, configObj.NumProcs)
 	}
 
-	return ConfigParseOut{authKey, portStr, version, canFile, procPool}
+	return ConfigParseOut{authKey, portStr, version, procPool}
 }
 
 // Execute does the primary work for pzsvc-exec.  Given a request and various
@@ -78,7 +85,7 @@ func ParseConfig(configObj *ConfigType) ConfigParseOut {
 // the command indicated by the combination of request and configs, uploads
 // any files indicated by the request (if the configs support it) and cleans
 // up after itself
-func Execute(w http.ResponseWriter, r *http.Request, configObj ConfigType, pzConfigAuth, version string, canFile bool, procPool pzsvc.Semaphore) OutStruct {
+func Execute(w http.ResponseWriter, r *http.Request, configObj ConfigType, pzConfigAuth, version string, procPool pzsvc.Semaphore) OutStruct {
 
 	// Makes sure that you only have a certain number of execution tasks firing at once.
 	// pzsvc-exec calls can get pretty resource-intensive, and this keeps them from
@@ -123,9 +130,6 @@ func Execute(w http.ResponseWriter, r *http.Request, configObj ConfigType, pzCon
 	if inpObj.PzAddr == "" {
 		inpObj.PzAddr = configObj.PzAddr
 	}
-	if inpObj.PzAuth != "" && inpObj.PzAddr != "" {
-		canFile = true
-	}
 
 	if inpObj.PzAddr == "" && (len(inpObj.InPzFiles)+len(inpObj.OutTiffs)+len(inpObj.OutTxts)+len(inpObj.OutGeoJs) != 0) {
 		handleError(&output, "", fmt.Errorf("Cannot complete.  No Piazza address provided for file upload/download."), w, http.StatusForbidden)
@@ -134,6 +138,19 @@ func Execute(w http.ResponseWriter, r *http.Request, configObj ConfigType, pzCon
 
 	if inpObj.PzAuth == "" && (len(inpObj.InPzFiles)+len(inpObj.OutTiffs)+len(inpObj.OutTxts)+len(inpObj.OutGeoJs) != 0) {
 		handleError(&output, "", fmt.Errorf("Cannot complete.  Auth Key not available."), w, http.StatusForbidden)
+		return output
+	}
+
+	if !configObj.CanDownlExt && (len(inpObj.InExtFiles) != 0) {
+		handleError(&output, "", fmt.Errorf("Cannot complete.  Configuration does not allow external file download."), w, http.StatusForbidden)
+		return output
+	}
+	if !configObj.CanDownlPz && (len(inpObj.InPzFiles) != 0) {
+		handleError(&output, "", fmt.Errorf("Cannot complete.  Configuration does not allow Piazza file download."), w, http.StatusForbidden)
+		return output
+	}
+	if !configObj.CanUpload && (len(inpObj.OutTiffs)+len(inpObj.OutTxts)+len(inpObj.OutGeoJs) != 0) {
+		handleError(&output, "", fmt.Errorf("Cannot complete.  Configuration does not allow file upload."), w, http.StatusForbidden)
 		return output
 	}
 

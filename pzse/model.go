@@ -29,6 +29,9 @@ type ConfigType struct {
 	Description string
 	Attributes  map[string]string
 	NumProcs    int
+	CanUpload   bool
+	CanDownlPz  bool
+	CanDownlExt bool
 }
 
 // OutStruct populates and provides the format for pzsvc-exec's output
@@ -47,7 +50,6 @@ type ConfigParseOut struct {
 	AuthKey  string
 	PortStr  string
 	Version  string
-	CanFile  bool
 	ProcPool pzsvc.Semaphore
 }
 

@@ -63,6 +63,12 @@ Description: A simple text description of your service.  Used in registration, a
 
 Attributes: A block of freeform key/value pairs for you to set additional descriptive attributes.  Used in registration, and also available through the "/attributes" endpoint.  Primarily intended to aid communication between services and service consumers with respect to the details of a service.  Information provided might be things like service type (so that the correct service consumers can identify you), interface (so they know how to interact with you) and image requirements (so they know what sorts of images to send you).
 
+NumProcs: Integer.  The maximum number of simultaneous jobs to allow.  This will generally depend on the amount of data you are uploading and downloading, the overall computational load of the command you are executing, and the resources each instance has available to draw on.  If the service is crashing regularly from overload, you want to drop this number.  If it is running at low load but processing too slowly, you'll want to increase it.  Defaults to no thread control, allowing all jobs to run as they arrive.
+
+CanUpload: Boolean.  If false, does not allow uploads after processing.  Defaults to false.
+CanDownlPz: Boolean.  If false, does not allow Piazza downloads before processing.  Defaults to false.
+CanDownlExt: Boolean.  If false, does not allow external downloads before processing.  Defaults to false.
+
 ## Service Endpoints
 
 The pzsvc-exec service endpoints are as follows:

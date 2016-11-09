@@ -19,16 +19,22 @@ import (
 	"fmt"
 	"net/http"
 	"os/exec"
+	"regexp"
 	"runtime"
 	"strconv"
 	"strings"
 )
 
 func handleFList(fList, nameList []string, lFunc rangeFunc, fType string, output *OutStruct, fileRec map[string]string, w http.ResponseWriter) {
+	re := regexp.MustCompile(`^[\w\-\.]*$`)
 	for i, f := range fList {
 		name := ""
 		if len(nameList) > i {
 			name = nameList[i]
+		}
+		if !re.Match([]byte(name)) {
+			handleError(output, `handleFlist error: Filename "`+name+`" contains illegal characters and is not permitted.`, nil, w, http.StatusBadRequest)
+			continue
 		}
 		outStr, err := lFunc(f, name, fType)
 		if err != nil {
@@ -82,24 +88,27 @@ func GetVersion(configObj *ConfigType) string {
 
 // CheckConfig takes an input config file, checks it over for issues,
 // and outputs any issues or concerns to std.out.  It returns whether
-// or not the config file permits autoregistration, and whether or not
-// it permits file upload/download.
-func CheckConfig(configObj *ConfigType) (bool, bool, bool) {
+// or not the config file permits autoregistration.
+func CheckConfig(configObj *ConfigType) bool {
 	canReg := true
-	canFile := true
-	hasAuth := true
+	canPzFile := configObj.CanUpload || configObj.CanDownlPz
 	if configObj.CliCmd == "" {
 		fmt.Println(`Config: Warning: CliCmd is blank.  This is a major security vulnerability.`)
 	}
 
 	if configObj.PzAddr == "" {
-		fmt.Println(`Config: PzAddr not specified.  Client will have to provide Piazza Address for upload/download.  Autoregistration and file upload/download disabled.`)
-		canFile = false
-		hasAuth = false
+		errStr := `Config: PzAddr was not specified.  Autoregistration disabled.`
+		if canPzFile {
+			errStr += `  Client will have to provide Piazza Address for uploads and Piazza downloads.`
+		}
+		fmt.Println(errStr)
 		canReg = false
 	} else if configObj.AuthEnVar == "" {
-		fmt.Println(`Config: AuthEnVar was not specified.  Client will have to provide authKey for upload/download.  Autoregistration disabled.`)
-		hasAuth = false
+		errStr := `Config: AuthEnVar was not specified.  Autoregistration disabled.`
+		if canPzFile {
+			errStr += `  Client will have to provide authKey for uploads and Piazza downloads.`
+		}
+		fmt.Println(errStr)
 		canReg = false
 	} else if configObj.SvcName == "" {
 		fmt.Println(`Config: SvcName not specified.  Autoregistration disabled.`)
@@ -109,7 +118,7 @@ func CheckConfig(configObj *ConfigType) (bool, bool, bool) {
 		canReg = false
 	}
 
-	if !canFile {
+	if !canReg {
 		if configObj.VersionCmd != "" {
 			fmt.Println(`Config: VersionCmd was specified, but is much less useful without autoregistration.`)
 		}
@@ -117,7 +126,17 @@ func CheckConfig(configObj *ConfigType) (bool, bool, bool) {
 			fmt.Println(`Config: VersionStr was specified, but is much less useful without without autoregistration.`)
 		}
 		if configObj.AuthEnVar != "" {
-			fmt.Println(`Config: AuthEnVar was specified, but is meaningless without upload/download/autoregistration.`)
+			if canPzFile {
+				fmt.Println(`Config: AuthEnVar was specified, but PzAddr was not.  AuthEnVar useless without a Pz instance to authenticate against.`)
+			} else {
+				fmt.Println(`Config: AuthEnVar was specified, but is meaningless without autoregistration or Pz file interactions.`)
+			}
+		}
+		if configObj.SvcName != "" {
+			fmt.Println(`Config: SvcName was specified, but is meaningless without autoregistration.`)
+		}
+		if configObj.URL != "" {
+			fmt.Println(`Config: URL was specified, but is meaningless without autoregistration.`)
 		}
 	} else {
 		if configObj.VersionCmd == "" && configObj.VersionStr == "" {
@@ -126,16 +145,6 @@ func CheckConfig(configObj *ConfigType) (bool, bool, bool) {
 		if configObj.VersionCmd != "" && configObj.VersionStr != "" {
 			fmt.Println(`Config: Both VersionCmd and VersionStr were specified.  Redundant.  Default to VersionCmd.`)
 		}
-	}
-
-	if !canReg {
-		if configObj.SvcName != "" {
-			fmt.Println(`Config: SvcName was specified, but is meaningless without autoregistration.`)
-		}
-		if configObj.URL != "" {
-			fmt.Println(`Config: URL was specified, but is meaningless without autoregistration.`)
-		}
-	} else {
 		if configObj.Description == "" {
 			fmt.Println(`Config: Description not specified.  When autoregistering, descriptions are strongly encouraged.`)
 		}
@@ -145,7 +154,7 @@ func CheckConfig(configObj *ConfigType) (bool, bool, bool) {
 		fmt.Println(`Config: Port not specified, or incorrect format.  Default to 8080.`)
 	}
 
-	return canReg, canFile, hasAuth
+	return canReg
 }
 
 // PrintHelp prints out a basic helpfile to make things easier on direct users
