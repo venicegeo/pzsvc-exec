@@ -65,7 +65,8 @@ func main() {
 				// the other options are shallow and informational.  This is the
 				// place where the work gets done.
 				output := pzse.Execute(w, r, configObj, pRes.AuthKey, pRes.Version, pRes.ProcPool)
-				pzsvc.PrintJSON(w, output, output.HTTPStatus)
+				byts := pzsvc.PrintJSON(w, output, output.HTTPStatus)
+				fmt.Println(`pzsvc-exec returned.  Output: ` + string(byts))
 			}
 		case "/description":
 			if configObj.Description == "" {

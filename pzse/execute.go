@@ -16,6 +16,7 @@ package pzse
 
 import (
 	"bytes"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -93,7 +94,12 @@ func Execute(w http.ResponseWriter, r *http.Request, configObj ConfigType, pzCon
 	procPool.Lock()
 	defer procPool.Unlock()
 
-	var output OutStruct
+	var (
+		output OutStruct
+		inpObj InpStruct
+		byts   []byte
+		err    error
+	)
 	output.InFiles = make(map[string]string)
 	output.OutFiles = make(map[string]string)
 	output.HTTPStatus = http.StatusOK
@@ -103,9 +109,7 @@ func Execute(w http.ResponseWriter, r *http.Request, configObj ConfigType, pzCon
 		return output
 	}
 
-	var inpObj InpStruct
-
-	if _, err := pzsvc.ReadBodyJSON(&inpObj, r.Body); err != nil {
+	if byts, err = pzsvc.ReadBodyJSON(&inpObj, r.Body); err != nil {
 		handleError(&output, "could not interpret body as json: ", err, w, 200)
 		inpObj.Command = r.FormValue("cmd")
 		inpObj.InPzFiles = splitOrNil(r.FormValue("inFiles"), ",")
@@ -118,7 +122,9 @@ func Execute(w http.ResponseWriter, r *http.Request, configObj ConfigType, pzCon
 		inpObj.ExtAuth = r.FormValue("inUrlAuthKey")
 		inpObj.PzAuth = r.FormValue("authKey")
 		inpObj.PzAddr = r.FormValue("pzAddr")
+		byts, _ = json.Marshal(inpObj)
 	}
+	fmt.Println(`pzsvc-exec called.  Input: ` + string(byts))
 
 	cmdParamSlice := splitOrNil(inpObj.Command, " ")
 	cmdConfigSlice := splitOrNil(configObj.CliCmd, " ")

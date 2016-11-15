@@ -50,9 +50,9 @@ func handleFList(fList, nameList []string, lFunc rangeFunc, fType string, output
 func handleError(output *OutStruct, addString string, err error, w http.ResponseWriter, httpStat int) {
 	if err != nil {
 		var outErrStr string
-		_, _, line, ok := runtime.Caller(1)
+		_, filename, line, ok := runtime.Caller(1)
 		if ok == true {
-			outErrStr = addString + `(pzsvc-exec/main.go, ` + strconv.Itoa(line) + `): ` + err.Error()
+			outErrStr = addString + `(pzsvc-exec\pzse\` + filename + `, ` + strconv.Itoa(line) + `): ` + err.Error()
 		} else {
 			outErrStr = addString + `: ` + err.Error()
 		}
