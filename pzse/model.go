@@ -36,12 +36,12 @@ type ConfigType struct {
 
 // OutStruct populates and provides the format for pzsvc-exec's output
 type OutStruct struct {
-	InFiles    map[string]string
-	OutFiles   map[string]string
-	ProgStdOut string
-	ProgStdErr string
-	Errors     []string
-	HTTPStatus int
+	InFiles    map[string]string `json:"InFiles,omitempty"`
+	OutFiles   map[string]string `json:"OutFiles,omitempty"`
+	ProgStdOut string            `json:"ProgStdOut,omitempty"`
+	ProgStdErr string            `json:"ProgStdErr,omitempty"`
+	Errors     []string          `json:"Errors,omitempty"`
+	HTTPStatus int               `json:"HTTPStatus,omitempty"`
 }
 
 // ConfigParseOut is a handy struct to organize all of the outputs

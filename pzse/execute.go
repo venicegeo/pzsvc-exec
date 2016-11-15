@@ -17,7 +17,6 @@ package pzse
 import (
 	"bytes"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"net/http"
 	"os"
@@ -105,12 +104,12 @@ func Execute(w http.ResponseWriter, r *http.Request, configObj ConfigType, pzCon
 	output.HTTPStatus = http.StatusOK
 
 	if r.Method != "POST" {
-		handleError(&output, "", fmt.Errorf(r.Method+" not supported.  Please us POST."), w, http.StatusMethodNotAllowed)
+		addOutputError(&output, r.Method+" not supported.  Please us POST.", http.StatusMethodNotAllowed)
 		return output
 	}
 
 	if byts, err = pzsvc.ReadBodyJSON(&inpObj, r.Body); err != nil {
-		handleError(&output, "could not interpret body as json: ", err, w, 200)
+		fmt.Printf("pzsvc-exec: could not interpret input Body as json.  Attempting to interpret as Form.  Original Body: " + string(byts))
 		inpObj.Command = r.FormValue("cmd")
 		inpObj.InPzFiles = splitOrNil(r.FormValue("inFiles"), ",")
 		inpObj.InExtFiles = splitOrNil(r.FormValue("inFileURLs"), ",")
@@ -138,37 +137,37 @@ func Execute(w http.ResponseWriter, r *http.Request, configObj ConfigType, pzCon
 	}
 
 	if inpObj.PzAddr == "" && (len(inpObj.InPzFiles)+len(inpObj.OutTiffs)+len(inpObj.OutTxts)+len(inpObj.OutGeoJs) != 0) {
-		handleError(&output, "", fmt.Errorf("Cannot complete.  No Piazza address provided for file upload/download."), w, http.StatusForbidden)
+		addOutputError(&output, "Cannot complete.  No Piazza address provided for file upload/download.", http.StatusForbidden)
 		return output
 	}
 
 	if inpObj.PzAuth == "" && (len(inpObj.InPzFiles)+len(inpObj.OutTiffs)+len(inpObj.OutTxts)+len(inpObj.OutGeoJs) != 0) {
-		handleError(&output, "", fmt.Errorf("Cannot complete.  Auth Key not available."), w, http.StatusForbidden)
+		addOutputError(&output, "Cannot complete.  Auth Key not available.", http.StatusForbidden)
 		return output
 	}
 
 	if !configObj.CanDownlExt && (len(inpObj.InExtFiles) != 0) {
-		handleError(&output, "", fmt.Errorf("Cannot complete.  Configuration does not allow external file download."), w, http.StatusForbidden)
+		addOutputError(&output, "Cannot complete.  Configuration does not allow external file download.", http.StatusForbidden)
 		return output
 	}
 	if !configObj.CanDownlPz && (len(inpObj.InPzFiles) != 0) {
-		handleError(&output, "", fmt.Errorf("Cannot complete.  Configuration does not allow Piazza file download."), w, http.StatusForbidden)
+		addOutputError(&output, "Cannot complete.  Configuration does not allow Piazza file download.", http.StatusForbidden)
 		return output
 	}
 	if !configObj.CanUpload && (len(inpObj.OutTiffs)+len(inpObj.OutTxts)+len(inpObj.OutGeoJs) != 0) {
-		handleError(&output, "", fmt.Errorf("Cannot complete.  Configuration does not allow file upload."), w, http.StatusForbidden)
+		addOutputError(&output, "Cannot complete.  Configuration does not allow file upload.", http.StatusForbidden)
 		return output
 	}
 
 	runID, err := pzsvc.PsuUUID()
-	handleError(&output, "psuUUID error: ", err, w, http.StatusInternalServerError)
+	handleLoggableError(&output, "pzsvc-exec internal error.  Please contact DevOps and check logs.", "psuUUID error: ", err, w, http.StatusInternalServerError)
 
 	err = os.Mkdir("./"+runID, 0777)
-	handleError(&output, "os.Mkdir error: ", err, w, http.StatusInternalServerError)
+	handleLoggableError(&output, "pzsvc-exec internal error.  Please contact DevOps and check logs.", "os.Mkdir error: ", err, w, http.StatusInternalServerError)
 	defer os.RemoveAll("./" + runID)
 
 	err = os.Chmod("./"+runID, 0777)
-	handleError(&output, "os.Chmod error: ", err, w, http.StatusInternalServerError)
+	handleLoggableError(&output, "pzsvc-exec internal error.  Please contact DevOps and check logs.", "os.Chmod error: ", err, w, http.StatusInternalServerError)
 
 	// this is done to enable use of handleFList, which lets us
 	// reduce a fair bit of code duplication in plowing through
@@ -185,7 +184,7 @@ func Execute(w http.ResponseWriter, r *http.Request, configObj ConfigType, pzCon
 	handleFList(inpObj.InExtFiles, inpObj.InExtNames, extDownlFunc, "", &output, output.InFiles, w)
 
 	if len(cmdSlice) == 0 {
-		handleError(&output, "", errors.New(`No cmd or CliCmd.  Please provide "cmd" param.`), w, http.StatusBadRequest)
+		addOutputError(&output, `No cmd or CliCmd.  Please provide "cmd" param.`, http.StatusBadRequest)
 		return output
 	}
 
@@ -210,7 +209,7 @@ func Execute(w http.ResponseWriter, r *http.Request, configObj ConfigType, pzCon
 	clc.Stderr = &stderr
 
 	err = clc.Run()
-	handleError(&output, "clc.Run error: ", err, w, http.StatusBadRequest)
+	handleLoggableError(&output, "pzsvc-exec internal error.  Please contact DevOps and check logs.", "clc.Run error: ", err, w, http.StatusBadRequest)
 
 	output.ProgStdOut = stdout.String()
 	output.ProgStdErr = stderr.String()

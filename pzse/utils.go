@@ -33,33 +33,39 @@ func handleFList(fList, nameList []string, lFunc rangeFunc, fType string, output
 			name = nameList[i]
 		}
 		if !re.Match([]byte(name)) {
-			handleError(output, `handleFlist error: Filename "`+name+`" contains illegal characters and is not permitted.`, nil, w, http.StatusBadRequest)
+			fmt.Println(`Illegal filename "` + name + `" entered for one of upload/download.  Possible attempted security breach.`)
+			addOutputError(output, `handleFlist error: Filename "`+name+`" contains illegal characters and is not permitted.`, http.StatusBadRequest)
 			continue
 		}
 		outStr, err := lFunc(f, name, fType)
 		if err != nil {
-			handleError(output, "handleFlist error: ", err, w, http.StatusBadRequest)
+			handleLoggableError(output, "Error in upload/download of "+name+".", "handleFlist error: ", err, w, http.StatusBadRequest)
 		} else if outStr == "" {
-			handleError(output, "handleFlist error: ", errors.New(`type "`+fType+`", input "`+f+`" blank result.`), w, http.StatusBadRequest)
+			handleLoggableError(output, "Blank Result Error in upload/download of "+name+".", "handleFlist error: ", errors.New(`type "`+fType+`", input "`+f+`" blank result.`), w, http.StatusBadRequest)
 		} else {
 			fileRec[f] = outStr
 		}
 	}
 }
 
-func handleError(output *OutStruct, addString string, err error, w http.ResponseWriter, httpStat int) {
+func handleLoggableError(output *OutStruct, friendlyString, addString string, err error, w http.ResponseWriter, httpStat int) {
 	if err != nil {
-		var outErrStr string
+		var logErrStr string
 		_, filename, line, ok := runtime.Caller(1)
 		if ok == true {
-			outErrStr = addString + `(pzsvc-exec\pzse\` + filename + `, ` + strconv.Itoa(line) + `): ` + err.Error()
+			logErrStr = addString + `(pzsvc-exec\pzse\` + filename + `, ` + strconv.Itoa(line) + `): ` + err.Error()
 		} else {
-			outErrStr = addString + `: ` + err.Error()
+			logErrStr = addString + `: ` + err.Error()
 		}
-		output.Errors = append(output.Errors, outErrStr)
-		output.HTTPStatus = httpStat
+		fmt.Println(logErrStr)
+		addOutputError(output, friendlyString, httpStat)
 	}
 	return
+}
+
+func addOutputError(output *OutStruct, errString string, httpStat int) {
+	output.Errors = append(output.Errors, errString)
+	output.HTTPStatus = httpStat
 }
 
 func splitOrNil(inString, knife string) []string {
