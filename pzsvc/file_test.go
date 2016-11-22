@@ -20,24 +20,6 @@ import (
 	"testing"
 )
 
-func TestDownloadBytes(t *testing.T) {
-	t.Log(HTTPClient()) //testing the HTTPClient when cient is nil
-	outStrs := []string{`{"test":"blah"}`}
-	SetMockClient(outStrs, 250)
-
-	url := "http://testURL.net"
-	authKey := "testAuthKey"
-	dataID := "1234ID"
-
-	byts, err := DownloadBytes(dataID, url, authKey)
-	if err != nil {
-		t.Error(`TestDownloadBytes: failed on base call: ` + err.Error())
-	}
-	if string(byts) != `{"test":"blah"}` {
-		t.Error(`TestDownloadBytes: Incorrect string.  "` + string(byts) + `"`)
-	}
-}
-
 func TestDownloadByID(t *testing.T) {
 	outStrs := []string{`{"test":"blah"}`, `{"test":"blah"}`, `{"test":"blah"}`}
 	SetMockClient(outStrs, 250)
