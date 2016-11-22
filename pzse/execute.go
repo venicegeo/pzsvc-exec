@@ -98,6 +98,7 @@ func Execute(w http.ResponseWriter, r *http.Request, configObj ConfigType, pzCon
 		inpObj InpStruct
 		byts   []byte
 		err    error
+		pErr   *pzsvc.Error
 	)
 	output.InFiles = make(map[string]string)
 	output.OutFiles = make(map[string]string)
@@ -108,8 +109,8 @@ func Execute(w http.ResponseWriter, r *http.Request, configObj ConfigType, pzCon
 		return output
 	}
 
-	if byts, err = pzsvc.ReadBodyJSON(&inpObj, r.Body); err != nil {
-		fmt.Printf("pzsvc-exec: could not interpret input Body as json.  Attempting to interpret as Form.  Original Body: " + string(byts))
+	if byts, pErr = pzsvc.ReadBodyJSON(&inpObj, r.Body); err != nil {
+		pErr.Log("Could not read request body.  Attempting to fall back to form fields.  Initial error:")
 		inpObj.Command = r.FormValue("cmd")
 		inpObj.InPzFiles = splitOrNil(r.FormValue("inFiles"), ",")
 		inpObj.InExtFiles = splitOrNil(r.FormValue("inFileURLs"), ",")
