@@ -12,16 +12,28 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package pzse
+package pzsvc
 
-import (
-	"testing"
+import ()
 
-	"github.com/venicegeo/pzsvc-exec/pzsvc"
-)
+type empty struct{}
 
-// PrintHelp prints out a basic helpfile to make things easier on direct users
-func TestPrintHelp(t *testing.T) {
-	w, _, _ := pzsvc.GetMockResponseWriter()
-	PrintHelp(w)
+// Semaphore is a structure that allows limited resources to be
+// allocated across multiple threads.  Semaphores that are left
+// nil provide no restriction to behavior.
+type Semaphore chan empty
+
+// Lock claims a resource, or waits if one is not available.
+func (s Semaphore) Lock() {
+	if s != nil {
+		var e empty
+		s <- e
+	}
+}
+
+// Unlock releases a resource.
+func (s Semaphore) Unlock() {
+	if s != nil {
+		<-s
+	}
 }

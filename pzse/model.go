@@ -14,7 +14,7 @@
 
 package pzse
 
-import "github.com/venicegeo/pzsvc-lib"
+import "github.com/venicegeo/pzsvc-exec/pzsvc"
 
 // ConfigType represents and contains the information from a pzsvc-exec config file.
 type ConfigType struct {

@@ -17,7 +17,7 @@ package pzse
 import (
 	"fmt"
 
-	"github.com/venicegeo/pzsvc-lib"
+	"github.com/venicegeo/pzsvc-exec/pzsvc"
 )
 
 // CallPzsvcExec is a function designed to simplify calls to pzsvc-exec.
@@ -29,11 +29,11 @@ func CallPzsvcExec(inpObj *InpStruct, algoURL string) (*OutStruct, error) {
 	var respObj OutStruct
 	byts, err := pzsvc.ReqByObjJSON("POST", algoURL, "", inpObj, &respObj)
 	if err != nil {
-		return nil, pzsvc.TraceErr(err)
+		return nil, err.Log("Error calling pzsvc-exec")
 	}
 
 	if len(respObj.Errors) != 0 {
-		return nil, fmt.Errorf(`pzsvc-exec errors: %s`, pzsvc.SliceToCommaSep(respObj.Errors))
+		return nil, pzsvc.LogSimpleErr(`pzsvc-exec errors: `+pzsvc.SliceToCommaSep(respObj.Errors), nil)
 	}
 
 	fmt.Println("pzsvc-exec returned. Output: " + string(byts))

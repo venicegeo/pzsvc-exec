@@ -16,16 +16,12 @@ package pzse
 
 import (
 	"encoding/json"
-	//"fmt"
-	//"io"
-	//"io/ioutil"
-	//"mime"
 	"net/http"
 	"os"
 	"strconv"
 	"testing"
 
-	"github.com/venicegeo/pzsvc-lib"
+	"github.com/venicegeo/pzsvc-exec/pzsvc"
 )
 
 func TestParseConfiguration(t *testing.T) {

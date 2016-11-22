@@ -24,7 +24,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/venicegeo/pzsvc-lib"
+	"github.com/venicegeo/pzsvc-exec/pzsvc"
 )
 
 // ParseConfig parses the config file on starting up
@@ -160,14 +160,22 @@ func Execute(w http.ResponseWriter, r *http.Request, configObj ConfigType, pzCon
 	}
 
 	runID, err := pzsvc.PsuUUID()
-	handleLoggableError(&output, "pzsvc-exec internal error.  Please contact DevOps and check logs.", "psuUUID error: ", err, w, http.StatusInternalServerError)
-
+	if err != nil {
+		pzsvc.LogSimpleErr("psuUUID error: ", err)
+		addOutputError(&output, "pzsvc-exec internal error.  Check logs for further information.", http.StatusInternalServerError)
+	}
 	err = os.Mkdir("./"+runID, 0777)
-	handleLoggableError(&output, "pzsvc-exec internal error.  Please contact DevOps and check logs.", "os.Mkdir error: ", err, w, http.StatusInternalServerError)
+	if err != nil {
+		pzsvc.LogSimpleErr("os.Mkdir error: ", err)
+		addOutputError(&output, "pzsvc-exec internal error.  Check logs for further information.", http.StatusInternalServerError)
+	}
 	defer os.RemoveAll("./" + runID)
 
 	err = os.Chmod("./"+runID, 0777)
-	handleLoggableError(&output, "pzsvc-exec internal error.  Please contact DevOps and check logs.", "os.Chmod error: ", err, w, http.StatusInternalServerError)
+	if err != nil {
+		pzsvc.LogSimpleErr("os.Chmod error: ", err)
+		addOutputError(&output, "pzsvc-exec internal error.  Check logs for further information.", http.StatusInternalServerError)
+	}
 
 	// this is done to enable use of handleFList, which lets us
 	// reduce a fair bit of code duplication in plowing through
@@ -209,13 +217,14 @@ func Execute(w http.ResponseWriter, r *http.Request, configObj ConfigType, pzCon
 	clc.Stderr = &stderr
 
 	err = clc.Run()
-	handleLoggableError(&output, "pzsvc-exec internal error.  Please contact DevOps and check logs.", "clc.Run error: ", err, w, http.StatusBadRequest)
 
-	output.ProgStdOut = stdout.String()
-	output.ProgStdErr = stderr.String()
+	if err != nil {
+		pzsvc.LogSimpleErr("clc.Run error: ", err)
+		addOutputError(&output, `pzsvc-exec failed on cmd "`+inpObj.Command+`".  If that was correct, check logs for further details.`, http.StatusBadRequest)
+	}
 
-	fmt.Println(`Program stdout: ` + output.ProgStdOut)
-	fmt.Println(`Program stderr: ` + output.ProgStdErr)
+	fmt.Println(`Program stdout: ` + stdout.String())
+	fmt.Println(`Program stderr: ` + stderr.String())
 
 	attMap := make(map[string]string)
 	attMap["algoName"] = configObj.SvcName

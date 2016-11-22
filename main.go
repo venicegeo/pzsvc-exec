@@ -23,7 +23,7 @@ import (
 	"os"
 
 	"github.com/venicegeo/pzsvc-exec/pzse"
-	"github.com/venicegeo/pzsvc-lib"
+	"github.com/venicegeo/pzsvc-exec/pzsvc"
 )
 
 func main() {

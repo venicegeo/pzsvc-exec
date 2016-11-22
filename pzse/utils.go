@@ -15,14 +15,13 @@
 package pzse
 
 import (
-	"errors"
 	"fmt"
 	"net/http"
 	"os/exec"
 	"regexp"
-	"runtime"
-	"strconv"
 	"strings"
+
+	"github.com/venicegeo/pzsvc-exec/pzsvc"
 )
 
 func handleFList(fList, nameList []string, lFunc rangeFunc, fType string, output *OutStruct, fileRec map[string]string, w http.ResponseWriter) {
@@ -33,22 +32,24 @@ func handleFList(fList, nameList []string, lFunc rangeFunc, fType string, output
 			name = nameList[i]
 		}
 		if !re.Match([]byte(name)) {
-			fmt.Println(`Illegal filename "` + name + `" entered for one of upload/download.  Possible attempted security breach.`)
+			pzsvc.LogInfo(`Illegal filename "` + name + `" entered for one of upload/download.  Possible attempted security breach.`)
 			addOutputError(output, `handleFlist error: Filename "`+name+`" contains illegal characters and is not permitted.`, http.StatusBadRequest)
 			continue
 		}
 		outStr, err := lFunc(f, name, fType)
 		if err != nil {
-			handleLoggableError(output, "Error in upload/download of "+name+".", "handleFlist error: ", err, w, http.StatusBadRequest)
+			addOutputError(output, "Error in upload/download of "+name+".", http.StatusBadRequest)
 		} else if outStr == "" {
-			handleLoggableError(output, "Blank Result Error in upload/download of "+name+".", "handleFlist error: ", errors.New(`type "`+fType+`", input "`+f+`" blank result.`), w, http.StatusBadRequest)
+			pzsvc.LogSimpleErr(`handleFlist error: type "`+fType+`", input "`+f+`" blank result.`, nil)
+			addOutputError(output, "Blank Result Error in upload/download of "+name+".", http.StatusBadRequest)
 		} else {
 			fileRec[f] = outStr
 		}
 	}
 }
 
-func handleLoggableError(output *OutStruct, friendlyString, addString string, err error, w http.ResponseWriter, httpStat int) {
+/*
+func handleLoggableError(output *OutStruct, friendlyString, addString string, err error, httpStat int) {
 	if err != nil {
 		var logErrStr string
 		_, filename, line, ok := runtime.Caller(1)
@@ -62,7 +63,7 @@ func handleLoggableError(output *OutStruct, friendlyString, addString string, er
 	}
 	return
 }
-
+*/
 func addOutputError(output *OutStruct, errString string, httpStat int) {
 	output.Errors = append(output.Errors, errString)
 	output.HTTPStatus = httpStat
