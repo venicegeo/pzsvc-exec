@@ -55,17 +55,17 @@ type ConfigParseOut struct {
 
 // InpStruct is the format that pzsvc-exec demarshals input data into
 type InpStruct struct {
-	Command    string   `json:"cmd"`
-	InPzFiles  []string `json:"inPzFiles"`    // slice: Pz dataIds
-	InExtFiles []string `json:"inExtFiles"`   // slice: external URL
-	InPzNames  []string `json:"inPzNames"`    // slice: name for the InPzFile of the same index
-	InExtNames []string `json:"inExtNames"`   // slice: name for the InExtFile of the same index
-	OutTiffs   []string `json:"outTiffs"`     // slice: filenames of GeoTIFFs to be ingested
-	OutTxts    []string `json:"outTxts"`      // slice: filenames of text files to be ingested
-	OutGeoJs   []string `json:"outGeoJson"`   // slice: filenames of GeoJSON files to be ingested
-	ExtAuth    string   `json:"inExtAuthKey"` // string: auth key for accessing external files
-	PzAuth     string   `json:"pzAuthKey"`    // string: auth key for accessing Piazza
-	PzAddr     string   `json:"pzAddr"`       // string: URL for the targeted Pz instance
+	Command    string   `json:"cmd,omitempty"`
+	InPzFiles  []string `json:"inPzFiles,omitempty"`    // slice: Pz dataIds
+	InExtFiles []string `json:"inExtFiles,omitempty"`   // slice: external URL
+	InPzNames  []string `json:"inPzNames,omitempty"`    // slice: name for the InPzFile of the same index
+	InExtNames []string `json:"inExtNames,omitempty"`   // slice: name for the InExtFile of the same index
+	OutTiffs   []string `json:"outTiffs,omitempty"`     // slice: filenames of GeoTIFFs to be ingested
+	OutTxts    []string `json:"outTxts,omitempty"`      // slice: filenames of text files to be ingested
+	OutGeoJs   []string `json:"outGeoJson,omitempty"`   // slice: filenames of GeoJSON files to be ingested
+	ExtAuth    string   `json:"inExtAuthKey,omitempty"` // string: auth key for accessing external files
+	PzAuth     string   `json:"pzAuthKey,omitempty"`    // string: auth key for accessing Piazza
+	PzAddr     string   `json:"pzAddr,omitempty"`       // string: URL for the targeted Pz instance
 }
 
 type rangeFunc func(string, string, string) (string, error)
