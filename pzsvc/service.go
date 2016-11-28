@@ -16,7 +16,6 @@ package pzsvc
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/url"
 )
 
@@ -49,7 +48,7 @@ func ManageRegistration(svcName, svcDesc, svcURL, pzAddr, svcVers, authKey strin
 	attributes map[string]string) LoggedError {
 
 	var pzErr *Error
-	fmt.Println("Finding")
+	LogInfo("Searching for service in Pz service list")
 	svcID, err := FindMySvc(svcName, pzAddr, authKey)
 	if err != nil {
 		return err

@@ -14,10 +14,6 @@
 
 package pzse
 
-import (
-//"net/http"
-)
-
 func getTestConfigWorkable() ConfigType {
 	return ConfigType{
 		CliCmd:      "ls",

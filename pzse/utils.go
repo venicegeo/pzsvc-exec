@@ -48,22 +48,6 @@ func handleFList(fList, nameList []string, lFunc rangeFunc, fType, action string
 	}
 }
 
-/*
-func handleLoggableError(output *OutStruct, friendlyString, addString string, err error, httpStat int) {
-	if err != nil {
-		var logErrStr string
-		_, filename, line, ok := runtime.Caller(1)
-		if ok == true {
-			logErrStr = addString + `(pzsvc-exec\pzse\` + filename + `, ` + strconv.Itoa(line) + `): ` + err.Error()
-		} else {
-			logErrStr = addString + `: ` + err.Error()
-		}
-		fmt.Println(logErrStr)
-		addOutputError(output, friendlyString, httpStat)
-	}
-	return
-}
-*/
 func addOutputError(output *OutStruct, errString string, httpStat int) {
 	output.Errors = append(output.Errors, errString)
 	output.HTTPStatus = httpStat
@@ -84,7 +68,7 @@ func GetVersion(configObj *ConfigType) string {
 		vCmd := exec.Command(vCmdSlice[0], vCmdSlice[1:]...)
 		verB, err := vCmd.Output()
 		if err != nil {
-			fmt.Println("error: VersionCmd failed: " + err.Error())
+			pzsvc.LogSimpleErr("VersionCmd failed: ", err)
 		}
 		if string(verB) != "" {
 			return string(verB)
@@ -100,7 +84,7 @@ func CheckConfig(configObj *ConfigType) bool {
 	canReg := true
 	canPzFile := configObj.CanUpload || configObj.CanDownlPz
 	if configObj.CliCmd == "" {
-		fmt.Println(`Config: Warning: CliCmd is blank.  This is a major security vulnerability.`)
+		pzsvc.LogInfo(`Config: Warning: CliCmd is blank.  This is a major security vulnerability.`)
 	}
 
 	if configObj.PzAddr == "" {
@@ -108,57 +92,57 @@ func CheckConfig(configObj *ConfigType) bool {
 		if canPzFile {
 			errStr += `  Client will have to provide Piazza Address for uploads and Piazza downloads.`
 		}
-		fmt.Println(errStr)
+		pzsvc.LogInfo(errStr)
 		canReg = false
 	} else if configObj.AuthEnVar == "" {
 		errStr := `Config: AuthEnVar was not specified.  Autoregistration disabled.`
 		if canPzFile {
 			errStr += `  Client will have to provide authKey for uploads and Piazza downloads.`
 		}
-		fmt.Println(errStr)
+		pzsvc.LogInfo(errStr)
 		canReg = false
 	} else if configObj.SvcName == "" {
-		fmt.Println(`Config: SvcName not specified.  Autoregistration disabled.`)
+		pzsvc.LogInfo(`Config: SvcName not specified.  Autoregistration disabled.`)
 		canReg = false
 	} else if configObj.URL == "" {
-		fmt.Println(`Config: URL not specified for this service.  Autoregistration disabled.`)
+		pzsvc.LogInfo(`Config: URL not specified for this service.  Autoregistration disabled.`)
 		canReg = false
 	}
 
 	if !canReg {
 		if configObj.VersionCmd != "" {
-			fmt.Println(`Config: VersionCmd was specified, but is much less useful without autoregistration.`)
+			pzsvc.LogInfo(`Config: VersionCmd was specified, but is much less useful without autoregistration.`)
 		}
 		if configObj.VersionStr != "" {
-			fmt.Println(`Config: VersionStr was specified, but is much less useful without without autoregistration.`)
+			pzsvc.LogInfo(`Config: VersionStr was specified, but is much less useful without without autoregistration.`)
 		}
 		if configObj.AuthEnVar != "" {
 			if canPzFile {
-				fmt.Println(`Config: AuthEnVar was specified, but PzAddr was not.  AuthEnVar useless without a Pz instance to authenticate against.`)
+				pzsvc.LogInfo(`Config: AuthEnVar was specified, but PzAddr was not.  AuthEnVar useless without a Pz instance to authenticate against.`)
 			} else {
-				fmt.Println(`Config: AuthEnVar was specified, but is meaningless without autoregistration or Pz file interactions.`)
+				pzsvc.LogInfo(`Config: AuthEnVar was specified, but is meaningless without autoregistration or Pz file interactions.`)
 			}
 		}
 		if configObj.SvcName != "" {
-			fmt.Println(`Config: SvcName was specified, but is meaningless without autoregistration.`)
+			pzsvc.LogInfo(`Config: SvcName was specified, but is meaningless without autoregistration.`)
 		}
 		if configObj.URL != "" {
-			fmt.Println(`Config: URL was specified, but is meaningless without autoregistration.`)
+			pzsvc.LogInfo(`Config: URL was specified, but is meaningless without autoregistration.`)
 		}
 	} else {
 		if configObj.VersionCmd == "" && configObj.VersionStr == "" {
-			fmt.Println(`Config: neither VersionCmd nor VersionStr was specified.  Version will be left blank.`)
+			pzsvc.LogInfo(`Config: neither VersionCmd nor VersionStr was specified.  Version will be left blank.`)
 		}
 		if configObj.VersionCmd != "" && configObj.VersionStr != "" {
-			fmt.Println(`Config: Both VersionCmd and VersionStr were specified.  Redundant.  Default to VersionCmd.`)
+			pzsvc.LogInfo(`Config: Both VersionCmd and VersionStr were specified.  Redundant.  Default to VersionCmd.`)
 		}
 		if configObj.Description == "" {
-			fmt.Println(`Config: Description not specified.  When autoregistering, descriptions are strongly encouraged.`)
+			pzsvc.LogInfo(`Config: Description not specified.  When autoregistering, descriptions are strongly encouraged.`)
 		}
 	}
 
 	if configObj.Port <= 0 {
-		fmt.Println(`Config: Port not specified, or incorrect format.  Default to 8080.`)
+		pzsvc.LogInfo(`Config: Port not specified, or incorrect format.  Default to 8080.`)
 	}
 
 	return canReg

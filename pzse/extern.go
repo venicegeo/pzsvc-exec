@@ -15,8 +15,6 @@
 package pzse
 
 import (
-	"fmt"
-
 	"github.com/venicegeo/pzsvc-exec/pzsvc"
 )
 
@@ -36,7 +34,7 @@ func CallPzsvcExec(inpObj *InpStruct, algoURL string) (*OutStruct, error) {
 		return nil, pzsvc.LogSimpleErr(`pzsvc-exec errors: `+pzsvc.SliceToCommaSep(respObj.Errors), nil)
 	}
 
-	fmt.Println("pzsvc-exec returned. Output: " + string(byts))
+	pzsvc.LogInfo("pzsvc-exec returned. Output: " + string(byts))
 
 	return &respObj, nil
 }
