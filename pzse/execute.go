@@ -37,14 +37,14 @@ func ParseConfig(configObj *ConfigType) ConfigParseOut {
 	if configObj.AuthEnVar != "" && (canReg || canPzFile) {
 		authKey = os.Getenv(configObj.AuthEnVar)
 		if authKey == "" {
-			errStr := "Error: no auth key at AuthEnVar."
+			errStr := "No auth key at AuthEnVar."
 			if canReg {
 				errStr += "  Registration disabled."
 			}
 			if canPzFile {
 				errStr += "  Client will have to provide authKey for Pz file interactions."
 			}
-			fmt.Println(errStr)
+			pzsvc.LogSimpleErr(errStr, nil)
 			canReg = false
 		}
 	}
@@ -57,7 +57,7 @@ func ParseConfig(configObj *ConfigType) ConfigParseOut {
 	version := GetVersion(configObj)
 
 	if canReg {
-		fmt.Println("About to manage registration.")
+		pzsvc.LogInfo("About to manage registration.")
 		err := pzsvc.ManageRegistration(configObj.SvcName,
 			configObj.Description,
 			configObj.URL+"/execute",
@@ -66,9 +66,10 @@ func ParseConfig(configObj *ConfigType) ConfigParseOut {
 			authKey,
 			configObj.Attributes)
 		if err != nil {
-			fmt.Println("pzsvc-exec error in managing registration: ", err.Error())
+			pzsvc.LogSimpleErr("pzsvc-exec error in managing registration: ", err)
+		} else {
+			pzsvc.LogInfo("Registration managed.")
 		}
-		fmt.Println("Registration managed.")
 	}
 
 	var procPool = pzsvc.Semaphore(nil)
@@ -110,21 +111,18 @@ func Execute(w http.ResponseWriter, r *http.Request, configObj ConfigType, pzCon
 	}
 
 	if byts, pErr = pzsvc.ReadBodyJSON(&inpObj, r.Body); err != nil {
-		pErr.Log("Could not read request body.  Attempting to fall back to form fields.  Initial error:")
-		inpObj.Command = r.FormValue("cmd")
-		inpObj.InPzFiles = splitOrNil(r.FormValue("inFiles"), ",")
-		inpObj.InExtFiles = splitOrNil(r.FormValue("inFileURLs"), ",")
-		inpObj.InPzNames = splitOrNil(r.FormValue("inPzFileNames"), ",")
-		inpObj.InExtNames = splitOrNil(r.FormValue("inExtFileNames"), ",")
-		inpObj.OutTiffs = splitOrNil(r.FormValue("outTiffs"), ",")
-		inpObj.OutTxts = splitOrNil(r.FormValue("outTxts"), ",")
-		inpObj.OutGeoJs = splitOrNil(r.FormValue("outGeoJson"), ",")
-		inpObj.ExtAuth = r.FormValue("inUrlAuthKey")
-		inpObj.PzAuth = r.FormValue("authKey")
-		inpObj.PzAddr = r.FormValue("pzAddr")
-		byts, _ = json.Marshal(inpObj)
+		pErr.Log("Could not read request body.  Initial error:")
+		addOutputError(&output, "Could not read request body.  Please use JSON format.", http.StatusBadRequest)
 	}
-	fmt.Println(`pzsvc-exec called.  Input: ` + string(byts))
+
+	if inpObj.PzAuth != "" {
+		authKeeper := inpObj.PzAuth
+		inpObj.PzAuth = "******"
+		byts, _ = json.Marshal(inpObj)
+		inpObj.PzAuth = authKeeper
+	}
+
+	pzsvc.LogInfo(`pzsvc-exec called.  Input: ` + string(byts))
 
 	cmdParamSlice := splitOrNil(inpObj.Command, " ")
 	cmdConfigSlice := splitOrNil(configObj.CliCmd, " ")
@@ -185,19 +183,19 @@ func Execute(w http.ResponseWriter, r *http.Request, configObj ConfigType, pzCon
 	pzDownlFunc := func(dataID, fname, fType string) (string, error) {
 		return pzsvc.DownloadByID(dataID, fname, runID, inpObj.PzAddr, inpObj.PzAuth)
 	}
-	handleFList(inpObj.InPzFiles, inpObj.InPzNames, pzDownlFunc, "", &output, output.InFiles, w)
+	handleFList(inpObj.InPzFiles, inpObj.InPzNames, pzDownlFunc, "unspecified", "Pz download", &output, output.InFiles, w)
 
 	extDownlFunc := func(url, fname, fType string) (string, error) {
 		return pzsvc.DownloadByURL(url, fname, runID, inpObj.ExtAuth)
 	}
-	handleFList(inpObj.InExtFiles, inpObj.InExtNames, extDownlFunc, "", &output, output.InFiles, w)
+	handleFList(inpObj.InExtFiles, inpObj.InExtNames, extDownlFunc, "unspecified", "URL download", &output, output.InFiles, w)
 
 	if len(cmdSlice) == 0 {
-		addOutputError(&output, `No cmd or CliCmd.  Please provide "cmd" param.`, http.StatusBadRequest)
+		addOutputError(&output, "No cmd or CliCmd.  Please provide `cmd` param.", http.StatusBadRequest)
 		return output
 	}
 
-	fmt.Println(`Executing "` + configObj.CliCmd + ` ` + inpObj.Command + `".`)
+	pzsvc.LogInfo("Executing `" + configObj.CliCmd + " " + inpObj.Command + "`.")
 
 	// we're calling this from inside a temporary subfolder.  If the
 	// program called exists inside the initial pzsvc-exec folder, that's
@@ -221,11 +219,11 @@ func Execute(w http.ResponseWriter, r *http.Request, configObj ConfigType, pzCon
 
 	if err != nil {
 		pzsvc.LogSimpleErr("clc.Run error: ", err)
-		addOutputError(&output, `pzsvc-exec failed on cmd "`+inpObj.Command+`".  If that was correct, check logs for further details.`, http.StatusBadRequest)
+		addOutputError(&output, "pzsvc-exec failed on cmd `"+inpObj.Command+"`.  If that was correct, check logs for further details.", http.StatusBadRequest)
 	}
 
-	fmt.Println(`Program stdout: ` + stdout.String())
-	fmt.Println(`Program stderr: ` + stderr.String())
+	pzsvc.LogInfo(`Program stdout: ` + stdout.String())
+	pzsvc.LogInfo(`Program stderr: ` + stderr.String())
 
 	attMap := make(map[string]string)
 	attMap["algoName"] = configObj.SvcName
@@ -240,9 +238,9 @@ func Execute(w http.ResponseWriter, r *http.Request, configObj ConfigType, pzCon
 		return pzsvc.IngestFile(fName, runID, fType, inpObj.PzAddr, configObj.SvcName, version, inpObj.PzAuth, attMap)
 	}
 
-	handleFList(inpObj.OutTiffs, nil, ingFunc, "raster", &output, output.OutFiles, w)
-	handleFList(inpObj.OutTxts, nil, ingFunc, "text", &output, output.OutFiles, w)
-	handleFList(inpObj.OutGeoJs, nil, ingFunc, "geojson", &output, output.OutFiles, w)
+	handleFList(inpObj.OutTiffs, inpObj.OutTiffs, ingFunc, "raster", "upload", &output, output.OutFiles, w)
+	handleFList(inpObj.OutTxts, inpObj.OutTxts, ingFunc, "text", "upload", &output, output.OutFiles, w)
+	handleFList(inpObj.OutGeoJs, inpObj.OutGeoJs, ingFunc, "geojson", "upload", &output, output.OutFiles, w)
 
 	return output
 }

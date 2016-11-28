@@ -32,28 +32,31 @@ func baseLogFunc(logString string) {
 // LogMessage receives a string to put to the logs.  It formats it correctly
 // and puts it in the right place.  This function exists partially in order
 // to simplify the task of modifying log behavior in the future.
-func logMessage(message, fileName string, lineNo int, isError bool) {
+func logMessage(prefix, message, fileName string, lineNo int) {
 	if LogFunc == nil {
 		LogFunc = baseLogFunc
 	}
-	var outBody string
-	if isError {
-		outBody = "ERROR - "
-	} else {
-		outBody = "INFO - "
-	}
+	outBody := prefix + " - "
 	if fileName != "" {
 		outBody += ("[" + fileName + " " + strconv.Itoa(lineNo) + "] ")
 	}
 	outBody += message
-
+	LogFunc(outBody)
 }
 
 // LogInfo posts a logMessage call for standard, non-error messages.  The
 // point is mostly to maintain uniformity of appearance and behavior.
 func LogInfo(message string) {
 	_, file, line, _ := runtime.Caller(1)
-	logMessage(message, file, line, false)
+	logMessage("INFO", message, file, line)
+}
+
+// LogAlert posts a logMessage call for messages that suggest that someone
+// may be attempting to breach the security of the program.  The point of
+// the function is mostly to maintain uniformity of appearance and behavior.
+func LogAlert(message string) {
+	_, file, line, _ := runtime.Caller(1)
+	logMessage("ALERT", message, file, line)
 }
 
 // LoggedError is a duplicate of the "error" interface.  Its real point is to
@@ -118,10 +121,10 @@ func (err *Error) Log(msgAdd string) LoggedError {
 		if err.request != "" || err.response != "" {
 			outMsg = err.GenExtendedMsg()
 		}
-		logMessage(outMsg, file, line, true)
+		logMessage("ERROR", outMsg, file, line)
 		err.hasLogged = true
 	} else {
-		logMessage("Meta-error.  Tried to log same message for a second time.", file, line, false)
+		logMessage("ERROR", "Meta-error.  Tried to log same message for a second time.", file, line)
 	}
 	return fmt.Errorf(err.Error())
 }
@@ -129,9 +132,11 @@ func (err *Error) Log(msgAdd string) LoggedError {
 // LogSimpleErr posts a logMessage call for simple error messages, and produces a pzsvc.Error
 // from the result.  The point is mostly to maintain uniformity of appearance and behavior.
 func LogSimpleErr(message string, err error) LoggedError {
-	message += err.Error()
+	if err != nil {
+		message += err.Error()
+	}
 	_, file, line, _ := runtime.Caller(1)
-	logMessage(message, file, line, true)
+	logMessage("ERROR", message, file, line)
 	return fmt.Errorf(message)
 }
 
