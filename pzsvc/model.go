@@ -16,6 +16,27 @@ package pzsvc
 
 import "time"
 
+/*****************************/
+/*** pzsvc Session Objects ***/
+/*****************************/
+
+// Session has a primary purpose of passing logging information down
+// to where it is needed in a simple, straightforward package.  As a
+// secondary benefit, it is used to pass around certain bits of
+// session-specific routing information, as a way of simplifying
+// funciton APIs.
+type Session struct {
+	AppName   string // The name of the calling application - "pzsvc-ossim", as an example
+	SessionID string // Used in logs to indicate which session an event is associated with
+	PzAddr    string // The address of the Pz instance this session is interacting with
+	PzAuth    string // The Pz auth string used for this session
+	SubFold   string // The name of the subfolder this session has been assigned (if any)
+}
+
+/***************************/
+/*** Pz Internal Objects ***/
+/***************************/
+
 // DataDesc is the identifying information for a specific uploaded file
 // or data block.  It is an important part of ingest requests, and the
 // core of the response object for file metadata requests.
@@ -132,9 +153,9 @@ type PagStruct struct {
 	SortBy  string `json:"sortBy,omitempty"`
 }
 
-/***********************/
-/*** Request Objects ***/
-/***********************/
+/**************************/
+/*** Pz Request Objects ***/
+/**************************/
 
 // Service is the Pz representation of a registered service.
 // Used as the payload in register service and update service jobs.
@@ -193,9 +214,9 @@ type EventType struct {
 	CreatedOn   time.Time              `json:"createdOn"`
 }
 
-/************************/
-/*** Response Objects ***/
-/************************/
+/***************************/
+/*** Pz Response Objects ***/
+/***************************/
 
 // SvcList is the Pz representation of a list of service objects.
 // It's the response object for a list/search services call

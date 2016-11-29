@@ -19,44 +19,45 @@ import (
 	"fmt"
 	"net/http"
 	"runtime"
-	"strconv"
 )
 
 // LogFunc is the function used to add entries to the log
-var LogFunc func(string)
+var (
+	LogFunc func(string)
+)
 
 func baseLogFunc(logString string) {
 	fmt.Println(logString)
 }
 
-// LogMessage receives a string to put to the logs.  It formats it correctly
+// logMessage receives a string to put to the logs.  It formats it correctly
 // and puts it in the right place.  This function exists partially in order
-// to simplify the task of modifying log behavior in the future.
-func logMessage(prefix, message, fileName string, lineNo int) {
+// to simplify the task of modifying log behavior in the future.  Note that
+// logMessage will panic if no baseLogFunc has been set.  This is a feature,
+// not a bug.  It helps you identify threads that have not been properly
+// readied.  If logMessage panics in this way, the appropriate answer is
+// to call ReadyLog before the first call to logMessage.
+func logMessage(s Session, prefix, message string) {
+	_, file, line, _ := runtime.Caller(2)
 	if LogFunc == nil {
 		LogFunc = baseLogFunc
 	}
-	outBody := prefix + " - "
-	if fileName != "" {
-		outBody += ("[" + fileName + " " + strconv.Itoa(lineNo) + "] ")
-	}
-	outBody += message
-	LogFunc(outBody)
+	outMsg := fmt.Sprintf("%s - [%s:%s %s %d] %s", prefix, s.AppName, s.SessionID, file, line, message)
+	LogFunc(outMsg)
 }
 
 // LogInfo posts a logMessage call for standard, non-error messages.  The
 // point is mostly to maintain uniformity of appearance and behavior.
-func LogInfo(message string) {
-	_, file, line, _ := runtime.Caller(1)
-	logMessage("INFO", message, file, line)
+func LogInfo(s Session, message string) {
+	logMessage(s, "INFO", message)
 }
 
 // LogAlert posts a logMessage call for messages that suggest that someone
-// may be attempting to breach the security of the program.  The point of
-// the function is mostly to maintain uniformity of appearance and behavior.
-func LogAlert(message string) {
-	_, file, line, _ := runtime.Caller(1)
-	logMessage("ALERT", message, file, line)
+// may be attempting to breach the security of the program, or point to the
+// possibility of a significant security vulnerability.  The point of this
+// function is mostly to maintain uniformity of appearance and behavior.
+func LogAlert(s Session, message string) {
+	logMessage(s, "ALERT", message)
 }
 
 // LoggedError is a duplicate of the "error" interface.  Its real point is to
@@ -110,33 +111,30 @@ func (err Error) GenExtendedMsg() string {
 // general level of complexity, that strikes a decent balance between providing
 // enough detail to figure out the cause of an error and keepign thigns simple
 // enough to readily understand.
-func (err *Error) Log(msgAdd string) LoggedError {
-	_, file, line, _ := runtime.Caller(1)
+func (err *Error) Log(s Session, msgAdd string) LoggedError {
 	if !err.hasLogged {
 		if msgAdd != "" {
 			err.LogMsg = msgAdd + ": " + err.LogMsg
 		}
 		outMsg := err.LogMsg
-		_, file, line, _ := runtime.Caller(1)
 		if err.request != "" || err.response != "" {
 			outMsg = err.GenExtendedMsg()
 		}
-		logMessage("ERROR", outMsg, file, line)
+		logMessage(s, "ERROR", outMsg)
 		err.hasLogged = true
 	} else {
-		logMessage("ERROR", "Meta-error.  Tried to log same message for a second time.", file, line)
+		logMessage(s, "ERROR", "Meta-error.  Tried to log same message for a second time.")
 	}
 	return fmt.Errorf(err.Error())
 }
 
 // LogSimpleErr posts a logMessage call for simple error messages, and produces a pzsvc.Error
 // from the result.  The point is mostly to maintain uniformity of appearance and behavior.
-func LogSimpleErr(message string, err error) LoggedError {
+func LogSimpleErr(s Session, message string, err error) LoggedError {
 	if err != nil {
 		message += err.Error()
 	}
-	_, file, line, _ := runtime.Caller(1)
-	logMessage("ERROR", message, file, line)
+	logMessage(s, "ERROR", message)
 	return fmt.Errorf(message)
 }
 

@@ -28,8 +28,10 @@ import (
 
 func main() {
 
+	s := pzsvc.Session{AppName: "pzsvc-exec", SessionID: "startup"}
+
 	if len(os.Args) < 2 {
-		fmt.Println("error: Insufficient parameters.  You must specify a config file.")
+		pzsvc.LogSimpleErr(s, "error: Insufficient parameters.  You must specify a config file.", nil)
 		return
 	}
 
@@ -37,17 +39,17 @@ func main() {
 	// ReadFile returns the contents of the file as a byte buffer.
 	configBuf, err := ioutil.ReadFile(os.Args[1])
 	if err != nil {
-		fmt.Println("pzsvc-exec error in reading config: " + err.Error())
+		pzsvc.LogSimpleErr(s, "pzsvc-exec error in reading config: ", err)
 		return
 	}
 	var configObj pzse.ConfigType
 	err = json.Unmarshal(configBuf, &configObj)
 	if err != nil {
-		fmt.Println("pzsvc-exec error in unmarshalling config: " + err.Error())
+		pzsvc.LogSimpleErr(s, "pzsvc-exec error in unmarshalling config: ", err)
 		return
 	}
 
-	pRes := pzse.ParseConfig(&configObj)
+	pRes := pzse.ParseConfig(s, &configObj)
 
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		r.ParseForm()
@@ -64,9 +66,9 @@ func main() {
 			{
 				// the other options are shallow and informational.  This is the
 				// place where the work gets done.
-				output := pzse.Execute(w, r, configObj, pRes.AuthKey, pRes.Version, pRes.ProcPool)
+				output, s2 := pzse.Execute(w, r, configObj, pRes)
 				byts := pzsvc.PrintJSON(w, output, output.HTTPStatus)
-				fmt.Println(`pzsvc-exec returned.  Output: ` + string(byts))
+				pzsvc.LogInfo(s2, `pzsvc-exec call completed.  Output: `+string(byts))
 			}
 		case "/description":
 			if configObj.Description == "" {

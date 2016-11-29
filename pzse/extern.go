@@ -22,19 +22,19 @@ import (
 // Fill out the inpObj properly, and it'll go through the contact process,
 // returning the OutFiles mapping (as that is generally what people are
 // interested in, one way or the other)
-func CallPzsvcExec(inpObj *InpStruct, algoURL string) (*OutStruct, error) {
+func CallPzsvcExec(s pzsvc.Session, inpObj *InpStruct, algoURL string) (*OutStruct, error) {
 
 	var respObj OutStruct
 	byts, err := pzsvc.ReqByObjJSON("POST", algoURL, "", inpObj, &respObj)
 	if err != nil {
-		return nil, err.Log("Error calling pzsvc-exec")
+		return nil, err.Log(s, "Error calling pzsvc-exec")
 	}
 
 	if len(respObj.Errors) != 0 {
-		return nil, pzsvc.LogSimpleErr(`pzsvc-exec errors: `+pzsvc.SliceToCommaSep(respObj.Errors), nil)
+		return nil, pzsvc.LogSimpleErr(s, `pzsvc-exec errors: `+pzsvc.SliceToCommaSep(respObj.Errors), nil)
 	}
 
-	pzsvc.LogInfo("pzsvc-exec returned. Output: " + string(byts))
+	pzsvc.LogInfo(s, "pzsvc-exec returned. Output: "+string(byts))
 
 	return &respObj, nil
 }

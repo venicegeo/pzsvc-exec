@@ -92,8 +92,6 @@ func SubmitMultipart(bodyStr, address, filename, authKey string, fileData []byte
 		err    error
 	)
 
-	LogInfo("Initiating file upload")
-
 	err = writer.WriteField("data", bodyStr)
 	if err != nil {
 		return nil, &Error{LogMsg: "Could not write string " + bodyStr + "to message body: " + err.Error(), SimpleMsg: "Internal Error on file upload.  See logs."}

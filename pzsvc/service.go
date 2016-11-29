@@ -22,12 +22,12 @@ import (
 // FindMySvc Searches Pz for a service matching the input information.  If it finds
 // one, it returns the service ID.  If it does not, returns an empty string.  Currently
 // searches on service name and submitting user.
-func FindMySvc(svcName, pzAddr, authKey string) (string, LoggedError) {
+func FindMySvc(s Session, svcName, pzAddr, authKey string) (string, LoggedError) {
 	query := pzAddr + "/service/me?per_page=1000&keyword=" + url.QueryEscape(svcName)
 	var respObj SvcList
 	_, err := RequestKnownJSON("GET", "", query, authKey, &respObj)
 	if err != nil {
-		return "", err.Log("Error when finding Pz Service")
+		return "", err.Log(s, "Error when finding Pz Service")
 	}
 
 	for _, checkServ := range respObj.Data {
@@ -44,12 +44,12 @@ func FindMySvc(svcName, pzAddr, authKey string) (string, LoggedError) {
 // initial registration.  If it has not, it re-registers.  Best practice is to do this
 // every time your service starts up.  For those of you code-reading, the filter is
 // still somewhat rudimentary.  It will improve as better tools become available.
-func ManageRegistration(svcName, svcDesc, svcURL, pzAddr, svcVers, authKey string,
+func ManageRegistration(s Session, svcName, svcDesc, svcURL, pzAddr, svcVers, authKey string,
 	attributes map[string]string) LoggedError {
 
 	var pzErr *Error
-	LogInfo("Searching for service in Pz service list")
-	svcID, err := FindMySvc(svcName, pzAddr, authKey)
+	LogInfo(s, "Searching for service in Pz service list")
+	svcID, err := FindMySvc(s, svcName, pzAddr, authKey)
 	if err != nil {
 		return err
 	}
@@ -67,14 +67,14 @@ func ManageRegistration(svcName, svcDesc, svcURL, pzAddr, svcVers, authKey strin
 	svcJSON, err := json.Marshal(svcObj)
 
 	if svcID == "" {
-		LogInfo("Registering Service")
+		LogInfo(s, "Registering Service")
 		_, pzErr = SubmitSinglePart("POST", string(svcJSON), pzAddr+"/service", authKey)
 	} else {
-		LogInfo("Updating Service Registration")
+		LogInfo(s, "Updating Service Registration")
 		_, pzErr = SubmitSinglePart("PUT", string(svcJSON), pzAddr+"/service/"+svcID, authKey)
 	}
 	if pzErr != nil {
-		return pzErr.Log("Error managing registration: ")
+		return pzErr.Log(s, "Error managing registration: ")
 	}
 
 	return nil
