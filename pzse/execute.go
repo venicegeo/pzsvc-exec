@@ -104,6 +104,7 @@ func Execute(w http.ResponseWriter, r *http.Request, configObj ConfigType, cPars
 	)
 	output.InFiles = make(map[string]string)
 	output.OutFiles = make(map[string]string)
+
 	output.HTTPStatus = http.StatusOK
 
 	s := pzsvc.Session{AppName: configObj.SvcName, SessionID: "FailedOnInit"}
@@ -230,6 +231,8 @@ func Execute(w http.ResponseWriter, r *http.Request, configObj ConfigType, cPars
 		addOutputError(&output, "pzsvc-exec failed on cmd `"+inpObj.Command+"`.  If that was correct, check logs for further details.", http.StatusBadRequest)
 	}
 
+	output.ProgStdOut = stdout.String()
+	output.ProgStdErr = stderr.String()
 	pzsvc.LogInfo(s, `Program stdout: `+stdout.String())
 	pzsvc.LogInfo(s, `Program stderr: `+stderr.String())
 
