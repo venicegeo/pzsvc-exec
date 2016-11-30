@@ -28,21 +28,23 @@ func TestDownloadByID(t *testing.T) {
 	dataID := "1234ID"
 	fileName := "tempTestFile.tmp"
 	subFold := "folderName"
+	s := Session{SubFold: subFold, PzAddr: url, PzAuth: authKey}
 
 	os.Mkdir(subFold, 0777)
-	_, err := DownloadByID(dataID, fileName, subFold, url, authKey)
+	_, err := DownloadByID(s, dataID, fileName)
 	if err != nil {
 		t.Error(`TestDownloadByID: failed on subfolder-yes call: ` + err.Error())
 	}
 	os.RemoveAll(subFold)
 
-	_, err = DownloadByID(dataID, fileName, "", url, authKey)
+	s.SubFold = ""
+	_, err = DownloadByID(s, dataID, fileName)
 	if err != nil {
 		t.Error(`TestDownloadByID: failed on subfolder-no call: ` + err.Error())
 	}
 	os.Remove(locString("", fileName))
 
-	_, err = DownloadByID(dataID, "", "", url, authKey)
+	_, err = DownloadByID(s, dataID, "")
 	if err == nil {
 		t.Error(`TestDownloadByID: passed a filename-no call: ` + err.Error())
 	}
@@ -61,21 +63,22 @@ func TestIngestFile(t *testing.T) {
 	authKey := "testAuthKey"
 	fileName := "tempTestFile.tmp"
 	subFold := "folderName"
+	s := Session{SubFold: subFold, PzAddr: url, PzAuth: authKey}
 
 	os.Mkdir(subFold, 0777)
 	err := ioutil.WriteFile("./"+subFold+"/"+fileName, []byte(fileName), 0666)
 	if err != nil {
 		t.Error(`TestIngestFile: error on file creation: ` + err.Error())
 	}
-	_, err = IngestFile(fileName, subFold, "text", url, "tester", "0.0", authKey, map[string]string{"prop1": "1", "prop2": "2"})
+	_, err = IngestFile(s, fileName, "text", "tester", "0.0", map[string]string{"prop1": "1", "prop2": "2"})
 	if err != nil {
 		t.Error(`TestIngestFile: error on text ingest: ` + err.Error())
 	}
-	_, err = IngestFile(fileName, subFold, "geojson", url, "tester", "0.0", authKey, map[string]string{"prop1": "1", "prop2": "2"})
+	_, err = IngestFile(s, fileName, "geojson", "tester", "0.0", map[string]string{"prop1": "1", "prop2": "2"})
 	if err != nil {
 		t.Error(`TestIngestFile: error on geojson ingest: ` + err.Error())
 	}
-	_, err = IngestFile(fileName, subFold, "raster", url, "tester", "0.0", authKey, map[string]string{"prop1": "1", "prop2": "2"})
+	_, err = IngestFile(s, fileName, "raster", "tester", "0.0", map[string]string{"prop1": "1", "prop2": "2"})
 	if err != nil {
 		t.Error(`TestIngestFile: error on raster ingest: ` + err.Error())
 	}

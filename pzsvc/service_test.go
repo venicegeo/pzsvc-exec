@@ -22,6 +22,7 @@ import (
 func TestManageRegistration(t *testing.T) {
 	url := "http://testURL.net"
 	authKey := "testAuthKey"
+	s := Session{}
 	svcName := "testJobID"
 	svcDesc := "testDesc"
 	svcURL := "http://testSvcURL.net"
@@ -40,11 +41,11 @@ func TestManageRegistration(t *testing.T) {
 
 	sProps := map[string]string{"prop1": "1", "prop2": "2", "prop3": "3"}
 
-	err := ManageRegistration(svcName, svcDesc, svcURL, url, svcVers, authKey, sProps)
+	err := ManageRegistration(s, svcName, svcDesc, svcURL, url, svcVers, authKey, sProps)
 	if err != nil {
 		t.Error(`TestManageRegistration: failed on full registration.  Error: `, err.Error())
 	}
-	err = ManageRegistration(svcName, svcDesc, svcURL, url, svcVers, authKey, sProps)
+	err = ManageRegistration(s, svcName, svcDesc, svcURL, url, svcVers, authKey, sProps)
 	if err != nil {
 		t.Error(`TestManageRegistration: failed on empty registration.  Error: `, err.Error())
 	}

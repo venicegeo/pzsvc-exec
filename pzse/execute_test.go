@@ -28,9 +28,10 @@ func TestParseConfiguration(t *testing.T) {
 	configs, planOuts, authEnv := getTestConfigList()
 	holdEnv := os.Getenv(authEnv)
 	os.Setenv(authEnv, "pzsvc-exec")
+	s := pzsvc.Session{}
 	for i, config := range configs {
 		planOut := planOuts[i]
-		runOut := ParseConfig(&config)
+		runOut := ParseConfig(s, &config)
 		if planOut.AuthKey != runOut.AuthKey {
 			t.Error(`TestParseConfiguration: AuthKey mismatch on run #` + strconv.Itoa(i) +
 				`.  actual: ` + runOut.AuthKey + `.  expected: ` + planOut.AuthKey + `.`)
@@ -49,7 +50,8 @@ func TestParseConfiguration(t *testing.T) {
 
 func TestExecute(t *testing.T) {
 	config := getTestConfigWorkable()
-	parsConfig := ParseConfig(&config)
+	s := pzsvc.Session{}
+	parsConfig := ParseConfig(s, &config)
 	testResList := []string{"", `{"data":{"jobId":"testID"}}`, `{"data":{"status":"Success", "Result":{"message":"testStatus", "dataId":"testId"}}}`}
 	pzsvc.SetMockClient(testResList, 200)
 
@@ -68,7 +70,7 @@ func TestExecute(t *testing.T) {
 	}
 
 	r.Body = pzsvc.GetMockReadCloser(string(byts))
-	outObj := Execute(w, &r, config, parsConfig.AuthKey, parsConfig.Version, parsConfig.ProcPool)
+	outObj, _ := Execute(w, &r, config, parsConfig)
 
 	if outObj.Errors != nil {
 		for _, errStr := range outObj.Errors {

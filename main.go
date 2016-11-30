@@ -28,7 +28,7 @@ import (
 
 func main() {
 
-	s := pzsvc.Session{AppName: "pzsvc-exec", SessionID: "startup"}
+	s := pzsvc.Session{AppName: "pzsvc-exec", SessionID: "startup", LogRootDir: "pzsvc-exec"}
 
 	if len(os.Args) < 2 {
 		pzsvc.LogSimpleErr(s, "error: Insufficient parameters.  You must specify a config file.", nil)

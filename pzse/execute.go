@@ -107,7 +107,7 @@ func Execute(w http.ResponseWriter, r *http.Request, configObj ConfigType, cPars
 
 	output.HTTPStatus = http.StatusOK
 
-	s := pzsvc.Session{AppName: configObj.SvcName, SessionID: "FailedOnInit"}
+	s := pzsvc.Session{AppName: configObj.SvcName, SessionID: "FailedOnInit", LogRootDir: "pzsvc-exec"}
 	if r.Method != "POST" {
 		addOutputError(&output, r.Method+" not supported.  Please us POST.", http.StatusMethodNotAllowed)
 		return output, s

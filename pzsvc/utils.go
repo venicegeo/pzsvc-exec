@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"net/http"
 	"runtime"
+	"strings"
 )
 
 // LogFunc is the function used to add entries to the log
@@ -41,6 +42,12 @@ func logMessage(s Session, prefix, message string) {
 	_, file, line, _ := runtime.Caller(2)
 	if LogFunc == nil {
 		LogFunc = baseLogFunc
+	}
+	if s.LogRootDir != "" {
+		splits := strings.SplitAfter(file, s.LogRootDir)
+		if len(splits) > 1 {
+			file = s.LogRootDir + splits[len(splits)-1]
+		}
 	}
 	outMsg := fmt.Sprintf("%s - [%s:%s %s %d] %s", prefix, s.AppName, s.SessionID, file, line, message)
 	LogFunc(outMsg)
