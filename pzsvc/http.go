@@ -252,6 +252,16 @@ func ReadBodyJSON(output interface{}, body io.ReadCloser) ([]byte, *Error) {
 	return rBytes, nil
 }
 
+// CheckAuth verifies that the given API key is valid for the given
+// Piazza address
+func CheckAuth(pzAddr, pzAuth string) *Error {
+	_, err := SubmitSinglePart("GET", "", pzAddr+"/service", pzAuth)
+	if err != nil {
+		return &Error{LogMsg: "Could not confirm user authorization."}
+	}
+	return nil
+}
+
 // HTTPOut outputs the given string on the given responseWriter
 // with the given http code.  It is nearly identical in behavior
 // to http.Error, except that it doesn't modify the headers

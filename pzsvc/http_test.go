@@ -233,6 +233,20 @@ func TestReadBodyJSON(t *testing.T) {
 	}
 }
 
+func TestCheckAuth(t *testing.T) {
+	outStrs := []string{`testData`, `testData`}
+	SetMockClient(outStrs, 250)
+	err := CheckAuth("testAddr", "testAuth")
+	if err != nil {
+		t.Error("CheckAuth threw error on good response.")
+	}
+	SetMockClient(outStrs, 401)
+	err = CheckAuth("testAddr", "testAuth")
+	if err == nil {
+		t.Error("CheckAuth failed to throw error on bad http code.")
+	}
+}
+
 func TestTestUtils(t *testing.T) {
 	testData := []byte("testtesttest")
 	mockRespWrite, _, _ := GetMockResponseWriter()

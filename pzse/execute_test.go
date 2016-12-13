@@ -52,7 +52,7 @@ func TestExecute(t *testing.T) {
 	config := getTestConfigWorkable()
 	s := pzsvc.Session{}
 	parsConfig := ParseConfig(s, &config)
-	testResList := []string{"", `{"data":{"jobId":"testID"}}`, `{"data":{"status":"Success", "Result":{"message":"testStatus", "dataId":"testId"}}}`}
+	testResList := []string{"test", "test", `{"data":{"jobId":"testID"}}`, `{"data":{"status":"Success", "Result":{"message":"testStatus", "dataId":"testId"}}}`}
 	pzsvc.SetMockClient(testResList, 200)
 
 	w, _, _ := pzsvc.GetMockResponseWriter()

@@ -149,14 +149,25 @@ func Execute(w http.ResponseWriter, r *http.Request, configObj ConfigType, cPars
 		s.PzAddr = configObj.PzAddr
 	}
 
-	if s.PzAddr == "" && (len(inpObj.InPzFiles)+len(inpObj.OutTiffs)+len(inpObj.OutTxts)+len(inpObj.OutGeoJs) != 0) {
+	needsPz := (len(inpObj.InPzFiles)+len(inpObj.OutTiffs)+len(inpObj.OutTxts)+len(inpObj.OutGeoJs) != 0)
+
+	if needsPz && s.PzAddr == "" {
 		addOutputError(&output, "Cannot complete.  No Piazza address provided for file upload/download.", http.StatusForbidden)
 		return output, s
 	}
 
-	if s.PzAuth == "" && (len(inpObj.InPzFiles)+len(inpObj.OutTiffs)+len(inpObj.OutTxts)+len(inpObj.OutGeoJs) != 0) {
+	if needsPz && s.PzAuth == "" {
 		addOutputError(&output, "Cannot complete.  Auth Key not available.", http.StatusForbidden)
 		return output, s
+	}
+
+	if needsPz {
+		unlogErr := pzsvc.CheckAuth(s.PzAddr, s.PzAuth)
+		if unlogErr != nil {
+			addOutputError(&output, "Could not confirm auth.", http.StatusForbidden)
+			unlogErr.Log(s, "")
+			return output, s
+		}
 	}
 
 	if !configObj.CanDownlExt && (len(inpObj.InExtFiles) != 0) {
