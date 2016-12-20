@@ -33,36 +33,69 @@ func getTestConfigWorkable() ConfigType {
 }
 
 func getTestConfigList() ([6]ConfigType, [6]ConfigParseOut, string) {
-	cliCmd := "ls -l"
-	versionCmd := "echo vers1"
-	versionStr := "vers2"
-	pzAddr := "aaa"
-	authEnVar := "APP"
-	svcName := "testSvc"
-	url := "www.testSvc.nope"
-	port := 8081
-	desc := "Insert Description Here"
-	attr := map[string]string{"testAttr": "testAtt"}
-	numProcs := 0 //We'll test this part, but we'll do it on the full run-through, rather than the config-tester
+
+	DefaultConfig := ConfigType{
+		CliCmd:        "ls -l",
+		VersionCmd:    "echo vers1",
+		VersionStr:    "vers2",
+		PzAddr:        "aaa",
+		AuthEnVar:     "APP",
+		SvcName:       "testSvc",
+		URL:           "www.testSvc.nope",
+		Port:          8081,
+		Description:   "Insert Description Here",
+		Attributes:    map[string]string{"testAttr": "testAtt"},
+		NumProcs:      0, //We'll test this part, but we'll do it on the full run-through, rather than the config-tester
+		CanUpload:     true,
+		CanDownlPz:    true,
+		CanDownlExt:   true,
+		RegForTaskMgr: true,
+		MaxRunTime:    50,
+		LocalOnly:     false,
+		JwtSecAuthURL: "secAuth",
+		LogAudit:      true,
+	}
 	var configList [6]ConfigType
 	var configParseList [6]ConfigParseOut
 	configList[0] = ConfigType{}
 	configParseList[0] = ConfigParseOut{"", ":8080", "", nil}
 
-	configList[1] = ConfigType{cliCmd, versionCmd, versionStr, "", authEnVar, svcName, url, 0, desc, attr, numProcs, false, false, false}
+	//configList[1] = ConfigType{cliCmd, versionCmd, versionStr, "", authEnVar, svcName, url, 0, desc, attr, numProcs, false, false, false}
+	configList[1] = DefaultConfig
+	configList[1].PzAddr = ""
+	configList[1].Port = 0
+	configList[1].CanUpload = false
+	configList[1].CanDownlPz = false
+	configList[1].CanDownlExt = false
 	configParseList[1] = ConfigParseOut{"", ":8080", "vers1\n", nil}
 
-	configList[2] = ConfigType{cliCmd, versionCmd, "", pzAddr, "", "", url, port, desc, attr, numProcs, true, true, true}
+	//configList[2] = ConfigType{cliCmd, versionCmd, "", pzAddr, "", "", url, port, desc, attr, numProcs, true, true, true}
+	configList[2] = DefaultConfig
+	configList[2].VersionStr = ""
+	configList[2].AuthEnVar = ""
+	configList[2].SvcName = ""
 	configParseList[2] = ConfigParseOut{"", ":8081", "vers1\n", nil}
 
-	configList[3] = ConfigType{cliCmd, versionCmd, "", pzAddr, authEnVar, "", url, port, desc, attr, numProcs, true, true, true}
+	//configList[3] = ConfigType{cliCmd, versionCmd, "", pzAddr, authEnVar, "", url, port, desc, attr, numProcs, true, true, true}
+	configList[3] = DefaultConfig
+	configList[3].VersionStr = ""
+	configList[3].SvcName = ""
 	configParseList[3] = ConfigParseOut{"pzsvc-exec", ":8081", "vers1\n", nil}
 
-	configList[4] = ConfigType{cliCmd, "", versionStr, pzAddr, authEnVar, svcName, "", port, desc, attr, numProcs, true, true, true}
-	configParseList[4] = ConfigParseOut{"pzsvc-exec", ":8081", "vers2", nil}
+	//configList[4] = ConfigType{cliCmd, "", versionStr, pzAddr, authEnVar, svcName, "", port, desc, attr, numProcs, true, true, true}
+	configList[4] = DefaultConfig
+	configList[4].VersionCmd = ""
+	configList[4].URL = ""
+	configList[4].LocalOnly = true
+	configParseList[4] = ConfigParseOut{"pzsvc-exec", "localhost:8081", "vers2", nil}
 
-	configList[5] = ConfigType{cliCmd, "echo", "", versionStr, authEnVar, svcName, url, port, "", attr, numProcs, true, true, true}
+	//configList[5] = ConfigType{cliCmd, "echo", "", versionStr, authEnVar, svcName, url, port, "", attr, numProcs, true, true, true}
+	configList[5] = DefaultConfig
+	configList[5].VersionCmd = "echo"
+	configList[5].VersionStr = ""
+	configList[5].PzAddr = DefaultConfig.VersionStr
+	configList[5].Description = ""
 	configParseList[5] = ConfigParseOut{"pzsvc-exec", ":8081", "\n", nil}
 
-	return configList, configParseList, authEnVar
+	return configList, configParseList, DefaultConfig.AuthEnVar
 }

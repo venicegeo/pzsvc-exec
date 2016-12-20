@@ -30,7 +30,7 @@ func TestSubmitSinglePart(t *testing.T) {
 
 	resp, err := SubmitSinglePart(method, bodyStr, url, authKey)
 	if err != nil {
-		t.Error(`received error on basic test of SubmitSinglePart.  Error message: `, err.Error())
+		t.Error(`received error on basic test of SubmitSinglePart.  Error message: `, err.LogMsg)
 	} else {
 		req := (*http.Request)(resp.Request)
 		if req.Header.Get("Content-Type") != "application/json" {
@@ -121,26 +121,25 @@ func TestGetJobResponse(t *testing.T) {
 		`{"Data":{"Status":"Error", "Result":{"Message":"Everything Broken."}}}`,
 		`{"Data":{"Status":"Nope"}}`}
 	SetMockClient(outStrs, 250)
-	url := "http://testURL.net"
 	jobID := "testJobID"
-	authKey := "testAuthKey"
+	s := Session{PzAuth: "testAuthKey", PzAddr: "http://testURL.net", LogAudit: true}
 
-	_, err := GetJobResponse(jobID, url, authKey)
+	_, err := GetJobResponse(s, jobID)
 	iter := HTTPClient().Transport.(stringSliceMockTransport).iter
 	if err != nil {
 		t.Error(`TestGetJobResponse: failed incorrectly - attempt #` + strconv.Itoa(*iter) + `.`)
 	} else if *iter != 6 {
 		t.Error(`TestGetJobResponse: passed on wrong entry - attempt #` + strconv.Itoa(*iter) + `.`)
 	} else {
-		_, err = GetJobResponse(jobID, url, authKey)
+		_, err = GetJobResponse(s, jobID)
 		if err == nil {
 			t.Error(`TestGetJobResponse: passed on Fail.`)
 		}
-		_, err = GetJobResponse(jobID, url, authKey)
+		_, err = GetJobResponse(s, jobID)
 		if err == nil {
 			t.Error(`TestGetJobResponse: passed on Error.`)
 		}
-		_, err = GetJobResponse(jobID, url, authKey)
+		_, err = GetJobResponse(s, jobID)
 		if err == nil {
 			t.Error(`TestGetJobResponse: passed on non-status.`)
 		}
@@ -168,18 +167,7 @@ func TestGetJobID(t *testing.T) {
 		}
 	}
 }
-func TestReqByObjJSON(t *testing.T) {
-	SetMockClient(nil, 250)
-	method := "TEST"
-	url := "http://testURL.net"
-	authKey := "testAuthKey"
-	var emptyHolder interface{}
-	_, err := ReqByObjJSON(method, url, authKey, emptyHolder, emptyHolder)
-	if err == nil {
-		t.Error(`TestReqByObjJSON: passed on what should have been a bad run.`)
-	}
 
-}
 func TestHttpResponseWriter(t *testing.T) {
 
 	var emptyHolder interface{}
@@ -228,20 +216,21 @@ func TestReadBodyJSON(t *testing.T) {
 			t.Error("ReadBodyJson did not throw error on test ", i)
 		}
 		if i >= 2 && err != nil {
-			t.Error("ReadBodyJson threw error on test ", i, ".  Error: ", err.Error())
+			t.Error("ReadBodyJson threw error on test ", i, ".  Error: ", err.LogMsg)
 		}
 	}
 }
 
 func TestCheckAuth(t *testing.T) {
 	outStrs := []string{`testData`, `testData`}
+	s := Session{PzAddr: "testAddr", PzAuth: "testAuth"}
 	SetMockClient(outStrs, 250)
-	err := CheckAuth("testAddr", "testAuth")
+	err := CheckAuth(s)
 	if err != nil {
 		t.Error("CheckAuth threw error on good response.")
 	}
 	SetMockClient(outStrs, 401)
-	err = CheckAuth("testAddr", "testAuth")
+	err = CheckAuth(s)
 	if err == nil {
 		t.Error("CheckAuth failed to throw error on bad http code.")
 	}

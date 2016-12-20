@@ -66,21 +66,6 @@ func RequestKnownJSON(method, bodyStr, address, authKey string, outpObj interfac
 	return ReadBodyJSON(outpObj, resp.Body)
 }
 
-// ReqByObjJSON is much like RequestKnownJSON, except that it takes an interface (which
-// it then json-marshals) as its input, rather than an already-marshaled string
-func ReqByObjJSON(method, addr, authKey string, inpObj, outpObj interface{}) ([]byte, *Error) {
-	byts, err := json.Marshal(inpObj)
-	if err != nil {
-		return nil, &Error{LogMsg: "Json Marshal attempt failed."}
-
-	}
-	byts, pErr := RequestKnownJSON(method, string(byts), addr, "", outpObj)
-	if pErr != nil {
-		return nil, pErr
-	}
-	return byts, nil
-}
-
 // SubmitMultipart sends a multi-part POST call, including an optional uploaded file,
 // and returns the response.  Primarily intended to support Ingest calls.
 func SubmitMultipart(bodyStr, address, filename, authKey string, fileData []byte) (*http.Response, *Error) {
@@ -185,7 +170,7 @@ func SubmitSinglePart(method, bodyStr, url, authKey string) (*http.Response, *Er
 
 // GetJobResponse will repeatedly poll the job status on the given job Id
 // until job completion, then acquires and returns the DataResult.
-func GetJobResponse(jobID, pzAddr, authKey string) (*DataResult, *Error) {
+func GetJobResponse(s Session, jobID string) (*DataResult, *Error) {
 
 	if jobID == "" {
 		return nil, &Error{LogMsg: `JobID not provided.  Cannot get Job Response.`}
@@ -196,10 +181,13 @@ func GetJobResponse(jobID, pzAddr, authKey string) (*DataResult, *Error) {
 		var outpObj struct {
 			Data JobStatusResp `json:"data,omitempty"`
 		}
-		respBuf, err := RequestKnownJSON("GET", "", pzAddr+"/job/"+jobID, authKey, &outpObj)
+		targAddr := s.PzAddr + "/job/" + jobID
+		LogAudit(s, s.UserID, "http call - Checking job status - request", targAddr)
+		respBuf, err := RequestKnownJSON("GET", "", targAddr, s.PzAuth, &outpObj)
 		if err != nil {
 			return nil, err
 		}
+		LogAuditBuf(s, targAddr, "http call - Checking job status - response", string(respBuf), s.UserID)
 
 		respObj := &outpObj.Data
 		if respObj.Status == "Submitted" ||
@@ -254,11 +242,14 @@ func ReadBodyJSON(output interface{}, body io.ReadCloser) ([]byte, *Error) {
 
 // CheckAuth verifies that the given API key is valid for the given
 // Piazza address
-func CheckAuth(pzAddr, pzAuth string) *Error {
-	_, err := SubmitSinglePart("GET", "", pzAddr+"/service", pzAuth)
+func CheckAuth(s Session) *Error {
+	targURL := s.PzAddr + "/service"
+	LogAudit(s, s.UserID, "verify Piazza auth key request", targURL)
+	_, err := SubmitSinglePart("GET", "", targURL, s.PzAuth)
 	if err != nil {
 		return &Error{LogMsg: "Could not confirm user authorization."}
 	}
+	LogAudit(s, targURL, "verify Piazza auth key response", s.UserID)
 	return nil
 }
 

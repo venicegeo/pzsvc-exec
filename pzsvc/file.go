@@ -52,6 +52,7 @@ func DownloadByURL(s Session, url, filename, authKey string) (string, LoggedErro
 		err    error
 		pErr   *Error
 	)
+	LogAudit(s, s.UserID, "file downlod request for "+filename, url)
 	resp, pErr := SubmitSinglePart("GET", "", url, authKey)
 	if resp != nil {
 		defer resp.Body.Close()
@@ -59,6 +60,7 @@ func DownloadByURL(s Session, url, filename, authKey string) (string, LoggedErro
 	if pErr != nil {
 		return "", pErr.Log(s, "Download error: ")
 	}
+	LogAudit(s, url, "file downlod response for "+filename, s.UserID)
 	if filename == "" {
 		contDisp := resp.Header.Get("Content-Disposition")
 		_, params, err = mime.ParseMediaType(contDisp)
@@ -70,6 +72,7 @@ func DownloadByURL(s Session, url, filename, authKey string) (string, LoggedErro
 			return "", LogSimpleErr(s, `Input file from URL "`+url+`" was not given a name.`, nil)
 		}
 	}
+	LogAudit(s, s.UserID, "local file creation and writing", filename) //file creation/manipulation
 	out, err := os.Create(locString(s.SubFold, filename))
 	if err != nil {
 		return "", LogSimpleErr(s, "Download: could not create file "+filename+": ", err)
@@ -90,6 +93,7 @@ func Ingest(s Session, fName, fType, sourceName, version string,
 		fileData []byte
 		resp     *http.Response
 		pErr     *Error
+		targAddr string
 	)
 
 	desc := fmt.Sprintf("%s uploaded by %s.", fType, sourceName)
@@ -134,21 +138,26 @@ func Ingest(s Session, fName, fType, sourceName, version string,
 	}
 
 	if fileData != nil {
+		targAddr = s.PzAddr + "/data/file"
 		LogInfo(s, "beginning file upload")
-		resp, pErr = SubmitMultipart(string(bbuff), (s.PzAddr + "/data/file"), fName, s.PzAuth, fileData)
+		LogAuditBuf(s, s.UserID, "file upload http request", string(bbuff), targAddr)
+		resp, pErr = SubmitMultipart(string(bbuff), targAddr, fName, s.PzAuth, fileData)
 	} else {
-		resp, pErr = SubmitSinglePart("POST", string(bbuff), (s.PzAddr + "/data"), s.PzAuth)
+		targAddr = s.PzAddr + "/data"
+		LogAuditBuf(s, s.UserID, "file upload http request", string(bbuff), targAddr)
+		resp, pErr = SubmitSinglePart("POST", string(bbuff), targAddr, s.PzAuth)
 	}
 	if pErr != nil {
 		return "", pErr.Log(s, "Failure submitting Ingest request")
 	}
+	LogAuditResponse(s, targAddr, "file upload http response", resp, s.UserID)
 
 	jobID, pErr := GetJobID(resp)
 	if pErr != nil {
 		return "", pErr.Log(s, "Failure pulling Job ID for Ingest request")
 	}
 
-	result, pErr := GetJobResponse(jobID, s.PzAddr, s.PzAuth)
+	result, pErr := GetJobResponse(s, jobID)
 	if pErr != nil {
 		return "", pErr.Log(s, "Failure getting job result for Ingest call")
 	}
@@ -161,6 +170,7 @@ func IngestFile(s Session, fName, fType, sourceName, version string,
 
 	path := locString(s.SubFold, fName)
 
+	LogAudit(s, s.UserID, "read file for ingest", path)
 	fData, err := ioutil.ReadFile(path)
 	if err != nil {
 		return "", LogSimpleErr(s, `Error reading file `+fName+` for Ingest: `, err)

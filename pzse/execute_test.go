@@ -55,7 +55,6 @@ func TestExecute(t *testing.T) {
 	testResList := []string{"test", "test", `{"data":{"jobId":"testID"}}`, `{"data":{"status":"Success", "Result":{"message":"testStatus", "dataId":"testId"}}}`}
 	pzsvc.SetMockClient(testResList, 200)
 
-	w, _, _ := pzsvc.GetMockResponseWriter()
 	r := http.Request{}
 	r.Method = "POST"
 	inpObj := InpStruct{Command: "-l",
@@ -70,7 +69,7 @@ func TestExecute(t *testing.T) {
 	}
 
 	r.Body = pzsvc.GetMockReadCloser(string(byts))
-	outObj, _ := Execute(w, &r, config, parsConfig)
+	outObj, _ := Execute(&r, config, parsConfig)
 
 	if outObj.Errors != nil {
 		for _, errStr := range outObj.Errors {

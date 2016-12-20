@@ -15,6 +15,8 @@
 package pzse
 
 import (
+	"encoding/json"
+
 	"github.com/venicegeo/pzsvc-exec/pzsvc"
 )
 
@@ -25,10 +27,18 @@ import (
 func CallPzsvcExec(s pzsvc.Session, inpObj *InpStruct, algoURL string) (*OutStruct, error) {
 
 	var respObj OutStruct
-	byts, err := pzsvc.ReqByObjJSON("POST", algoURL, "", inpObj, &respObj)
+
+	byts, err := json.Marshal(inpObj)
 	if err != nil {
-		return nil, err.Log(s, "Error calling pzsvc-exec")
+		return nil, pzsvc.LogSimpleErr(s, "Failed to Marshal inpObj on call to pzsvc-exec.", err)
+
 	}
+	pzsvc.LogAuditBuf(s, s.UserID, "http request - calling pzsvc-exec", string(byts), algoURL)
+	byts, pErr := pzsvc.RequestKnownJSON("POST", string(byts), algoURL, "", &respObj)
+	if pErr != nil {
+		return nil, pErr.Log(s, "Error calling pzsvc-exec")
+	}
+	pzsvc.LogAuditBuf(s, algoURL, "http response from pzsvc-exec", string(byts), s.UserID)
 
 	if len(respObj.Errors) != 0 {
 		return nil, pzsvc.LogSimpleErr(s, `pzsvc-exec errors: `+pzsvc.SliceToCommaSep(respObj.Errors), nil)

@@ -16,6 +16,7 @@ package pzsvc
 
 import (
 	"encoding/json"
+	"net/http"
 	"net/url"
 )
 
@@ -25,7 +26,9 @@ import (
 func FindMySvc(s Session, svcName, pzAddr, authKey string) (string, LoggedError) {
 	query := pzAddr + "/service/me?per_page=1000&keyword=" + url.QueryEscape(svcName)
 	var respObj SvcList
-	_, err := RequestKnownJSON("GET", "", query, authKey, &respObj)
+	LogAudit(s, s.UserID, "http request - looking for service "+svcName, query)
+	byts, err := RequestKnownJSON("GET", "", query, authKey, &respObj)
+	LogAuditBuf(s, query, "http response to service listing request", string(byts), s.UserID)
 	if err != nil {
 		return "", err.Log(s, "Error when finding Pz Service")
 	}
@@ -48,6 +51,7 @@ func ManageRegistration(s Session, svcName, svcDesc, svcURL, pzAddr, svcVers, au
 	attributes map[string]string) LoggedError {
 
 	var pzErr *Error
+	var resp *http.Response
 	LogInfo(s, "Searching for service in Pz service list")
 	svcID, err := FindMySvc(s, svcName, pzAddr, authKey)
 	if err != nil {
@@ -68,10 +72,16 @@ func ManageRegistration(s Session, svcName, svcDesc, svcURL, pzAddr, svcVers, au
 
 	if svcID == "" {
 		LogInfo(s, "Registering Service")
-		_, pzErr = SubmitSinglePart("POST", string(svcJSON), pzAddr+"/service", authKey)
+		targURL := pzAddr + "/service"
+		LogAuditBuf(s, s.AppName, "Registering Service request", string(svcJSON), targURL)
+		resp, pzErr = SubmitSinglePart("POST", string(svcJSON), targURL, authKey)
+		LogAuditResponse(s, targURL, "Registering Service Response", resp, s.AppName)
 	} else {
 		LogInfo(s, "Updating Service Registration")
-		_, pzErr = SubmitSinglePart("PUT", string(svcJSON), pzAddr+"/service/"+svcID, authKey)
+		targURL := pzAddr + "/service/" + svcID
+		LogAuditBuf(s, s.AppName, "Updating Service request", string(svcJSON), targURL)
+		resp, pzErr = SubmitSinglePart("PUT", string(svcJSON), pzAddr+"/service/"+svcID, authKey)
+		LogAuditResponse(s, targURL, "Updating Service Response", resp, s.AppName)
 	}
 	if pzErr != nil {
 		return pzErr.Log(s, "Error managing registration: ")

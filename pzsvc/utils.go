@@ -15,8 +15,10 @@
 package pzsvc
 
 import (
+	"bytes"
 	"crypto/rand"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"runtime"
 	"strings"
@@ -31,13 +33,17 @@ func baseLogFunc(logString string) {
 	fmt.Println(logString)
 }
 
+// LoggedError is a duplicate of the "error" interface.  Its real point is to
+// indicate, when it is returned from a function, that the error it represents
+// has already been entered into the log and does not need to be entered again.
+// The string contained in the LoggedError should be a relatively simple
+// description of the error, suitable for returning to the caller of a REST
+// interface.
+type LoggedError error
+
 // logMessage receives a string to put to the logs.  It formats it correctly
 // and puts it in the right place.  This function exists partially in order
-// to simplify the task of modifying log behavior in the future.  Note that
-// logMessage will panic if no baseLogFunc has been set.  This is a feature,
-// not a bug.  It helps you identify threads that have not been properly
-// readied.  If logMessage panics in this way, the appropriate answer is
-// to call ReadyLog before the first call to logMessage.
+// to simplify the task of modifying log behavior in the future.
 func logMessage(s Session, prefix, message string) {
 	_, file, line, _ := runtime.Caller(2)
 	if LogFunc == nil {
@@ -53,10 +59,29 @@ func logMessage(s Session, prefix, message string) {
 	LogFunc(outMsg)
 }
 
+// LogSimpleErr posts a logMessage call for simple error messages, and produces a pzsvc.Error
+// from the result.  The point is mostly to maintain uniformity of appearance and behavior.
+func LogSimpleErr(s Session, message string, err error) LoggedError {
+	if err != nil {
+		message += err.Error()
+	}
+	logMessage(s, "ERROR", message)
+	return fmt.Errorf(message)
+}
+
 // LogInfo posts a logMessage call for standard, non-error messages.  The
 // point is mostly to maintain uniformity of appearance and behavior.
 func LogInfo(s Session, message string) {
 	logMessage(s, "INFO", message)
+}
+
+// LogWarn posts a logMessage call for messages that suggest that something
+// may be going wrong, especially in the case of expected user error, but
+// that the program can make reasonable assumptions as to what was actually
+// intended and carry on.  The point of this function is mostly to maintain
+// uniformity of appearance and behavior.
+func LogWarn(s Session, message string) {
+	logMessage(s, "WARN", message)
 }
 
 // LogAlert posts a logMessage call for messages that suggest that someone
@@ -67,13 +92,38 @@ func LogAlert(s Session, message string) {
 	logMessage(s, "ALERT", message)
 }
 
-// LoggedError is a duplicate of the "error" interface.  Its real point is to
-// indicate, when it is returned from a function, that the error it represents
-// has already been entered intot he log and does not need to be entered again.
-// The string contained in the LoggedError should be a relatively simple
-// description of the error, suitable for returning to the caller of a REST
-// interface.
-type LoggedError error
+// LogAudit posts a logMessage call for messages that are generated to
+// conform to Audit requirements.  This function is intended to maintain
+// uniformity of appearance and behavior, and also to ease maintainability
+// when routing requirements change.
+func LogAudit(s Session, actor, action, actee string) {
+	if s.LogAudit {
+		logMessage(s, "AUDIT", actor+": "+action+": "+actee)
+	}
+}
+
+// LogAuditBuf is LogAudit for cases where it needs to include a request body, or
+// where it needs to include a response body and the contents of that body are
+// readily available.
+func LogAuditBuf(s Session, actor, action string, payload, actee string) {
+	if s.LogAudit {
+		logMessage(s, "AUDIT", actor+": "+action+" :::: "+payload+" :::: "+actee)
+	}
+}
+
+// LogAuditResponse is LogAudit for those cases where it needs to include an HTTP response
+// body, and that body is not beign conveniently read and outputted by some other function.
+// It reads the response, logs the result, and replaces the consumed response body with a
+// fresh one made from the read buffer, so that it doesn't interfere with any other function
+// that woudl wish to access the body.
+func LogAuditResponse(s Session, actor, action string, resp *http.Response, actee string) {
+	if s.LogAudit {
+		bbuff, _ := ioutil.ReadAll(resp.Body)
+		resp.Body.Close()
+		resp.Body = ioutil.NopCloser(bytes.NewBuffer(bbuff))
+		logMessage(s, "AUDIT", actor+": "+action+" :::: "+string(bbuff)+" :::: "+actee)
+	}
+}
 
 // Error is intended as a somewhat more full-featured way of handlign the
 // error niche
@@ -132,27 +182,11 @@ func (err *Error) Log(s Session, msgAdd string) LoggedError {
 	} else {
 		logMessage(s, "ERROR", "Meta-error.  Tried to log same message for a second time.")
 	}
-	return fmt.Errorf(err.Error())
-}
-
-// LogSimpleErr posts a logMessage call for simple error messages, and produces a pzsvc.Error
-// from the result.  The point is mostly to maintain uniformity of appearance and behavior.
-func LogSimpleErr(s Session, message string, err error) LoggedError {
-	if err != nil {
-		message += err.Error()
-	}
-	logMessage(s, "ERROR", message)
-	return fmt.Errorf(message)
-}
-
-// Error here is intended to let pzsvc.Error objects serve the error interface, and,
-// by extension, to let them be passed around as interfaces in palces that aren't
-// importing pzsvc-lib and used in a reasonable manner
-func (err Error) Error() string {
 	if err.SimpleMsg != "" {
-		return err.SimpleMsg
+		return fmt.Errorf(err.SimpleMsg)
 	}
-	return err.LogMsg
+	return fmt.Errorf(err.LogMsg)
+
 }
 
 // SliceToCommaSep takes a string slice, and turns it into a comma-separated

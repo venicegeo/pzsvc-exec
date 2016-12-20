@@ -28,10 +28,12 @@ import "time"
 type Session struct {
 	AppName    string // The name of the calling application - "pzsvc-ossim", as an example
 	SessionID  string // Used in logs to indicate which session an event is associated with
+	UserID     string // used in logs to indicate which user is responsible for the session
 	PzAddr     string // The address of the Pz instance this session is interacting with
 	PzAuth     string // The Pz auth string used for this session
 	SubFold    string // The name of the subfolder this session has been assigned (if any)
 	LogRootDir string // The root directory that has all associated go packages that use pzsvc logging.  Helps keep file locs short.
+	LogAudit   bool   // True to log all auditable events
 }
 
 /***************************/

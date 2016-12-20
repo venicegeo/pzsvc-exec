@@ -24,7 +24,7 @@ import (
 	"github.com/venicegeo/pzsvc-exec/pzsvc"
 )
 
-func handleFList(s pzsvc.Session, fList, nameList []string, lFunc rangeFunc, fType, action string, output *OutStruct, fileRec map[string]string, w http.ResponseWriter) {
+func handleFList(s pzsvc.Session, fList, nameList []string, lFunc rangeFunc, fType, action string, output *OutStruct, fileRec map[string]string) {
 	re := regexp.MustCompile(`^[\w\-\.]*$`)
 	for i, f := range fList {
 		name := ""
@@ -104,8 +104,11 @@ func CheckConfig(s pzsvc.Session, configObj *ConfigType) bool {
 	} else if configObj.SvcName == "" {
 		pzsvc.LogInfo(s, `Config: SvcName not specified.  Autoregistration disabled.`)
 		canReg = false
-	} else if configObj.URL == "" {
-		pzsvc.LogInfo(s, `Config: URL not specified for this service.  Autoregistration disabled.`)
+	} else if configObj.URL == "" && configObj.RegForTaskMgr == false {
+		pzsvc.LogInfo(s, `Config: URL not specified.  URL required unless registering for task manager.  Autoregistration disabled.`)
+		canReg = false
+	} else if configObj.RegForTaskMgr && configObj.MaxRunTime == 0 {
+		pzsvc.LogInfo(s, `Config: Cannot register for task manager use without MaxRunTime (in seconds).  Registration disabled.`)
 		canReg = false
 	}
 
@@ -129,6 +132,12 @@ func CheckConfig(s pzsvc.Session, configObj *ConfigType) bool {
 		if configObj.URL != "" {
 			pzsvc.LogInfo(s, `Config: URL was specified, but is meaningless without autoregistration.`)
 		}
+		if configObj.RegForTaskMgr {
+			pzsvc.LogInfo(s, `Config: RegForTaskMgr was specified true, but is meaningless without autoregistration.`)
+		}
+		if configObj.MaxRunTime == 0 {
+			pzsvc.LogInfo(s, `Config: MaxRunTime was specified, but is meaningless without autoregistration.`)
+		}
 	} else {
 		if configObj.VersionCmd == "" && configObj.VersionStr == "" {
 			pzsvc.LogInfo(s, `Config: neither VersionCmd nor VersionStr was specified.  Version will be left blank.`)
@@ -139,6 +148,10 @@ func CheckConfig(s pzsvc.Session, configObj *ConfigType) bool {
 		if configObj.Description == "" {
 			pzsvc.LogInfo(s, `Config: Description not specified.  When autoregistering, descriptions are strongly encouraged.`)
 		}
+		if configObj.MaxRunTime != 0 && !configObj.RegForTaskMgr {
+			pzsvc.LogInfo(s, `Config: MaxRunTime not meaningful unless registering for task manager use.`)
+		}
+
 	}
 
 	if configObj.Port <= 0 {
