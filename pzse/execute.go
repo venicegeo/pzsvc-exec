@@ -134,7 +134,7 @@ func Execute(r *http.Request, configObj ConfigType, cParseRes ConfigParseOut) (O
 		return output, s
 	}
 	s.SubFold = s.SessionID // they're the same here, but as far as the pzsvc library is concerned, they're different concepts
-	fmt.Printf("UserID: " + s.UserID)
+
 	s.PzAddr = inpObj.PzAddr
 	s.PzAuth = inpObj.PzAuth
 
@@ -155,7 +155,7 @@ func Execute(r *http.Request, configObj ConfigType, cParseRes ConfigParseOut) (O
 	if s.PzAddr == "" {
 		s.PzAddr = configObj.PzAddr
 	}
-	fmt.Printf("UserID: " + s.UserID)
+
 	needsPz := (len(inpObj.InPzFiles)+len(inpObj.OutTiffs)+len(inpObj.OutTxts)+len(inpObj.OutGeoJs) != 0)
 
 	if needsPz && s.PzAddr == "" {
@@ -167,7 +167,6 @@ func Execute(r *http.Request, configObj ConfigType, cParseRes ConfigParseOut) (O
 		addOutputError(&output, "Cannot complete.  Auth Key not available.", http.StatusForbidden)
 		return output, s
 	}
-	fmt.Printf("UserID: " + s.UserID)
 
 	if needsPz {
 		unlogErr := pzsvc.CheckAuth(s)
@@ -177,7 +176,6 @@ func Execute(r *http.Request, configObj ConfigType, cParseRes ConfigParseOut) (O
 			return output, s
 		}
 	}
-	fmt.Printf("UserID: " + s.UserID)
 
 	if !configObj.CanDownlExt && (len(inpObj.InExtFiles) != 0) {
 		addOutputError(&output, "Cannot complete.  Configuration does not allow external file download.", http.StatusForbidden)

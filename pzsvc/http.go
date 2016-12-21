@@ -18,7 +18,6 @@ import (
 	"bytes"
 	"crypto/tls"
 	"encoding/json"
-	"fmt"
 	"io"
 	"io/ioutil"
 	"mime/multipart"
@@ -245,13 +244,7 @@ func ReadBodyJSON(output interface{}, body io.ReadCloser) ([]byte, *Error) {
 // Piazza address
 func CheckAuth(s Session) *Error {
 	targURL := s.PzAddr + "/service"
-
-	fmt.Printf("UserID: " + s.UserID)
-
 	LogAudit(s, s.UserID, "verify Piazza auth key request", targURL)
-
-	fmt.Printf("UserID: " + s.UserID)
-
 	_, err := SubmitSinglePart("GET", "", targURL, s.PzAuth)
 	if err != nil {
 		return &Error{LogMsg: "Could not confirm user authorization."}
