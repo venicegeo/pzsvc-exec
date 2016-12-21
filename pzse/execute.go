@@ -110,7 +110,11 @@ func Execute(r *http.Request, configObj ConfigType, cParseRes ConfigParseOut) (O
 
 	output.HTTPStatus = http.StatusOK
 
-	s := pzsvc.Session{AppName: configObj.SvcName, SessionID: "FailedOnInit", LogRootDir: "pzsvc-exec", LogAudit: configObj.LogAudit}
+	// TODO: once we have a way of tracking user identity, need to put it here.
+	s := pzsvc.Session{AppName: configObj.SvcName, SessionID: "FailedOnInit", UserID: "Pz User", LogRootDir: "pzsvc-exec", LogAudit: configObj.LogAudit}
+	if s.AppName == "" {
+		s.AppName = "pzsvc-exec"
+	}
 	if r.Method != "POST" {
 		addOutputError(&output, r.Method+" not supported.  Please us POST.", http.StatusMethodNotAllowed)
 		return output, s

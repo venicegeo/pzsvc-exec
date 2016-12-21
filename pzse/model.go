@@ -32,7 +32,7 @@ type ConfigType struct {
 	CanUpload     bool              // True if this service is permitted to upload files
 	CanDownlPz    bool              // True if this service is permitted to download files from Piazza
 	CanDownlExt   bool              // True if this service is permitted to download files from an external source
-	RegForTaskMgr bool              // True if sutoregistration shoudl be as a service using the Pz task manager
+	RegForTaskMgr bool              // True if autoregistration should be as a service using the Pz task manager
 	MaxRunTime    int               // Time in seconds before a running job should be considered to have failed
 	LocalOnly     bool              // True if service should only accept connections from localhost (used with task worker)
 	JwtSecAuthURL string            // URL for taskworker to decrypt JWT.  If nonblank, will assume that all jobs are Beachfront JWT format

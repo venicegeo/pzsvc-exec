@@ -107,7 +107,8 @@ func LogAudit(s Session, actor, action, actee string) {
 // readily available.
 func LogAuditBuf(s Session, actor, action string, payload, actee string) {
 	if s.LogAudit {
-		logMessage(s, "AUDIT", actor+": "+action+" :::: "+payload+" :::: "+actee)
+		trimPld := strings.Replace(payload, "\n", "", -1)
+		logMessage(s, "AUDIT", actor+": "+action+" :::: "+trimPld+" :::: "+actee)
 	}
 }
 
@@ -121,7 +122,8 @@ func LogAuditResponse(s Session, actor, action string, resp *http.Response, acte
 		bbuff, _ := ioutil.ReadAll(resp.Body)
 		resp.Body.Close()
 		resp.Body = ioutil.NopCloser(bytes.NewBuffer(bbuff))
-		logMessage(s, "AUDIT", actor+": "+action+" :::: "+string(bbuff)+" :::: "+actee)
+		trimPld := strings.Replace(string(bbuff), "\n", "", -1)
+		logMessage(s, "AUDIT", actor+": "+action+" :::: "+trimPld+" :::: "+actee)
 	}
 }
 
