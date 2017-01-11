@@ -49,93 +49,160 @@ func main() {
 		return
 	}
 
-	/*
-	   actual pertinent data:
-	   - configObj.PzAddr (required)
-	   - configObj.Port (default to 8080)
-	   - configObj.AuthEnVar (required)
-	   - numProcs (required?)(default to 1?)
-	   - Stuff out of config as necessary to uniquely identify target service
-	*/
+	s.LogAudit = configObj.LogAudit
+	if configObj.LogAudit {
+		pzsvc.LogInfo(s, "Config: Audit logging enabled.")
+	} else {
+		pzsvc.LogInfo(s, "Config: Audit logging disabled.")
+	}
 
+	s.PzAddr = configObj.PzAddr
 	if configObj.PzAddr == "" {
 		pzsvc.LogSimpleErr(s, "Config: Cannot work tasks without valid PzAddr.", nil)
 		return
 	}
-	if configObj.AuthEnVar == "" {
-		pzsvc.LogSimpleErr(s, "Config: Cannot work tasks without valid AuthEnVar.", nil)
-		return
-	}
+
 	if configObj.SvcName == "" {
 		pzsvc.LogSimpleErr(s, "Config: Cannot work tasks without service name.", nil)
 		return
 	}
-	authKey := os.Getenv(configObj.AuthEnVar)
-	if authKey == "" {
+
+	if configObj.AuthEnVar == "" {
+		pzsvc.LogSimpleErr(s, "Config: Cannot work tasks without valid AuthEnVar.", nil)
+		return
+	}
+	s.PzAuth = os.Getenv(configObj.AuthEnVar)
+	if s.PzAuth == "" {
 		pzsvc.LogSimpleErr(s, "No Auth key at AuthEnVar.  Cannot work.", nil)
 		return
 	}
+
 	if configObj.NumProcs == 0 {
 		pzsvc.LogInfo(s, "Config: No Proc number specified.  Defaulting to one at a time.")
 		configObj.NumProcs = 1
 	}
+
 	if configObj.Port == 0 {
 		pzsvc.LogInfo(s, "Config: No target Port specified.  Defaulting to 8080.")
 		configObj.Port = 8080
 	}
 
-	svcID, err := getSvcID(configObj.PzAddr, authKey, configObj.SvcName)
+	svcID, err := pzsvc.FindMySvc(s, configObj.SvcName, configObj.PzAddr, s.PzAuth)
 	if err != nil {
-		pzsvc.LogSimpleErr(s, "Was not able to acquire Pz Service ID: ", err)
+		pzsvc.LogSimpleErr(s, "Taskworker could not find Pz Service ID.  Initial Error: ", err)
 		return
 	}
+	pzsvc.LogInfo(s, "Found target service.  ServiceID: "+svcID)
 
 	for i := 0; i < configObj.NumProcs; i++ {
-		workerThread(s, configObj, authKey, svcID)
+		go workerThread(s, configObj, svcID)
 	}
 	select {} //blocks forever
 
-	//pzsvc.LogAudit(s, s.AppName, "shutdown", s.AppName)
-
 }
 
-func workerThread(s pzsvc.Session, configObj pzse.ConfigType, pzAuth, svcID string) {
+// WorkBody exists as part of the response format of the Piazza job manager task request endpoint.
+// specifically, it's one layer of the bit we care about.
+type WorkBody struct {
+	Content string `json:"content"`
+}
 
-	workAddr := fmt.Sprintf("localhost:%d", configObj.Port)
-	var outBody *pzse.InpStruct
+// WorkDataInputs exists as part of the response format of the Piazza job manager task request endpoint.
+// specifically, it's one layer of the bit we care about.
+type WorkDataInputs struct {
+	Body WorkBody `json:"body"`
+}
+
+// WorkInData exists as part of the response format of the Piazza job manager task request endpoint.
+// specifically, it's one layer of the bit we care about.
+type WorkInData struct {
+	DataInputs WorkDataInputs `json:"dataInputs"`
+}
+
+// WorkSvcData exists as part of the response format of the Piazza job manager task request endpoint.
+// specifically, it's one layer of the bit we care about.
+type WorkSvcData struct {
+	Data  WorkInData `json:"data"`
+	JobID string     `json:"jobId"`
+}
+
+// WorkOutData exists as part of the response format of the Piazza job manager task request endpoint.
+// specifically, it's one layer of the bit we care about.
+type WorkOutData struct {
+	SvcData WorkSvcData `json:"serviceData"`
+}
+
+func workerThread(s pzsvc.Session, configObj pzse.ConfigType, svcID string) {
+
+	var err error
+	workAddr := fmt.Sprintf("http://localhost:%d/execute", configObj.Port)
+
+	s.SessionID, err = pzsvc.PsuUUID()
+	if err != nil {
+		s.SessionID = "FailedSessionInit"
+		pzsvc.LogSimpleErr(s, "psuUUID error: ", err)
+		panic("Worker thread failed on uid generation.  Something is very wrong: " + err.Error())
+	}
+	pzsvc.LogInfo(s, "Worker thread initiated.")
 
 	for {
-		byts := getPzJob(configObj.PzAddr, pzAuth, svcID)
-		if byts != nil {
-			// strip out Pz wrapper stuff, save everything useful.
+		var pzJobObj struct {
+			Data WorkOutData `json:"data"`
+		}
+		pzJobObj.Data = WorkOutData{SvcData: WorkSvcData{JobID: "", Data: WorkInData{DataInputs: WorkDataInputs{Body: WorkBody{Content: ""}}}}}
+
+		byts, pErr := pzsvc.RequestKnownJSON("POST", "", configObj.PzAddr+"/service/"+svcID+"/task", s.PzAuth, &pzJobObj)
+		if pErr != nil {
+			pErr.Log(s, "Taskworker worker thread: error getting new task:")
+			continue
+		}
+		inpStr := pzJobObj.Data.SvcData.Data.DataInputs.Body.Content
+		jobID := pzJobObj.Data.SvcData.JobID
+		if inpStr != "" {
+			pzsvc.LogInfo(s, "New Task Grabbed.  JobID: "+jobID)
+
+			var outpByts []byte
 			if configObj.JwtSecAuthURL != "" {
+				// TODO: once JWT conversion exists as an option, handle it here.
 				// jwtBody = content
 				// call JwtSecAuthURL.  send jwtBody.  get response
 				// outBody = response (more or less)
-			} else {
-				// outBody = content
 			}
-			pzse.CallPzsvcExec(s, outBody, workAddr)
-			// Add appropriate pz wrapper to response.
-			// call Pz: configObj.PzAddr, svcId, pzAuth - somewhat different endpoint (GET vs POST?).  send results
+
+			var respObj pzse.OutStruct
+			pzsvc.LogAuditBuf(s, s.UserID, "http request - calling pzsvc-exec", inpStr, workAddr)
+			outpByts, pErr := pzsvc.RequestKnownJSON("POST", inpStr, workAddr, "", &respObj)
+			if pErr != nil {
+				pErr.Log(s, "Error calling pzsvc-exec")
+				sendExecResult(s, configObj.PzAddr, s.PzAuth, svcID, jobID, "Fail", nil)
+			} else {
+				pzsvc.LogAuditBuf(s, workAddr, "http response from pzsvc-exec", string(outpByts), s.UserID)
+				sendExecResult(s, configObj.PzAddr, s.PzAuth, svcID, jobID, "Success", outpByts)
+			}
+
 		} else {
-			time.Sleep(60) // in seconds
+			pzsvc.LogInfo(s, "No Task.  Sleeping now.  input: "+string(byts))
+			time.Sleep(60 * time.Second)
 		}
 	}
 
 }
 
-func getSvcID(pzAddr, pzAuth, svcName string) (string, error) {
+func sendExecResult(s pzsvc.Session, pzAddr, pzAuth, svcID, jobID, status string, resJSON []byte) {
+	outAddr := pzAddr + `/service/` + svcID + `/task/` + jobID
 
-	// call in to Pz.  Get service ID.
-	// - requires API for service layout of new service
-	//
-	return "", nil
-}
+	pzsvc.LogInfo(s, "Sending Exec Results.  Status: "+status+".")
+	if resJSON != nil {
+		dataID, err := pzsvc.Ingest(s, "Output", "text", "pzsvc-taskworker", "", resJSON, nil)
+		if err == nil {
+			outStr := `{ "status" : "` + status + `", "result" : { "type" : "data", "dataId" : "` + dataID + `" } }`
+			pzsvc.SubmitSinglePart("POST", outStr, outAddr, s.PzAuth)
+			return
+		}
+		pzsvc.LogInfo(s, "Send Exec Results: Ingest failed.")
+		status = "Fail"
+	}
 
-// this probably gets turned into a pzsvc function at some point.
-func getPzJob(pzAddr, pzAuth, svcID string) []byte {
-	var byts []byte
-	//call Pz, get response as byts
-	return byts
+	outStr := `{ "status" : "` + status + `" }`
+	pzsvc.SubmitSinglePart("POST", outStr, outAddr, s.PzAuth)
 }

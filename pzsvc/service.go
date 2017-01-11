@@ -47,27 +47,16 @@ func FindMySvc(s Session, svcName, pzAddr, authKey string) (string, LoggedError)
 // initial registration.  If it has not, it re-registers.  Best practice is to do this
 // every time your service starts up.  For those of you code-reading, the filter is
 // still somewhat rudimentary.  It will improve as better tools become available.
-func ManageRegistration(s Session, svcName, svcDesc, svcURL, pzAddr, svcVers, authKey string,
-	attributes map[string]string) LoggedError {
+func ManageRegistration(s Session, svcObj Service, pzAddr, authKey string) LoggedError {
 
 	var pzErr *Error
 	var resp *http.Response
 	LogInfo(s, "Searching for service in Pz service list")
-	svcID, err := FindMySvc(s, svcName, pzAddr, authKey)
+	svcID, err := FindMySvc(s, svcObj.ResMeta.Name, pzAddr, authKey)
 	if err != nil {
 		return err
 	}
 
-	svcClass := ClassType{"UNCLASSIFIED"} // TODO: this will have to be updated at some point.
-	metaObj := ResMeta{Name: svcName,
-		Description: svcDesc,
-		ClassType:   svcClass,
-		Version:     svcVers,
-		Metadata:    make(map[string]string)}
-	for key, val := range attributes {
-		metaObj.Metadata[key] = val
-	}
-	svcObj := Service{ServiceID: svcID, URL: svcURL, Method: "POST", ResMeta: metaObj}
 	svcJSON, err := json.Marshal(svcObj)
 
 	if svcID == "" {

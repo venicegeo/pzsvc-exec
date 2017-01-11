@@ -54,7 +54,7 @@ func main() {
 	}
 
 	s.LogAudit = configObj.LogAudit
-	pRes := pzse.ParseConfig(s, &configObj)
+	pRes := pzse.ParseConfigAndRegister(s, &configObj)
 
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		// check config: do we have a security authority set?

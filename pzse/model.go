@@ -23,7 +23,7 @@ type ConfigType struct {
 	VersionStr    string            // The version numebr of the underlyign CLI.  Redundant with VersionCmd
 	PzAddr        string            // Address of local Piazza instance.  Used for Piazza file access.  Necessary for autoregistration, task worker
 	AuthEnVar     string            // The environment variable containing the authorization token for the local Piazza instance.  Used similarly.
-	SvcName       string            // The name to given for this service when registering.  Necessary for autoregistration, task worker.
+	SvcName       string            // The name to give for this service when registering.  Necessary for autoregistration, task worker.
 	URL           string            // URL to give when registering.  Required when registering and not using task manager.
 	Port          int               // Port to publish this service on.  Defaults to 8080.
 	Description   string            // description to return when asked.
@@ -33,7 +33,7 @@ type ConfigType struct {
 	CanDownlPz    bool              // True if this service is permitted to download files from Piazza
 	CanDownlExt   bool              // True if this service is permitted to download files from an external source
 	RegForTaskMgr bool              // True if autoregistration should be as a service using the Pz task manager
-	MaxRunTime    int               // Time in seconds before a running job should be considered to have failed
+	MaxRunTime    int               // Time in seconds before a running job should be considered to have failed.  Used for task worker registration.
 	LocalOnly     bool              // True if service should only accept connections from localhost (used with task worker)
 	JwtSecAuthURL string            // URL for taskworker to decrypt JWT.  If nonblank, will assume that all jobs are Beachfront JWT format
 	LogAudit      bool              // True to log all auditable events

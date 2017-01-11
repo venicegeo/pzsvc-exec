@@ -27,8 +27,10 @@ import (
 	"github.com/venicegeo/pzsvc-exec/pzsvc"
 )
 
-// ParseConfig parses the config file on starting up
-func ParseConfig(s pzsvc.Session, configObj *ConfigType) ConfigParseOut {
+// ParseConfigAndRegister parses the config file on starting up, manages
+// registration for it on the given Pz instance if registration management
+// is called for, and returns a few useful derived values
+func ParseConfigAndRegister(s pzsvc.Session, configObj *ConfigType) ConfigParseOut {
 
 	canReg := CheckConfig(s, configObj)
 	canPzFile := configObj.CanUpload || configObj.CanDownlPz
@@ -62,14 +64,26 @@ func ParseConfig(s pzsvc.Session, configObj *ConfigType) ConfigParseOut {
 
 	if canReg {
 		pzsvc.LogInfo(s, "About to manage registration.")
-		err := pzsvc.ManageRegistration(s,
-			configObj.SvcName,
-			configObj.Description,
-			configObj.URL+"/execute",
-			configObj.PzAddr,
-			version,
-			authKey,
-			configObj.Attributes)
+
+		svcClass := pzsvc.ClassType{Classification: "UNCLASSIFIED"} // TODO: this will have to be updated at some point.
+		metaObj := pzsvc.ResMeta{Name: configObj.SvcName,
+			Description: configObj.Description,
+			ClassType:   svcClass,
+			Version:     version,
+			Metadata:    make(map[string]string)}
+		for key, val := range configObj.Attributes {
+			metaObj.Metadata[key] = val
+		}
+
+		svcObj := pzsvc.Service{
+			ContractURL:   configObj.URL + "/execute",
+			URL:           configObj.URL + "/execute",
+			Method:        "POST",
+			ResMeta:       metaObj,
+			Timeout:       configObj.MaxRunTime,
+			IsTaskManaged: configObj.RegForTaskMgr}
+
+		err := pzsvc.ManageRegistration(s, svcObj, configObj.PzAddr, authKey)
 		if err != nil {
 			pzsvc.LogSimpleErr(s, "pzsvc-exec error in managing registration: ", err)
 		} else {
@@ -110,8 +124,7 @@ func Execute(r *http.Request, configObj ConfigType, cParseRes ConfigParseOut) (O
 
 	output.HTTPStatus = http.StatusOK
 
-	// TODO: once we have a way of tracking user identity, need to put it here.
-	s := pzsvc.Session{AppName: configObj.SvcName, SessionID: "FailedOnInit", UserID: "Pz User", LogRootDir: "pzsvc-exec", LogAudit: configObj.LogAudit}
+	s := pzsvc.Session{AppName: configObj.SvcName, SessionID: "FailedOnInit", LogRootDir: "pzsvc-exec", LogAudit: configObj.LogAudit}
 	if s.AppName == "" {
 		s.AppName = "pzsvc-exec"
 	}
@@ -137,10 +150,14 @@ func Execute(r *http.Request, configObj ConfigType, cParseRes ConfigParseOut) (O
 
 	s.PzAddr = inpObj.PzAddr
 	s.PzAuth = inpObj.PzAuth
+	s.UserID = inpObj.UserID
 
 	if inpObj.PzAuth != "" {
 		inpObj.PzAuth = "******"
 		byts, _ = json.Marshal(inpObj)
+	}
+	if s.UserID == "" {
+		s.UserID = "anon user"
 	}
 
 	pzsvc.LogInfo(s, `pzsvc-exec call initiated.  Input: `+string(byts))

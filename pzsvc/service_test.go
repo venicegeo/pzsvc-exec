@@ -32,20 +32,19 @@ func TestManageRegistration(t *testing.T) {
 		Description: svcDesc,
 		ClassType:   ClassType{Classification: "Unclassified"},
 		Version:     svcVers,
-		Metadata:    make(map[string]string)}
+		Metadata:    map[string]string{"prop1": "1", "prop2": "2", "prop3": "3"}}
+	targService := Service{ServiceID: "123", URL: svcURL, Method: "POST", ResMeta: metaObj}
 	svcL1 := SvcList{Data: []Service{Service{ServiceID: "123", URL: svcURL, Method: "POST", ResMeta: metaObj}}}
 	svcJSON, _ := json.Marshal(svcL1)
 
 	outStrs := []string{string(svcJSON), `{"Data":[]}`}
 	SetMockClient(outStrs, 250)
 
-	sProps := map[string]string{"prop1": "1", "prop2": "2", "prop3": "3"}
-
-	err := ManageRegistration(s, svcName, svcDesc, svcURL, url, svcVers, authKey, sProps)
+	err := ManageRegistration(s, targService, url, authKey)
 	if err != nil {
 		t.Error(`TestManageRegistration: failed on full registration.  Error: `, err.Error())
 	}
-	err = ManageRegistration(s, svcName, svcDesc, svcURL, url, svcVers, authKey, sProps)
+	err = ManageRegistration(s, targService, url, authKey)
 	if err != nil {
 		t.Error(`TestManageRegistration: failed on empty registration.  Error: `, err.Error())
 	}

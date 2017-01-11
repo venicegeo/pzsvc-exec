@@ -164,13 +164,14 @@ type PagStruct struct {
 // Used as the payload in register service and update service jobs.
 // Also used in the response to the List Service job.
 type Service struct {
-	ContractURL string  `json:"contractUrl,omitempty"`
-	Hearbeat    int     `json:"heartbeat,omitempty"`
-	Method      string  `json:"method,omitempty"`
-	ResMeta     ResMeta `json:"resourceMetadata,omitempty"`
-	ServiceID   string  `json:"serviceId,omitempty"`
-	Timeout     int     `json:"timeout,omitempty"`
-	URL         string  `json:"url,omitempty"`
+	ContractURL        string   `json:"contractUrl,omitempty"`
+	Method             string   `json:"method,omitempty"`
+	ResMeta            ResMeta  `json:"resourceMetadata,omitempty"`
+	ServiceID          string   `json:"serviceId,omitempty"`
+	Timeout            int      `json:"timeout,omitempty"`
+	IsTaskManaged      bool     `json:"isTaskManaged,omitempty"`
+	TaskAdministrators []string `json:"taskAdministrators,omitempty"`
+	URL                string   `json:"url,omitempty"`
 }
 
 // IngestReq is the base object used to ingest a file to Piazza.

@@ -9,6 +9,7 @@
 - Config File Format: You need this if you want to have any control over the instance you're running.  May be useful for understanding how pzsvc-exec works.
 - Service Endpoints: a listing of the service endpoints that pzsvc-exec makes available and what they are useful for.
 - Execute Endpoint Request Format: You need this if you want to make use of the /execute endpoint of pzsvc-exec with any control at all.
+- Pzsvc-Taskworker: What you need to know to use the associated pzsvc-taskworker app (and, by extension, to take advantage of the Piazza task queue for scalability)
 
 ## What and Why
 
@@ -111,3 +112,8 @@ As an example (fully functional as an input to pzsvc-ossim, other than the auth 
 "inExtAuthKey":"bbbbb"
 }
 ```
+
+## Pzsvc-taskworker
+
+TODO: this part needs to be finished.
+- Note: Currently, pzsvc-taskworker requires that the service it connects to have been registered by the same person as is being used to access piazza.  If you are running pzsvc-exec and pzsvc-taskworker together off of the same config file on the same box this gets taken care of automatically.
