@@ -54,6 +54,15 @@ func ParseConfigAndRegister(s pzsvc.Session, configObj *ConfigType) ConfigParseO
 	if configObj.Port <= 0 {
 		configObj.Port = 8080
 	}
+	if configObj.PortVar != "" {
+		newPort, err := strconv.Atoi(os.Getenv(configObj.PortVar))
+		if err == nil && newPort > 0 {
+			configObj.Port = newPort
+		} else {
+			pzsvc.LogInfo(s, "Config: Could not find/interpret PortVar properly.  Reverting to port "+strconv.Itoa(configObj.Port))
+		}
+	}
+
 	portStr := ":" + strconv.Itoa(configObj.Port)
 	if configObj.LocalOnly {
 		pzsvc.LogInfo(s, "Local Only specified.  Limiting incoming requests to localhost.")

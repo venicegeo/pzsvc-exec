@@ -140,7 +140,7 @@ func CheckConfig(s pzsvc.Session, configObj *ConfigType) bool {
 		}
 	} else {
 		if configObj.VersionCmd == "" && configObj.VersionStr == "" {
-			pzsvc.LogInfo(s, `Config: neither VersionCmd nor VersionStr was specified.  Version will be left blank.`)
+			pzsvc.LogInfo(s, `Config: Neither VersionCmd nor VersionStr were specified.  Version will be left blank.`)
 		}
 		if configObj.VersionCmd != "" && configObj.VersionStr != "" {
 			pzsvc.LogInfo(s, `Config: Both VersionCmd and VersionStr were specified.  Redundant.  Default to VersionCmd.`)
@@ -154,8 +154,11 @@ func CheckConfig(s pzsvc.Session, configObj *ConfigType) bool {
 
 	}
 
-	if configObj.Port <= 0 {
-		pzsvc.LogInfo(s, `Config: Port not specified, or incorrect format.  Default to 8080.`)
+	if configObj.Port <= 0 && configObj.PortVar == "" {
+		pzsvc.LogInfo(s, `Config: Neither Port nor PortVar were properly specified.  Default to Port 8080.`)
+	}
+	if configObj.Port > 0 && configObj.PortVar != "" {
+		pzsvc.LogInfo(s, `Config: Both Port and PortVar were specified.  Redundant.  Default to PortVar.`)
 	}
 
 	return canReg

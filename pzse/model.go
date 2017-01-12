@@ -26,7 +26,8 @@ type ConfigType struct {
 	SvcName       string            // The name to give for this service when registering.  Necessary for autoregistration, task worker.
 	URL           string            // URL to give when registering.  Required when registering and not using task manager.
 	Port          int               // Port to publish this service on.  Defaults to 8080.
-	Description   string            // description to return when asked.
+	PortVar       string            // Environment variable to check for port.  mutually exclusive with "Port"
+	Description   string            // Description to return when asked.
 	Attributes    map[string]string // Service attributes.  Used to improve searching/sorting of services.
 	NumProcs      int               // Number of jobs a single instance of this service can handle simultaneously
 	CanUpload     bool              // True if this service is permitted to upload files
