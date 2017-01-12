@@ -87,11 +87,23 @@ func main() {
 		configObj.Port = 8080
 	}
 
-	svcID, err := pzsvc.FindMySvc(s, configObj.SvcName, configObj.PzAddr, s.PzAuth)
-	if err != nil || svcID == "" {
-		pzsvc.LogSimpleErr(s, "Taskworker could not find Pz Service ID.  Initial Error: ", err)
+	svcID := ""
+	for i := 0; svcID == "" && i < 10; i++ {
+		svcID, err := pzsvc.FindMySvc(s, configObj.SvcName, configObj.PzAddr, s.PzAuth)
+		if err != nil {
+			pzsvc.LogSimpleErr(s, "Taskworker could not find Pz Service ID.  Initial Error: ", err)
+			return
+		}
+		if svcID == "" && i < 9 {
+			pzsvc.LogInfo(s, "Could not find service.  Will sleep and wait.")
+			time.Sleep(15 * time.Second)
+		}
+	}
+	if svcID == "" {
+		pzsvc.LogSimpleErr(s, "Taskworker could not find Pz Service ID.  No error, just no service.", err)
 		return
 	}
+
 	pzsvc.LogInfo(s, "Found target service.  ServiceID: "+svcID)
 	for i := 0; i < configObj.NumProcs; i++ {
 		go workerThread(s, configObj, svcID)
