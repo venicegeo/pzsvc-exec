@@ -62,14 +62,15 @@ gometalinter \
 wc -l $root/pzsvc-lint.txt
 
 # for taskworker, install appropriately
-go install $GOPATH/src/github.com/venicegeo/pzsvc-exec/$TASK_APP
+cd $GOPATH/src/github.com/venicegeo/pzsvc-exec/pzsvc-taskworker
+go install .
 
 cd $root
 cp $GOPATH/bin/$APP ./$APP.bin
-cp $GOPATH/bin/$TASK_APP ./$TASK_APP.bin
+cp $GOPATH/bin/pzsvc-taskworker ./pzsvc-taskworker.bin
 tar cvzf $APP.$EXT \
     $APP.bin \
-    $TASK_APP.bin \
+    pzsvc-taskworker.bin \
     pzsvc.cov \
     pzse.cov \
     pzse-lint.txt \
