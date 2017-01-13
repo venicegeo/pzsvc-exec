@@ -165,6 +165,7 @@ func workerThread(s pzsvc.Session, configObj pzse.ConfigType, svcID string) {
 		byts, pErr := pzsvc.RequestKnownJSON("POST", "", configObj.PzAddr+"/service/"+svcID+"/task", s.PzAuth, &pzJobObj)
 		if pErr != nil {
 			pErr.Log(s, "Taskworker worker thread: error getting new task:")
+			time.Sleep(20 * time.Second)
 			continue
 		}
 		inpStr := pzJobObj.Data.SvcData.Data.DataInputs.Body.Content
