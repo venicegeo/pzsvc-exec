@@ -15,6 +15,7 @@
 package main
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -57,8 +58,14 @@ func main() {
 	}
 
 	s.PzAddr = configObj.PzAddr
-	if configObj.PzAddr == "" {
-		pzsvc.LogSimpleErr(s, "Config: Cannot work tasks without valid PzAddr.", nil)
+	if configObj.PzAddrEnVar != "" {
+		newAddr := os.Getenv(configObj.PzAddrEnVar)
+		if newAddr != "" {
+			s.PzAddr = newAddr
+		}
+	}
+	if s.PzAddr == "" {
+		pzsvc.LogSimpleErr(s, "Config: Cannot work tasks.  Must have either a valid PzAddr, or a valid and populated PzAddrEnVar.", nil)
 		return
 	}
 
@@ -71,11 +78,12 @@ func main() {
 		pzsvc.LogSimpleErr(s, "Config: Cannot work tasks without valid APIKeyEnVar.", nil)
 		return
 	}
-	s.PzAuth = os.Getenv(configObj.APIKeyEnVar)
-	if s.PzAuth == "" {
+	apiKey := os.Getenv(configObj.APIKeyEnVar)
+	if apiKey == "" {
 		pzsvc.LogSimpleErr(s, "No API key at APIKeyEnVar.  Cannot work.", nil)
 		return
 	}
+	s.PzAuth = "Basic " + base64.StdEncoding.EncodeToString([]byte(apiKey+":"))
 
 	if configObj.NumProcs == 0 {
 		pzsvc.LogInfo(s, "Config: No Proc number specified.  Defaulting to one at a time.")
