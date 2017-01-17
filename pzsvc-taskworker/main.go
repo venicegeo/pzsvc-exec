@@ -97,7 +97,7 @@ func main() {
 
 	svcID := ""
 	for i := 0; svcID == "" && i < 10; i++ {
-		svcID, err = pzsvc.FindMySvc(s, configObj.SvcName, configObj.PzAddr, s.PzAuth)
+		svcID, err = pzsvc.FindMySvc(s, configObj.SvcName, s.PzAddr, s.PzAuth)
 		if err != nil {
 			pzsvc.LogSimpleErr(s, "Taskworker could not find Pz Service ID.  Initial Error: ", err)
 			return
@@ -173,7 +173,7 @@ func workerThread(s pzsvc.Session, configObj pzse.ConfigType, svcID string) {
 		}
 		pzJobObj.Data = WorkOutData{SvcData: WorkSvcData{JobID: "", Data: WorkInData{DataInputs: WorkDataInputs{Body: WorkBody{Content: ""}}}}}
 
-		byts, pErr := pzsvc.RequestKnownJSON("POST", "", configObj.PzAddr+"/service/"+svcID+"/task", s.PzAuth, &pzJobObj)
+		byts, pErr := pzsvc.RequestKnownJSON("POST", "", s.PzAddr+"/service/"+svcID+"/task", s.PzAuth, &pzJobObj)
 		if pErr != nil {
 			pErr.Log(s, "Taskworker worker thread: error getting new task:")
 			failCount++
@@ -199,10 +199,10 @@ func workerThread(s pzsvc.Session, configObj pzse.ConfigType, svcID string) {
 			outpByts, pErr := pzsvc.RequestKnownJSON("POST", inpStr, workAddr, "", &respObj)
 			if pErr != nil {
 				pErr.Log(s, "Error calling pzsvc-exec")
-				sendExecResult(s, configObj.PzAddr, s.PzAuth, svcID, jobID, "Fail", nil)
+				sendExecResult(s, s.PzAddr, s.PzAuth, svcID, jobID, "Fail", nil)
 			} else {
 				pzsvc.LogAuditBuf(s, workAddr, "http response from pzsvc-exec", string(outpByts), s.UserID)
-				sendExecResult(s, configObj.PzAddr, s.PzAuth, svcID, jobID, "Success", outpByts)
+				sendExecResult(s, s.PzAddr, s.PzAuth, svcID, jobID, "Success", outpByts)
 			}
 			time.Sleep(10 * time.Second)
 
