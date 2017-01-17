@@ -21,12 +21,13 @@ type ConfigType struct {
 	CliCmd        string            // The first segment of the command to send to the CLI.  Security vulnerability when blank.
 	VersionCmd    string            // The command to run to determine the version number of the underlying CLI.  Redundant with VersionStr
 	VersionStr    string            // The version numebr of the underlyign CLI.  Redundant with VersionCmd
-	PzAddr        string            // Address of local Piazza instance.  Used for Piazza file access.  Necessary for autoregistration, task worker
-	AuthEnVar     string            // The environment variable containing the authorization token for the local Piazza instance.  Used similarly.
+	PzAddr        string            // Address of local Piazza instance.  Used for Piazza file access.  Necessary for autoregistration, task worker.
+	PzAddrEnVar   string            // Environment variable holding Piazza address.  Used to populate/overwrite PzAddr if present
+	APIKeyEnVar   string            // The environment variable containing the api key for the local Piazza instance.  Used for the same things.
 	SvcName       string            // The name to give for this service when registering.  Necessary for autoregistration, task worker.
 	URL           string            // URL to give when registering.  Required when registering and not using task manager.
 	Port          int               // Port to publish this service on.  Defaults to 8080.
-	PortVar       string            // Environment variable to check for port.  Mutually exclusive with "Port"
+	PortEnVar     string            // Environment variable to check for port.  Mutually exclusive with "Port"
 	Description   string            // Description to return when asked.
 	Attributes    map[string]string // Service attributes.  Used to improve searching/sorting of services.
 	NumProcs      int               // Number of jobs a single instance of this service can handle simultaneously

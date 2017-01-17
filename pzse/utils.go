@@ -87,15 +87,15 @@ func CheckConfig(s pzsvc.Session, configObj *ConfigType) bool {
 		pzsvc.LogAlert(s, `Config: Warning: CliCmd is blank.  This is a major security vulnerability.`)
 	}
 
-	if configObj.PzAddr == "" {
-		errStr := `Config: PzAddr was not specified.  Autoregistration disabled.`
+	if configObj.PzAddr == "" && configObj.PzAddrEnVar == "" {
+		errStr := `Config: Did not specify PzAddr or PzAddrEnVar.  Autoregistration disabled.`
 		if canPzFile {
 			errStr += `  Client will have to provide Piazza Address for uploads and Piazza downloads.`
 		}
 		pzsvc.LogInfo(s, errStr)
 		canReg = false
-	} else if configObj.AuthEnVar == "" {
-		errStr := `Config: AuthEnVar was not specified.  Autoregistration disabled.`
+	} else if configObj.APIKeyEnVar == "" {
+		errStr := `Config: APIKeyEnVar was not specified.  Autoregistration disabled.`
 		if canPzFile {
 			errStr += `  Client will have to provide authKey for uploads and Piazza downloads.`
 		}
@@ -119,11 +119,11 @@ func CheckConfig(s pzsvc.Session, configObj *ConfigType) bool {
 		if configObj.VersionStr != "" {
 			pzsvc.LogInfo(s, `Config: VersionStr was specified, but is much less useful without without autoregistration.`)
 		}
-		if configObj.AuthEnVar != "" {
+		if configObj.APIKeyEnVar != "" {
 			if canPzFile {
-				pzsvc.LogInfo(s, `Config: AuthEnVar was specified, but PzAddr was not.  AuthEnVar useless without a Pz instance to authenticate against.`)
+				pzsvc.LogInfo(s, `Config: APIKeyEnVar was specified, but PzAddr was not.  APIKeyEnVar useless without a Pz instance to authenticate against.`)
 			} else {
-				pzsvc.LogInfo(s, `Config: AuthEnVar was specified, but is meaningless without autoregistration or Pz file interactions.`)
+				pzsvc.LogInfo(s, `Config: APIKeyEnVar was specified, but is meaningless without autoregistration or Pz file interactions.`)
 			}
 		}
 		if configObj.SvcName != "" {
@@ -133,12 +133,15 @@ func CheckConfig(s pzsvc.Session, configObj *ConfigType) bool {
 			pzsvc.LogInfo(s, `Config: URL was specified, but is meaningless without autoregistration.`)
 		}
 		if configObj.RegForTaskMgr {
-			pzsvc.LogInfo(s, `Config: RegForTaskMgr was specified true, but is meaningless without autoregistration.`)
+			pzsvc.LogInfo(s, `Config: RegForTaskMgr was specified as true, but is meaningless without autoregistration.`)
 		}
 		if configObj.MaxRunTime == 0 {
 			pzsvc.LogInfo(s, `Config: MaxRunTime was specified, but is meaningless without autoregistration.`)
 		}
 	} else {
+		if configObj.PzAddr == "" && configObj.PzAddrEnVar == "" {
+			pzsvc.LogInfo(s, `Config: Both PzAddr and PzAddrEnVar were specified.  Redundant.  Default to PzAddrEnVar.`)
+		}
 		if configObj.VersionCmd == "" && configObj.VersionStr == "" {
 			pzsvc.LogInfo(s, `Config: Neither VersionCmd nor VersionStr were specified.  Version will be left blank.`)
 		}
@@ -154,11 +157,11 @@ func CheckConfig(s pzsvc.Session, configObj *ConfigType) bool {
 
 	}
 
-	if configObj.Port <= 0 && configObj.PortVar == "" {
-		pzsvc.LogInfo(s, `Config: Neither Port nor PortVar were properly specified.  Default to Port 8080.`)
+	if configObj.Port <= 0 && configObj.PortEnVar == "" {
+		pzsvc.LogInfo(s, `Config: Neither Port nor PortEnVar were properly specified.  Default to Port 8080.`)
 	}
-	if configObj.Port > 0 && configObj.PortVar != "" {
-		pzsvc.LogInfo(s, `Config: Both Port and PortVar were specified.  Redundant.  Default to PortVar.`)
+	if configObj.Port > 0 && configObj.PortEnVar != "" {
+		pzsvc.LogInfo(s, `Config: Both Port and PortEnVar were specified.  Redundant.  Default to PortEnVar.`)
 	}
 
 	return canReg

@@ -16,6 +16,7 @@ package pzse
 
 import (
 	"bytes"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -35,11 +36,31 @@ func ParseConfigAndRegister(s pzsvc.Session, configObj *ConfigType) ConfigParseO
 	canReg := CheckConfig(s, configObj)
 	canPzFile := configObj.CanUpload || configObj.CanDownlPz
 
+	if configObj.PzAddrEnVar != "" {
+		newAddr := os.Getenv(configObj.PzAddrEnVar)
+		if newAddr != "" {
+			configObj.PzAddr = newAddr
+			pzsvc.LogInfo(s, `Config: PzAddr updated to `+configObj.PzAddr+` based on PzAddrEnVar.`)
+		} else if configObj.PzAddr != "" {
+			pzsvc.LogInfo(s, `Config: PzAddrEnVar specified in config, but no such env var exists.  Reverting to specified PzAddr.`)
+		} else {
+			logStr := `Config: PzAddrEnVar specified in config, but no such env var exists, and PzAddr not specified.`
+			if canReg {
+				logStr += `  Autoregistration disabled.`
+				canReg = false
+			}
+			if canPzFile {
+				logStr += `  Client will have to provide Piazza Address for uploads and Piazza downloads.`
+			}
+			pzsvc.LogInfo(s, logStr)
+		}
+	}
+
 	var authKey string
-	if configObj.AuthEnVar != "" && (canReg || canPzFile) {
-		authKey = os.Getenv(configObj.AuthEnVar)
-		if authKey == "" {
-			errStr := "No auth key at AuthEnVar."
+	if configObj.APIKeyEnVar != "" && (canReg || canPzFile) {
+		apiKey := os.Getenv(configObj.APIKeyEnVar)
+		if apiKey == "" {
+			errStr := "No api key at APIKeyEnVar."
 			if canReg {
 				errStr += "  Registration disabled."
 			}
@@ -48,14 +69,16 @@ func ParseConfigAndRegister(s pzsvc.Session, configObj *ConfigType) ConfigParseO
 			}
 			pzsvc.LogInfo(s, errStr)
 			canReg = false
+		} else {
+			authKey = "Basic " + base64.StdEncoding.EncodeToString([]byte(apiKey+":"))
 		}
 	}
 
 	if configObj.Port <= 0 {
 		configObj.Port = 8080
 	}
-	if configObj.PortVar != "" {
-		newPort, err := strconv.Atoi(os.Getenv(configObj.PortVar))
+	if configObj.PortEnVar != "" {
+		newPort, err := strconv.Atoi(os.Getenv(configObj.PortEnVar))
 		if err == nil && newPort > 0 {
 			configObj.Port = newPort
 		} else {

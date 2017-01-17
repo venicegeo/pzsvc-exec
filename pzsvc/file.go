@@ -52,7 +52,7 @@ func DownloadByURL(s Session, url, filename, authKey string) (string, LoggedErro
 		err    error
 		pErr   *Error
 	)
-	LogAudit(s, s.UserID, "file downlod request for "+filename, url)
+	LogAudit(s, s.UserID, "file download request for "+filename, url)
 	resp, pErr := SubmitSinglePart("GET", "", url, authKey)
 	if resp != nil {
 		defer resp.Body.Close()
@@ -60,7 +60,7 @@ func DownloadByURL(s Session, url, filename, authKey string) (string, LoggedErro
 	if pErr != nil {
 		return "", pErr.Log(s, "Download error: ")
 	}
-	LogAudit(s, url, "file downlod response for "+filename, s.UserID)
+	LogAudit(s, url, "file download response for "+filename, s.UserID)
 	if filename == "" {
 		contDisp := resp.Header.Get("Content-Disposition")
 		_, params, err = mime.ParseMediaType(contDisp)

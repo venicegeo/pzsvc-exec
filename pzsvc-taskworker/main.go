@@ -67,13 +67,13 @@ func main() {
 		return
 	}
 
-	if configObj.AuthEnVar == "" {
-		pzsvc.LogSimpleErr(s, "Config: Cannot work tasks without valid AuthEnVar.", nil)
+	if configObj.APIKeyEnVar == "" {
+		pzsvc.LogSimpleErr(s, "Config: Cannot work tasks without valid APIKeyEnVar.", nil)
 		return
 	}
-	s.PzAuth = os.Getenv(configObj.AuthEnVar)
+	s.PzAuth = os.Getenv(configObj.APIKeyEnVar)
 	if s.PzAuth == "" {
-		pzsvc.LogSimpleErr(s, "No Auth key at AuthEnVar.  Cannot work.", nil)
+		pzsvc.LogSimpleErr(s, "No API key at APIKeyEnVar.  Cannot work.", nil)
 		return
 	}
 
@@ -145,7 +145,10 @@ type WorkOutData struct {
 
 func workerThread(s pzsvc.Session, configObj pzse.ConfigType, svcID string) {
 
-	var err error
+	var (
+		err       error
+		failCount int
+	)
 	workAddr := fmt.Sprintf("http://localhost:%d/execute", configObj.Port)
 
 	s.SessionID, err = pzsvc.PsuUUID()
@@ -165,13 +168,15 @@ func workerThread(s pzsvc.Session, configObj pzse.ConfigType, svcID string) {
 		byts, pErr := pzsvc.RequestKnownJSON("POST", "", configObj.PzAddr+"/service/"+svcID+"/task", s.PzAuth, &pzJobObj)
 		if pErr != nil {
 			pErr.Log(s, "Taskworker worker thread: error getting new task:")
-			time.Sleep(20 * time.Second)
+			failCount++
+			time.Sleep(time.Duration(10*failCount) * time.Second)
 			continue
 		}
 		inpStr := pzJobObj.Data.SvcData.Data.DataInputs.Body.Content
 		jobID := pzJobObj.Data.SvcData.JobID
 		if inpStr != "" {
 			pzsvc.LogInfo(s, "New Task Grabbed.  JobID: "+jobID)
+			failCount = 0
 
 			var outpByts []byte
 			if configObj.JwtSecAuthURL != "" {
