@@ -204,6 +204,7 @@ func workerThread(s pzsvc.Session, configObj pzse.ConfigType, svcID string) {
 				pzsvc.LogAuditBuf(s, workAddr, "http response from pzsvc-exec", string(outpByts), s.UserID)
 				sendExecResult(s, configObj.PzAddr, s.PzAuth, svcID, jobID, "Success", outpByts)
 			}
+			time.Sleep(10 * time.Second)
 
 		} else {
 			pzsvc.LogInfo(s, "No Task.  Sleeping now.  input: "+string(byts))
