@@ -31,17 +31,18 @@ import (
 // ParseConfigAndRegister parses the config file on starting up, manages
 // registration for it on the given Pz instance if registration management
 // is called for, and returns a few useful derived values
-func ParseConfigAndRegister(s pzsvc.Session, configObj *ConfigType) ConfigParseOut {
+func ParseConfigAndRegister(s pzsvc.Session, configObj *ConfigType) (ConfigParseOut, pzsvc.Session) {
 
 	canReg := CheckConfig(s, configObj)
 	canPzFile := configObj.CanUpload || configObj.CanDownlPz
 
+	s.PzAddr = configObj.PzAddr
 	if configObj.PzAddrEnVar != "" {
 		newAddr := os.Getenv(configObj.PzAddrEnVar)
 		if newAddr != "" {
-			configObj.PzAddr = newAddr
+			s.PzAddr = newAddr
 			pzsvc.LogInfo(s, `Config: PzAddr updated to `+configObj.PzAddr+` based on PzAddrEnVar.`)
-		} else if configObj.PzAddr != "" {
+		} else if s.PzAddr != "" {
 			pzsvc.LogInfo(s, `Config: PzAddrEnVar specified in config, but no such env var exists.  Reverting to specified PzAddr.`)
 		} else {
 			logStr := `Config: PzAddrEnVar specified in config, but no such env var exists, and PzAddr not specified.`
@@ -56,7 +57,6 @@ func ParseConfigAndRegister(s pzsvc.Session, configObj *ConfigType) ConfigParseO
 		}
 	}
 
-	var authKey string
 	if configObj.APIKeyEnVar != "" && (canReg || canPzFile) {
 		apiKey := os.Getenv(configObj.APIKeyEnVar)
 		if apiKey == "" {
@@ -70,7 +70,7 @@ func ParseConfigAndRegister(s pzsvc.Session, configObj *ConfigType) ConfigParseO
 			pzsvc.LogInfo(s, errStr)
 			canReg = false
 		} else {
-			authKey = "Basic " + base64.StdEncoding.EncodeToString([]byte(apiKey+":"))
+			s.PzAuth = "Basic " + base64.StdEncoding.EncodeToString([]byte(apiKey+":"))
 		}
 	}
 
@@ -115,7 +115,7 @@ func ParseConfigAndRegister(s pzsvc.Session, configObj *ConfigType) ConfigParseO
 			Timeout:       configObj.MaxRunTime,
 			IsTaskManaged: configObj.RegForTaskMgr}
 
-		err := pzsvc.ManageRegistration(s, svcObj, configObj.PzAddr, authKey)
+		err := pzsvc.ManageRegistration(s, svcObj)
 		if err != nil {
 			pzsvc.LogSimpleErr(s, "pzsvc-exec error in managing registration: ", err)
 		} else {
@@ -128,7 +128,11 @@ func ParseConfigAndRegister(s pzsvc.Session, configObj *ConfigType) ConfigParseO
 		procPool = make(pzsvc.Semaphore, configObj.NumProcs)
 	}
 
-	return ConfigParseOut{authKey, portStr, version, procPool}
+	s.AppName = configObj.SvcName
+	s.LogRootDir = "pzsvc-exec"
+	s.LogAudit = configObj.LogAudit
+
+	return ConfigParseOut{portStr, version, procPool}, s
 }
 
 // Execute does the primary work for pzsvc-exec.  Given a request and various
@@ -137,12 +141,12 @@ func ParseConfigAndRegister(s pzsvc.Session, configObj *ConfigType) ConfigParseO
 // the command indicated by the combination of request and configs, uploads
 // any files indicated by the request (if the configs support it) and cleans
 // up after itself
-func Execute(r *http.Request, configObj ConfigType, cParseRes ConfigParseOut) (OutStruct, pzsvc.Session) {
+func Execute(r *http.Request, s pzsvc.Session, configObj ConfigType, procPool pzsvc.Semaphore, version string) (OutStruct, pzsvc.Session) {
 	// Makes sure that you only have a certain number of execution tasks firing at once.
 	// pzsvc-exec calls can get pretty resource-intensive, and this keeps them from
 	// trampling each other into messy deadlock
-	cParseRes.ProcPool.Lock()
-	defer cParseRes.ProcPool.Unlock()
+	procPool.Lock()
+	defer procPool.Unlock()
 
 	var (
 		output OutStruct
@@ -156,7 +160,8 @@ func Execute(r *http.Request, configObj ConfigType, cParseRes ConfigParseOut) (O
 
 	output.HTTPStatus = http.StatusOK
 
-	s := pzsvc.Session{AppName: configObj.SvcName, SessionID: "FailedOnInit", LogRootDir: "pzsvc-exec", LogAudit: configObj.LogAudit}
+	s.SessionID = "FailedOnInit"
+
 	if s.AppName == "" {
 		s.AppName = "pzsvc-exec"
 	}
@@ -180,9 +185,15 @@ func Execute(r *http.Request, configObj ConfigType, cParseRes ConfigParseOut) (O
 	}
 	s.SubFold = s.SessionID // they're the same here, but as far as the pzsvc library is concerned, they're different concepts
 
-	s.PzAddr = inpObj.PzAddr
-	s.PzAuth = inpObj.PzAuth
-	s.UserID = inpObj.UserID
+	if inpObj.PzAddr != "" {
+		s.PzAddr = inpObj.PzAddr
+	}
+	if inpObj.PzAuth != "" {
+		s.PzAuth = inpObj.PzAuth
+	}
+	if inpObj.UserID != "" {
+		s.UserID = inpObj.UserID
+	}
 
 	if inpObj.PzAuth != "" {
 		inpObj.PzAuth = "******"
@@ -197,13 +208,6 @@ func Execute(r *http.Request, configObj ConfigType, cParseRes ConfigParseOut) (O
 	cmdParamSlice := splitOrNil(inpObj.Command, " ")
 	cmdConfigSlice := splitOrNil(configObj.CliCmd, " ")
 	cmdSlice := append(cmdConfigSlice, cmdParamSlice...)
-
-	if s.PzAuth == "" {
-		s.PzAuth = cParseRes.AuthKey
-	}
-	if s.PzAddr == "" {
-		s.PzAddr = configObj.PzAddr
-	}
 
 	needsPz := (len(inpObj.InPzFiles)+len(inpObj.OutTiffs)+len(inpObj.OutTxts)+len(inpObj.OutGeoJs) != 0)
 
@@ -305,7 +309,7 @@ func Execute(r *http.Request, configObj ConfigType, cParseRes ConfigParseOut) (O
 
 	attMap := make(map[string]string)
 	attMap["algoName"] = configObj.SvcName
-	attMap["algoVersion"] = cParseRes.Version
+	attMap["algoVersion"] = version
 	attMap["algoCmd"] = configObj.CliCmd + " " + inpObj.Command
 	attMap["algoProcTime"] = time.Now().UTC().Format("20060102.150405.99999")
 
@@ -314,7 +318,7 @@ func Execute(r *http.Request, configObj ConfigType, cParseRes ConfigParseOut) (O
 
 	ingFunc := func(fName, dummy, fType string) (string, error) {
 		pzsvc.LogAudit(s, s.UserID, "Pz File Ingest", fName)
-		return pzsvc.IngestFile(s, fName, fType, configObj.SvcName, cParseRes.Version, attMap)
+		return pzsvc.IngestFile(s, fName, fType, configObj.SvcName, version, attMap)
 	}
 
 	handleFList(s, inpObj.OutTiffs, inpObj.OutTiffs, ingFunc, "raster", "upload", &output, output.OutFiles)

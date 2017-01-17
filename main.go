@@ -54,7 +54,8 @@ func main() {
 	}
 
 	s.LogAudit = configObj.LogAudit
-	pRes := pzse.ParseConfigAndRegister(s, &configObj)
+	var pRes pzse.ConfigParseOut
+	pRes, s = pzse.ParseConfigAndRegister(s, &configObj)
 
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		// check config: do we have a security authority set?
@@ -75,7 +76,7 @@ func main() {
 			pzsvc.LogAudit(s, r.RemoteAddr, "execution request", s.AppName)
 			// the other options are shallow and informational.  This is the
 			// place where the work gets done.
-			output, s2 := pzse.Execute(r, configObj, pRes)
+			output, s2 := pzse.Execute(r, s, configObj, pRes.ProcPool, pRes.Version)
 			byts := pzsvc.PrintJSON(w, output, output.HTTPStatus)
 			pzsvc.LogInfo(s2, `pzsvc-exec call completed.  Output: `+string(byts))
 			pzsvc.LogAudit(s, s.AppName, "execution response", r.RemoteAddr+"("+s2.UserID+")")

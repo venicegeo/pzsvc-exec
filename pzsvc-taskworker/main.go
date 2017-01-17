@@ -97,7 +97,7 @@ func main() {
 
 	svcID := ""
 	for i := 0; svcID == "" && i < 10; i++ {
-		svcID, err = pzsvc.FindMySvc(s, configObj.SvcName, s.PzAddr, s.PzAuth)
+		svcID, err = pzsvc.FindMySvc(s, configObj.SvcName)
 		if err != nil {
 			pzsvc.LogSimpleErr(s, "Taskworker could not find Pz Service ID.  Initial Error: ", err)
 			return

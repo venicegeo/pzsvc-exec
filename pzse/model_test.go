@@ -14,8 +14,6 @@
 
 package pzse
 
-import "encoding/base64"
-
 func getTestConfigWorkable() ConfigType {
 	return ConfigType{
 		CliCmd:      "ls",
@@ -60,7 +58,7 @@ func getTestConfigList() ([6]ConfigType, [6]ConfigParseOut, string) {
 	var configList [6]ConfigType
 	var configParseList [6]ConfigParseOut
 	configList[0] = ConfigType{}
-	configParseList[0] = ConfigParseOut{"", ":8080", "", nil}
+	configParseList[0] = ConfigParseOut{":8080", "", nil}
 
 	//configList[1] = ConfigType{cliCmd, versionCmd, versionStr, "", apiKeyEnVar, svcName, url, 0, desc, attr, numProcs, false, false, false}
 	configList[1] = DefaultConfig
@@ -69,27 +67,27 @@ func getTestConfigList() ([6]ConfigType, [6]ConfigParseOut, string) {
 	configList[1].CanUpload = false
 	configList[1].CanDownlPz = false
 	configList[1].CanDownlExt = false
-	configParseList[1] = ConfigParseOut{"", ":8080", "vers1\n", nil}
+	configParseList[1] = ConfigParseOut{":8080", "vers1\n", nil}
 
 	//configList[2] = ConfigType{cliCmd, versionCmd, "", pzAddr, "", "", url, port, desc, attr, numProcs, true, true, true}
 	configList[2] = DefaultConfig
 	configList[2].VersionStr = ""
 	configList[2].APIKeyEnVar = ""
 	configList[2].SvcName = ""
-	configParseList[2] = ConfigParseOut{"", ":8081", "vers1\n", nil}
+	configParseList[2] = ConfigParseOut{":8081", "vers1\n", nil}
 
 	//configList[3] = ConfigType{cliCmd, versionCmd, "", pzAddr, apiKeyEnVar, "", url, port, desc, attr, numProcs, true, true, true}
 	configList[3] = DefaultConfig
 	configList[3].VersionStr = ""
 	configList[3].SvcName = ""
-	configParseList[3] = ConfigParseOut{"Basic " + base64.StdEncoding.EncodeToString([]byte("pzsvc-exec:")), ":8081", "vers1\n", nil}
+	configParseList[3] = ConfigParseOut{":8081", "vers1\n", nil}
 
 	//configList[4] = ConfigType{cliCmd, "", versionStr, pzAddr, apiKeyEnVar, svcName, "", port, desc, attr, numProcs, true, true, true}
 	configList[4] = DefaultConfig
 	configList[4].VersionCmd = ""
 	configList[4].URL = ""
 	configList[4].LocalOnly = true
-	configParseList[4] = ConfigParseOut{"Basic " + base64.StdEncoding.EncodeToString([]byte("pzsvc-exec:")), "localhost:8081", "vers2", nil}
+	configParseList[4] = ConfigParseOut{"localhost:8081", "vers2", nil}
 
 	//configList[5] = ConfigType{cliCmd, "echo", "", versionStr, apiKeyEnVar, svcName, url, port, "", attr, numProcs, true, true, true}
 	configList[5] = DefaultConfig
@@ -97,7 +95,7 @@ func getTestConfigList() ([6]ConfigType, [6]ConfigParseOut, string) {
 	configList[5].VersionStr = ""
 	configList[5].PzAddr = DefaultConfig.VersionStr
 	configList[5].Description = ""
-	configParseList[5] = ConfigParseOut{"Basic " + base64.StdEncoding.EncodeToString([]byte("pzsvc-exec:")), ":8081", "\n", nil}
+	configParseList[5] = ConfigParseOut{":8081", "\n", nil}
 
 	return configList, configParseList, DefaultConfig.APIKeyEnVar
 }

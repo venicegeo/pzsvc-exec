@@ -54,7 +54,6 @@ type OutStruct struct {
 // ConfigParseOut is a handy struct to organize all of the outputs
 // for pzse.ConfigParse() and prevent potential confusion.
 type ConfigParseOut struct {
-	AuthKey  string
 	PortStr  string
 	Version  string
 	ProcPool pzsvc.Semaphore

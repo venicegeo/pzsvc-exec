@@ -20,9 +20,7 @@ import (
 )
 
 func TestManageRegistration(t *testing.T) {
-	url := "http://testURL.net"
-	authKey := "testAuthKey"
-	s := Session{}
+	s := Session{PzAddr: "http://testURL.net", PzAuth: "testAuthKey"}
 	svcName := "testJobID"
 	svcDesc := "testDesc"
 	svcURL := "http://testSvcURL.net"
@@ -40,11 +38,11 @@ func TestManageRegistration(t *testing.T) {
 	outStrs := []string{string(svcJSON), `{"Data":[]}`}
 	SetMockClient(outStrs, 250)
 
-	err := ManageRegistration(s, targService, url, authKey)
+	err := ManageRegistration(s, targService)
 	if err != nil {
 		t.Error(`TestManageRegistration: failed on full registration.  Error: `, err.Error())
 	}
-	err = ManageRegistration(s, targService, url, authKey)
+	err = ManageRegistration(s, targService)
 	if err != nil {
 		t.Error(`TestManageRegistration: failed on empty registration.  Error: `, err.Error())
 	}

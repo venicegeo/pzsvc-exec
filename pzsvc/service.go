@@ -23,11 +23,11 @@ import (
 // FindMySvc Searches Pz for a service matching the input information.  If it finds
 // one, it returns the service ID.  If it does not, returns an empty string.  Currently
 // searches on service name and submitting user.
-func FindMySvc(s Session, svcName, pzAddr, authKey string) (string, LoggedError) {
-	query := pzAddr + "/service/me?per_page=1000&keyword=" + url.QueryEscape(svcName)
+func FindMySvc(s Session, svcName string) (string, LoggedError) {
+	query := s.PzAddr + "/service/me?per_page=1000&keyword=" + url.QueryEscape(svcName)
 	var respObj SvcList
 	LogAudit(s, s.UserID, "http request - looking for service "+svcName, query)
-	byts, err := RequestKnownJSON("GET", "", query, authKey, &respObj)
+	byts, err := RequestKnownJSON("GET", "", query, s.PzAuth, &respObj)
 	LogAuditBuf(s, query, "http response to service listing request", string(byts), s.UserID)
 	if err != nil {
 		return "", err.Log(s, "Error when finding Pz Service")
@@ -47,12 +47,12 @@ func FindMySvc(s Session, svcName, pzAddr, authKey string) (string, LoggedError)
 // initial registration.  If it has not, it re-registers.  Best practice is to do this
 // every time your service starts up.  For those of you code-reading, the filter is
 // still somewhat rudimentary.  It will improve as better tools become available.
-func ManageRegistration(s Session, svcObj Service, pzAddr, authKey string) LoggedError {
+func ManageRegistration(s Session, svcObj Service) LoggedError {
 
 	var pzErr *Error
 	var resp *http.Response
 	LogInfo(s, "Searching for service in Pz service list")
-	svcID, err := FindMySvc(s, svcObj.ResMeta.Name, pzAddr, authKey)
+	svcID, err := FindMySvc(s, svcObj.ResMeta.Name)
 	if err != nil {
 		return err
 	}
@@ -61,15 +61,15 @@ func ManageRegistration(s Session, svcObj Service, pzAddr, authKey string) Logge
 
 	if svcID == "" {
 		LogInfo(s, "Registering Service")
-		targURL := pzAddr + "/service"
+		targURL := s.PzAddr + "/service"
 		LogAuditBuf(s, s.AppName, "Registering Service request", string(svcJSON), targURL)
-		resp, pzErr = SubmitSinglePart("POST", string(svcJSON), targURL, authKey)
+		resp, pzErr = SubmitSinglePart("POST", string(svcJSON), targURL, s.PzAuth)
 		LogAuditResponse(s, targURL, "Registering Service Response", resp, s.AppName)
 	} else {
 		LogInfo(s, "Updating Service Registration")
-		targURL := pzAddr + "/service/" + svcID
+		targURL := s.PzAddr + "/service/" + svcID
 		LogAuditBuf(s, s.AppName, "Updating Service request", string(svcJSON), targURL)
-		resp, pzErr = SubmitSinglePart("PUT", string(svcJSON), pzAddr+"/service/"+svcID, authKey)
+		resp, pzErr = SubmitSinglePart("PUT", string(svcJSON), s.PzAddr+"/service/"+svcID, s.PzAuth)
 		LogAuditResponse(s, targURL, "Updating Service Response", resp, s.AppName)
 	}
 	if pzErr != nil {
