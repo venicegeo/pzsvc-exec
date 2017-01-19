@@ -66,7 +66,12 @@ func GetVersion(s pzsvc.Session, configObj *ConfigType) string {
 	vCmdSlice := splitOrNil(configObj.VersionCmd, " ")
 	if vCmdSlice != nil {
 		vCmd := exec.Command(vCmdSlice[0], vCmdSlice[1:]...)
-		verB, err := vCmd.Output()
+
+		// if stdout exists, get that.
+		// if it doesn't, and there wasnt' an error, and stderr exists, get that.
+		// trim leading/trailign whitespace regardless
+
+		verB, err := vCmd.CombinedOutput()
 		pzsvc.LogInfo(s, `Called VersionCmd `+configObj.VersionCmd+`.  Results: `+string(verB))
 		if err != nil {
 			pzsvc.LogSimpleErr(s, "VersionCmd failed: ", err)
