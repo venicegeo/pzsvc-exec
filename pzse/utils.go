@@ -67,6 +67,7 @@ func GetVersion(s pzsvc.Session, configObj *ConfigType) string {
 	if vCmdSlice != nil {
 		vCmd := exec.Command(vCmdSlice[0], vCmdSlice[1:]...)
 		verB, err := vCmd.Output()
+		pzsvc.LogInfo(s, `Called VersionCmd `+configObj.VersionCmd+`.  Results: `+string(verB))
 		if err != nil {
 			pzsvc.LogSimpleErr(s, "VersionCmd failed: ", err)
 		}
