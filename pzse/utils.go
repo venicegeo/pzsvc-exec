@@ -72,12 +72,13 @@ func GetVersion(s pzsvc.Session, configObj *ConfigType) string {
 		// trim leading/trailign whitespace regardless
 
 		verB, err := vCmd.CombinedOutput()
-		pzsvc.LogInfo(s, `Called VersionCmd `+configObj.VersionCmd+`.  Results: `+string(verB))
+		verStr := strings.TrimSpace(string(verB))
+		pzsvc.LogInfo(s, `Called VersionCmd `+configObj.VersionCmd+`.  Results: `+verStr)
 		if err != nil {
 			pzsvc.LogSimpleErr(s, "VersionCmd failed: ", err)
 		}
-		if string(verB) != "" {
-			return string(verB)
+		if verStr != "" {
+			return verStr
 		}
 	}
 	return configObj.VersionStr
