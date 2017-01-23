@@ -108,12 +108,14 @@ func ParseConfigAndRegister(s pzsvc.Session, configObj *ConfigType) (ConfigParse
 		}
 
 		svcObj := pzsvc.Service{
-			ContractURL:   configObj.URL + "/execute",
-			URL:           configObj.URL + "/execute",
+			ContractURL:   configObj.DocURL,
 			Method:        "POST",
 			ResMeta:       metaObj,
 			Timeout:       configObj.MaxRunTime,
 			IsTaskManaged: configObj.RegForTaskMgr}
+		if configObj.URL != "" {
+			svcObj.URL = configObj.URL + "/execute"
+		}
 
 		err := pzsvc.ManageRegistration(s, svcObj)
 		if err != nil {
@@ -264,7 +266,7 @@ func Execute(r *http.Request, s pzsvc.Session, configObj ConfigType, procPool pz
 
 	extDownlFunc := func(url, fname, fType string) (string, error) {
 		pzsvc.LogAudit(s, s.UserID, "external File Download", url)
-		return pzsvc.DownloadByURL(s, url, fname, inpObj.ExtAuth)
+		return pzsvc.DownloadByURL(s, url, fname, inpObj.ExtAuth, configObj.ExtRetryOn202)
 	}
 	handleFList(s, inpObj.InExtFiles, inpObj.InExtNames, extDownlFunc, "unspecified", "URL download", &output, output.InFiles)
 

@@ -88,6 +88,15 @@ func main() {
 				fmt.Fprintf(w, configObj.Description)
 			}
 			pzsvc.LogAudit(s, s.AppName, "description response", r.RemoteAddr)
+		case "/documentation":
+			pzsvc.LogAudit(s, r.RemoteAddr, "doc URL request", s.AppName)
+			if configObj.DocURL == "" {
+				fmt.Fprintf(w, "No URL provided")
+			} else {
+				fmt.Fprintf(w, configObj.DocURL)
+			}
+			pzsvc.LogAudit(s, s.AppName, "doc URL response", r.RemoteAddr)
+
 		case "/attributes":
 			pzsvc.LogAudit(s, r.RemoteAddr, "attributes request", s.AppName)
 			if configObj.Attributes == nil {

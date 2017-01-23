@@ -22,6 +22,7 @@ import (
 	"mime"
 	"net/http"
 	"os"
+	"time"
 )
 
 // locString simplifies certain local processes that wish to interact with
@@ -35,7 +36,7 @@ func locString(subFold, fname string) string {
 
 // DownloadByID retrieves a file from Pz using the file access API
 func DownloadByID(s Session, dataID, filename string) (string, LoggedError) {
-	fName, err := DownloadByURL(s, s.PzAddr+"/file/"+dataID, filename, s.PzAuth)
+	fName, err := DownloadByURL(s, s.PzAddr+"/file/"+dataID, filename, s.PzAuth, false)
 	if err == nil && fName == "" {
 
 		return "", LogSimpleErr(s, `File for DataID `+dataID+` unnamed.  Probable ingest error.`, nil)
@@ -45,15 +46,27 @@ func DownloadByID(s Session, dataID, filename string) (string, LoggedError) {
 
 // DownloadByURL retrieves a file from the given URL, which may or may not have anything
 // to do with Piazza
-func DownloadByURL(s Session, url, filename, authKey string) (string, LoggedError) {
+func DownloadByURL(s Session, url, filename, authKey string, retryOn202 bool) (string, LoggedError) {
 
 	var (
 		params map[string]string
 		err    error
 		pErr   *Error
+		resp   *http.Response
+		x      int
 	)
 	LogAudit(s, s.UserID, "file download request for "+filename, url)
-	resp, pErr := SubmitSinglePart("GET", "", url, authKey)
+	for x = 0; x < 60; x++ {
+		resp, pErr = SubmitSinglePart("GET", "", url, authKey)
+		if !retryOn202 || resp == nil || !(resp.StatusCode == 202) {
+			break
+		}
+		if resp != nil && resp.Body != nil {
+			resp.Body.Close()
+		}
+		LogAudit(s, url, "received 202.  Will wait minute, then retry. "+filename, s.UserID)
+		time.Sleep(60 * time.Second)
+	}
 	if resp != nil {
 		defer resp.Body.Close()
 	}

@@ -1,21 +1,28 @@
 {
-    "CliCmd":"ossim-cli",
-    "VersionCmd":"ossim-cli version"
-    "PzAddr":"https://pz-gateway.stage.geointservices.io",
-    "SvcName":"OSSIM client",
+    "CliCmd":"python ../bfalg-ndwi.py --outdir .",
+    "VersionStr":"",
+    "VersionCmd":"python ./bfalg-ndwi.py --version",
+    "PzAddr":"",
+    "PzAddrEvVar":"PZ_ADDR",
+    "APIKeyEnVar":"PZ_API_KEY",
+    "SvcName":"BF_Algo_NDWI_PY",
     "URL":"https://pzsvc-exec.stage.geointservices.io",
     "Port":8080,
-    "Description":"The OSSIM shoreline-determination algorithm, served via piazza",
-    "APIKeyEnVar":"PZ_AUTH",
+    "PortEnVar":"PORT",
+    "Description":"Shoreline Detection using the NDWI Algorithm via Beachfront's own python script.",
     "Attributes":{
         "SvcType":"beachfront",
-        "Interface":"pzsvc-exec/ossim",
+        "Interface":"pzsvc-ndwi",
         "ImgReq - CloudCover":"4%",
         "ImgReq - Bands":"3,6",
         "ImgReq - Coastline":"Yes"
     }
-    "NumProcs": 3
-    "CanUpload": true
-    "CanDownlPz": true
-    "CanDownlExt": true 
+    "NumProcs":3,
+    "CanUpload":true,
+    "CanDownlPz":true,
+    "CanDownlExt":true,
+    "RegForTaskMgr":false,
+    "MaxRunTime":0,
+    "LocalOnly":false,
+    "LogAudit":false
 }
