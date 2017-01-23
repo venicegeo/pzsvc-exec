@@ -67,20 +67,20 @@ func getTestConfigList() ([6]ConfigType, [6]ConfigParseOut, string) {
 	configList[1].CanUpload = false
 	configList[1].CanDownlPz = false
 	configList[1].CanDownlExt = false
-	configParseList[1] = ConfigParseOut{":8080", "vers1\n", nil}
+	configParseList[1] = ConfigParseOut{":8080", "vers1", nil}
 
 	//configList[2] = ConfigType{cliCmd, versionCmd, "", pzAddr, "", "", url, port, desc, attr, numProcs, true, true, true}
 	configList[2] = DefaultConfig
 	configList[2].VersionStr = ""
 	configList[2].APIKeyEnVar = ""
 	configList[2].SvcName = ""
-	configParseList[2] = ConfigParseOut{":8081", "vers1\n", nil}
+	configParseList[2] = ConfigParseOut{":8081", "vers1", nil}
 
 	//configList[3] = ConfigType{cliCmd, versionCmd, "", pzAddr, apiKeyEnVar, "", url, port, desc, attr, numProcs, true, true, true}
 	configList[3] = DefaultConfig
 	configList[3].VersionStr = ""
 	configList[3].SvcName = ""
-	configParseList[3] = ConfigParseOut{":8081", "vers1\n", nil}
+	configParseList[3] = ConfigParseOut{":8081", "vers1", nil}
 
 	//configList[4] = ConfigType{cliCmd, "", versionStr, pzAddr, apiKeyEnVar, svcName, "", port, desc, attr, numProcs, true, true, true}
 	configList[4] = DefaultConfig
@@ -95,7 +95,7 @@ func getTestConfigList() ([6]ConfigType, [6]ConfigParseOut, string) {
 	configList[5].VersionStr = ""
 	configList[5].PzAddr = DefaultConfig.VersionStr
 	configList[5].Description = ""
-	configParseList[5] = ConfigParseOut{":8081", "\n", nil}
+	configParseList[5] = ConfigParseOut{":8081", "", nil}
 
 	return configList, configParseList, DefaultConfig.APIKeyEnVar
 }
