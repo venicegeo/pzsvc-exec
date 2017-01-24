@@ -192,20 +192,21 @@ func Execute(r *http.Request, s pzsvc.Session, configObj ConfigType, procPool pz
 	}
 	if inpObj.PzAuth != "" {
 		s.PzAuth = inpObj.PzAuth
+		inpObj.PzAuth = "******" // we shouldnt' log auth data
+	}
+	if inpObj.ExtAuth != "" {
+		s.ExtAuth = inpObj.ExtAuth
+		inpObj.ExtAuth = "******" // we still shouldnt' log auth data
 	}
 	if inpObj.UserID != "" {
 		s.UserID = inpObj.UserID
-	}
-
-	if inpObj.PzAuth != "" {
-		inpObj.PzAuth = "******"
-		byts, _ = json.Marshal(inpObj)
-	}
-	if s.UserID == "" {
+	} else {
 		s.UserID = "anon user"
 	}
 
+	byts, _ = json.Marshal(inpObj)
 	pzsvc.LogInfo(s, `pzsvc-exec call initiated.  Input: `+string(byts))
+	pzsvc.LogAuditBuf(s, s.UserID, "pzsvc-exec execute call", string(byts), s.AppName)
 
 	cmdParamSlice := splitOrNil(inpObj.Command, " ")
 	cmdConfigSlice := splitOrNil(configObj.CliCmd, " ")
@@ -266,7 +267,7 @@ func Execute(r *http.Request, s pzsvc.Session, configObj ConfigType, procPool pz
 
 	extDownlFunc := func(url, fname, fType string) (string, error) {
 		pzsvc.LogAudit(s, s.UserID, "external File Download", url)
-		return pzsvc.DownloadByURL(s, url, fname, inpObj.ExtAuth, configObj.ExtRetryOn202)
+		return pzsvc.DownloadByURL(s, url, fname, s.ExtAuth, configObj.ExtRetryOn202)
 	}
 	handleFList(s, inpObj.InExtFiles, inpObj.InExtNames, extDownlFunc, "unspecified", "URL download", &output, output.InFiles)
 

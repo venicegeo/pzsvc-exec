@@ -31,6 +31,7 @@ type Session struct {
 	UserID     string // used in logs to indicate which user is responsible for the session
 	PzAddr     string // The address of the Pz instance this session is interacting with
 	PzAuth     string // The Pz auth string used for this session
+	ExtAuth    string // The auth string, if any, used for external data sources this session
 	SubFold    string // The name of the subfolder this session has been assigned (if any)
 	LogRootDir string // The root directory that has all associated go packages that use pzsvc logging.  Helps keep file locs short.
 	LogAudit   bool   // True to log all auditable events
