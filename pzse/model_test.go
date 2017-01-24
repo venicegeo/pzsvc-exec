@@ -52,8 +52,8 @@ func getTestConfigList() ([6]ConfigType, [6]ConfigParseOut, string) {
 		RegForTaskMgr: true,
 		MaxRunTime:    50,
 		LocalOnly:     false,
-		JwtSecAuthURL: "secAuth",
-		LogAudit:      true,
+		//JwtSecAuthURL: "secAuth",
+		LogAudit: true,
 	}
 	var configList [6]ConfigType
 	var configParseList [6]ConfigParseOut

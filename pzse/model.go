@@ -19,8 +19,8 @@ import "github.com/venicegeo/pzsvc-exec/pzsvc"
 // ConfigType represents and contains the information from a pzsvc-exec config file.
 type ConfigType struct {
 	CliCmd        string            // The first segment of the command to send to the CLI.  Security vulnerability when blank.
-	VersionCmd    string            // The command to run to determine the version number of the underlying CLI.  Redundant with VersionStr
 	VersionStr    string            // The version number of the underlying CLI.  Redundant with VersionCmd
+	VersionCmd    string            // The command to run to determine the version number of the underlying CLI.  Redundant with VersionStr
 	PzAddr        string            // Address of local Piazza instance.  Used for Piazza file access.  Necessary for autoregistration, task worker.
 	PzAddrEnVar   string            // Environment variable holding Piazza address.  Used to populate/overwrite PzAddr if present
 	APIKeyEnVar   string            // The environment variable containing the api key for the local Piazza instance.  Used for the same things.

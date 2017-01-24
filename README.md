@@ -84,9 +84,11 @@ MaxRunTime: int.  Only applicable when registering for task manager.  Indicates 
 
 LocalOnly: Boolean.  If true, this pzsvc-exec instance will only accept connections from localhost.  Intended as an additional security measure when using a local takworker
 
-LogAudit: Boolean.  If true, produces autit logs.  If false, does not produce audit logs.
+LogAudit: Boolean.  If true, pzsvc-exec will produce audit logs.  If false, does not produce audit logs.  Audit logs are useful as an added security feature, if you can manage them properly, but add significant bulk to the log outputs.
 
+ExtRetryOn202: Boolean.  If true, pzsvc-exec will respond to HTTP Code 202 responses on external file downloads by waiting a minute and trying again, for up to an hour.  This is offered as a way to enable dealings with systems like Planetlabs, where files must be activated before they are made available.
 
+DocURL: string.  Specifies a URL to provide to autoregistration and to the /documentation REST endpoint.  This URL shoudl point to some sort of online documentation about this pzsvc-exec instance.
 
 ## Service Endpoints
 
@@ -96,6 +98,7 @@ The pzsvc-exec service endpoints are as follows:
 - '/execute': The meat of the program.  Downloads files, executes on them, and uploads the results.
 See the Execute Endpoint Request Format section of this Readme for interface details.
 - '/description': When enabled, provides a description of this particular pzsvc-exec instance.
+- '/documentation': When enabled, provides a url containing documentation for this particular pzsvc-exec instance.
 - '/attributes': When enabled, provides a list of key/value attributes for this pzsvc-exec instance.
 - '/version': When enabled, provides version number for the application served by this pzsvc-exec instance.
 - '/help': Provides the Service Endpoint data available here.
@@ -108,6 +111,7 @@ The intended use of the '/execute' endpoint is through the Piazza service, but i
 Input Format:
 ```
 cmd           string    // Command string - appended to CliCmd from the config file
+userID        string    // Unique ID of initiating user - used for logging purposes
 inPzFiles     []string  // Pz dataIds for files to download before processing
 inExtFiles    []string  // URLs for external files to download before processing
 inPzNames     []string  // Parallel to InPzFiles - name for each file
@@ -117,6 +121,7 @@ outTxts       []string  // Filenames of text files to ingest after processing
 outGeoJson    []string  // Filenames of GeoJSON files to ingest after processing
 inExtAuthKey  string    // Auth key for accessing external files
 pzAuthKey     string    // Auth key for accessing Piazza
+pzAddr        string    // URL for the targeted Pz instance
 ```
 
 As an example (fully functional as an input to pzsvc-ossim, other than the auth key):
@@ -126,8 +131,8 @@ As an example (fully functional as an input to pzsvc-ossim, other than the auth 
 "inExtFiles":["https://landsat-pds.s3.amazonaws.com/L8/090/089/LC80900892015290LGN00/LC80900892015290LGN00_B1.TIF","https://landsat-pds.s3.amazonaws.com/L8/090/089/LC80900892015290LGN00/LC80900892015290LGN00_B6.TIF"],
 "inExtNames":["coastal.TIF","swir1.TIF"],
 "outGeoJson":["shoreline.json"],
-"pzAuthKey":"aaaaa"
-"inExtAuthKey":"bbbbb"
+"pzAuthKey":"******"
+"inExtAuthKey":"******"
 }
 ```
 
@@ -135,6 +140,8 @@ As an example (fully functional as an input to pzsvc-ossim, other than the auth 
 
 Pzsvc-taskworker exists inside of the pzsvc-taskworker subfolder of the pzsvc-exec folder, and can be installed via `go get` or `go install` appropriately.  it can be run with `GOPATH/bin/pzsvc-taskworker <configfile.txt>`. It should be called using the same config file as was used for the instance of pzsvc-exec it has been paired with.
 
+Pzsvc-taskworker is designed to connect to the task manager feature of Piazza.  In that system, rather than passing jobs through to a service directly, Piazza stores them in a queue, and waits for a service to request jobs to complete.  This can be useful for scalability and security purposes.  It allows arbitrary scalability while letting each pzsvc-exec/pzsvc-taskworker pair control the number of jobs they're running at a time.
 
-TODO: this part needs to be finished.
-- Note: Currently, pzsvc-taskworker requires that the service it connects to have been registered by the same person as is being used to access piazza.  If you are running pzsvc-exec and pzsvc-taskworker together off of the same config file on the same box this gets taken care of automatically.
+Currently, pszvc-taskworker is designed to work with a colocated copy of pzsvc-exec.  It is possible to use it to work with a colocated copy of some other REST service, but that requires additional effort and is not supported.  Support for that feature may be expanded in the future if there is enough demand.  
+
+A copy of pzsvc-taskworker requires only the config file it is called on and the environment variables specified by same.  No other input is necessary

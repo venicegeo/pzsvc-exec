@@ -187,15 +187,33 @@ func workerThread(s pzsvc.Session, configObj pzse.ConfigType, svcID string) {
 			failCount = 0
 
 			var outpByts []byte
-			if configObj.JwtSecAuthURL != "" {
-				// TODO: once JWT conversion exists as an option, handle it here.
-				// jwtBody = content
-				// call JwtSecAuthURL.  send jwtBody.  get response
-				// outBody = response (more or less)
-			}
+			//if configObj.JwtSecAuthURL != "" {
+			// TODO: once JWT conversion exists as an option, handle it here.
+			// jwtBody = content
+			// call JwtSecAuthURL.  send jwtBody.  get response
+			// outBody = response (more or less)
+			//}
 
 			var respObj pzse.OutStruct
-			pzsvc.LogAuditBuf(s, s.UserID, "http request - calling pzsvc-exec", inpStr, workAddr)
+			var inpObj pzse.InpStruct
+			err = json.Unmarshal([]byte(inpStr), &inpObj)
+			if err != nil {
+				var outByt []byte
+				inpObj.ExtAuth = "*****"
+				inpObj.PzAuth = "*****"
+				outByt, err = json.Marshal(inpObj)
+				if err != nil {
+					pzsvc.LogAudit(s, s.UserID, "Audit failure.  Could not Marshal.  Job Failed.", s.AppName)
+					sendExecResult(s, s.PzAddr, s.PzAuth, svcID, jobID, "Success", nil)
+					time.Sleep(10 * time.Second)
+					continue
+				}
+				pzsvc.LogAuditBuf(s, s.UserID, "http request - calling pzsvc-exec", string(outByt), workAddr)
+			} else {
+				// if it's not a valid input object, we can assume that it's a JWT
+				pzsvc.LogAudit(s, s.UserID, "http request - calling pzsvc-exec with encrypted body", workAddr)
+			}
+
 			outpByts, pErr := pzsvc.RequestKnownJSON("POST", inpStr, workAddr, "", &respObj)
 			if pErr != nil {
 				pErr.Log(s, "Error calling pzsvc-exec")
