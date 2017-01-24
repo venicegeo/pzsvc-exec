@@ -197,7 +197,7 @@ func workerThread(s pzsvc.Session, configObj pzse.ConfigType, svcID string) {
 			var respObj pzse.OutStruct
 			var inpObj pzse.InpStruct
 			err = json.Unmarshal([]byte(inpStr), &inpObj)
-			if err != nil {
+			if err == nil {
 				var outByt []byte
 				inpObj.ExtAuth = "*****"
 				inpObj.PzAuth = "*****"

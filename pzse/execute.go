@@ -263,13 +263,19 @@ func Execute(r *http.Request, s pzsvc.Session, configObj ConfigType, procPool pz
 		pzsvc.LogAudit(s, s.UserID, "pz File Download", dataID)
 		return pzsvc.DownloadByID(s, dataID, fname)
 	}
-	handleFList(s, inpObj.InPzFiles, inpObj.InPzNames, pzDownlFunc, "unspecified", "Pz download", &output, output.InFiles)
+	err = handleFList(s, inpObj.InPzFiles, inpObj.InPzNames, pzDownlFunc, "unspecified", "Pz download", &output, output.InFiles)
+	if err != nil {
+		return output, s
+	}
 
 	extDownlFunc := func(url, fname, fType string) (string, error) {
 		pzsvc.LogAudit(s, s.UserID, "external File Download", url)
 		return pzsvc.DownloadByURL(s, url, fname, s.ExtAuth, configObj.ExtRetryOn202)
 	}
 	handleFList(s, inpObj.InExtFiles, inpObj.InExtNames, extDownlFunc, "unspecified", "URL download", &output, output.InFiles)
+	if err != nil {
+		return output, s
+	}
 
 	if len(cmdSlice) == 0 {
 		addOutputError(&output, "No cmd or CliCmd.  Please provide `cmd` param.", http.StatusBadRequest)
@@ -303,6 +309,7 @@ func Execute(r *http.Request, s pzsvc.Session, configObj ConfigType, procPool pz
 	if err != nil {
 		pzsvc.LogSimpleErr(s, "clc.Run error: ", err)
 		addOutputError(&output, "pzsvc-exec failed on cmd `"+inpObj.Command+"`.  If that was correct, check logs for further details.", http.StatusBadRequest)
+		return output, s
 	}
 
 	output.ProgStdOut = stdout.String()
@@ -324,6 +331,8 @@ func Execute(r *http.Request, s pzsvc.Session, configObj ConfigType, procPool pz
 		return pzsvc.IngestFile(s, fName, fType, configObj.SvcName, version, attMap)
 	}
 
+	// Not checking for errors here because at this point it's mostly redundant, and possibly
+	// getting out some info is better than getting out no info.
 	handleFList(s, inpObj.OutTiffs, inpObj.OutTiffs, ingFunc, "raster", "upload", &output, output.OutFiles)
 	handleFList(s, inpObj.OutTxts, inpObj.OutTxts, ingFunc, "text", "upload", &output, output.OutFiles)
 	handleFList(s, inpObj.OutGeoJs, inpObj.OutGeoJs, ingFunc, "geojson", "upload", &output, output.OutFiles)

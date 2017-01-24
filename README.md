@@ -86,6 +86,8 @@ LocalOnly: Boolean.  If true, this pzsvc-exec instance will only accept connecti
 
 LogAudit: Boolean.  If true, pzsvc-exec will produce audit logs.  If false, does not produce audit logs.  Audit logs are useful as an added security feature, if you can manage them properly, but add significant bulk to the log outputs.
 
+LimitUserData: Boolean.  If true, this instance reduces the overall amount of data it returns to the user significantly, causing any attempts at meaningful debugging to require access to the logs.  This is intended to serve as something of a security measure - reducing the ability of an external attacker to discover details of how the system works.
+
 ExtRetryOn202: Boolean.  If true, pzsvc-exec will respond to HTTP Code 202 responses on external file downloads by waiting a minute and trying again, for up to an hour.  This is offered as a way to enable dealings with systems like Planetlabs, where files must be activated before they are made available.
 
 DocURL: string.  Specifies a URL to provide to autoregistration and to the /documentation REST endpoint.  This URL shoudl point to some sort of online documentation about this pzsvc-exec instance.

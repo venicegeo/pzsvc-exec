@@ -77,6 +77,19 @@ func main() {
 			// the other options are shallow and informational.  This is the
 			// place where the work gets done.
 			output, s2 := pzse.Execute(r, s, configObj, pRes.ProcPool, pRes.Version)
+			if configObj.LimitUserData {
+				for _, outErr := range output.Errors {
+					pzsvc.LogSimpleErr(s2, "Output Error: "+outErr, nil)
+					pzsvc.LogAudit(s2, s2.UserID, "Output Error: "+outErr, s2.AppName)
+				}
+				if len(output.Errors) > 0 {
+					output.Errors = []string{"One or more output errors were generated.  Please see the log."}
+				}
+				pzsvc.LogInfo(s2, "ProgStdOut: "+output.ProgStdOut)
+				pzsvc.LogInfo(s2, "ProgStdErr: "+output.ProgStdErr)
+				output.ProgStdOut = ""
+				output.ProgStdErr = ""
+			}
 			byts := pzsvc.PrintJSON(w, output, output.HTTPStatus)
 			pzsvc.LogInfo(s2, `pzsvc-exec call completed.  Output: `+string(byts))
 			pzsvc.LogAudit(s, s.AppName, "execution response", r.RemoteAddr+"("+s2.UserID+")")

@@ -39,6 +39,7 @@ type ConfigType struct {
 	LocalOnly     bool              // True if service should only accept connections from localhost (used with task worker)
 	JwtSecAuthURL string            // URL for taskworker to decrypt JWT.  If nonblank, will assume that all jobs are JWT format, and will require decrypting.
 	LogAudit      bool              // True to log all auditable events
+	LimitUserData bool              // True to limit the information availabel to the individual user
 	ExtRetryOn202 bool              // If true, will retry when receiving a 202 response from external file download links
 	DocURL        string            // URL to provide to autoregistration and to documentation endpoint for info about the service
 }

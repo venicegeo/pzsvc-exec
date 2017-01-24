@@ -24,7 +24,7 @@ import (
 	"github.com/venicegeo/pzsvc-exec/pzsvc"
 )
 
-func handleFList(s pzsvc.Session, fList, nameList []string, lFunc rangeFunc, fType, action string, output *OutStruct, fileRec map[string]string) {
+func handleFList(s pzsvc.Session, fList, nameList []string, lFunc rangeFunc, fType, action string, output *OutStruct, fileRec map[string]string) error {
 	re := regexp.MustCompile(`^[\w\-\.]*$`)
 	for i, f := range fList {
 		name := ""
@@ -34,18 +34,21 @@ func handleFList(s pzsvc.Session, fList, nameList []string, lFunc rangeFunc, fTy
 		if !re.Match([]byte(name)) {
 			pzsvc.LogAlert(s, `Illegal filename "`+name+`" entered for `+action+`.  Possible attempted security breach.`)
 			addOutputError(output, `handleFlist error: Filename "`+name+`" contains illegal characters and is not permitted.`, http.StatusBadRequest)
-			continue
+			return fmt.Errorf("failure on file handling: illegal filename")
 		}
 		outStr, err := lFunc(f, name, fType)
 		if err != nil {
 			addOutputError(output, "Error in "+action+" of "+name+".", http.StatusBadRequest)
+			return fmt.Errorf("failure on file handling: request error: %s", err.Error())
 		} else if outStr == "" {
 			pzsvc.LogSimpleErr(s, `handleFlist error: type "`+fType+`", input "`+f+`" blank result.`, nil)
 			addOutputError(output, "Blank Result Error in "+action+" of "+name+".", http.StatusBadRequest)
+			return fmt.Errorf("failure on file handling: empty output")
 		} else {
 			fileRec[f] = outStr
 		}
 	}
+	return nil
 }
 
 func addOutputError(output *OutStruct, errString string, httpStat int) {
