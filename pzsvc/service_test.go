@@ -35,15 +35,24 @@ func TestManageRegistration(t *testing.T) {
 	svcL1 := SvcList{Data: []Service{Service{ServiceID: "123", URL: svcURL, Method: "POST", ResMeta: metaObj}}}
 	svcJSON, _ := json.Marshal(svcL1)
 
-	outStrs := []string{string(svcJSON), `{"Data":[]}`}
+	outStrs := []string{`---}`, string(svcJSON), `{"Data":[]}`}
 	SetMockClient(outStrs, 250)
 
 	err := ManageRegistration(s, targService)
+	if err == nil {
+		t.Error(`TestManageRegistration: passed on bad json`)
+	}
+	err = ManageRegistration(s, targService)
 	if err != nil {
 		t.Error(`TestManageRegistration: failed on full registration.  Error: `, err.Error())
 	}
 	err = ManageRegistration(s, targService)
 	if err != nil {
 		t.Error(`TestManageRegistration: failed on empty registration.  Error: `, err.Error())
+	}
+	SetMockClient([]string{string(svcJSON)}, 500)
+	err = ManageRegistration(s, targService)
+	if err == nil {
+		t.Error(`TestManageRegistration: passed on http error code`)
 	}
 }

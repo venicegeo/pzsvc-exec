@@ -15,6 +15,7 @@
 package pzse
 
 import (
+	"errors"
 	"testing"
 
 	"github.com/venicegeo/pzsvc-exec/pzsvc"
@@ -24,4 +25,30 @@ import (
 func TestPrintHelp(t *testing.T) {
 	w, _, _ := pzsvc.GetMockResponseWriter()
 	PrintHelp(w)
+}
+
+func TestHandleFlist(t *testing.T) {
+
+	outObj := OutStruct{}
+	var err error
+
+	flistTestFunc := func(dataID, fname, fType string) (string, error) {
+		if dataID == "err" {
+			return "", errors.New("error")
+		}
+		return dataID, nil
+	}
+
+	err = handleFList(pzsvc.Session{}, []string{"blah"}, []string{"../blah"}, flistTestFunc, "unspecified", "", &outObj, map[string]string{"": ""})
+	if err == nil {
+		t.Error(`TestHandleFlist: failed to catch attempted temp folder breakout`)
+	}
+	err = handleFList(pzsvc.Session{}, []string{"err"}, []string{"blah"}, flistTestFunc, "unspecified", "", &outObj, map[string]string{"": ""})
+	if err == nil {
+		t.Error(`TestHandleFlist: failed to catch file handle error`)
+	}
+	err = handleFList(pzsvc.Session{}, []string{""}, []string{"blah"}, flistTestFunc, "unspecified", "", &outObj, map[string]string{"": ""})
+	if err == nil {
+		t.Error(`TestHandleFlist: failed to catch file handle empty`)
+	}
 }

@@ -180,7 +180,6 @@ func Execute(r *http.Request, s pzsvc.Session, configObj ConfigType, procPool pz
 
 	s.SessionID, err = pzsvc.PsuUUID()
 	if err != nil {
-		s.SessionID = "FailedOnInit"
 		pzsvc.LogSimpleErr(s, "psuUUID error: ", err)
 		addOutputError(&output, "pzsvc-exec internal error.  Check logs for further information.", http.StatusInternalServerError)
 		return output, s
@@ -289,8 +288,6 @@ func Execute(r *http.Request, s pzsvc.Session, configObj ConfigType, procPool pz
 	// probably where it's called from, and we need to acccess it directly.
 	_, err = os.Stat(fmt.Sprintf("./%s", cmdSlice[0]))
 	if err == nil || !(os.IsNotExist(err)) {
-		// ie, if there's a file in the start folder named the same thing
-		// as the base command
 		cmdSlice[0] = ("../" + cmdSlice[0])
 	}
 

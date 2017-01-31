@@ -25,9 +25,15 @@ import (
 )
 
 func TestParseConfiguration(t *testing.T) {
-	configs, planOuts, authEnv := getTestConfigList()
-	holdEnv := os.Getenv(authEnv)
-	os.Setenv(authEnv, "pzsvc-exec")
+	configs, planOuts := getTestConfigList()
+	holdAddrEnv := os.Getenv("addrEnv")
+	os.Setenv("addrEnv", "pz-addr")
+	holdPortEnv := os.Getenv("portEnv")
+	os.Setenv("portEnv", "8081")
+	holdAPIKeyEnv := os.Getenv("apiKeyEnv")
+	os.Setenv("apiKeyEnv", "pz-auth")
+	holdBlankEnv := os.Getenv("blankEnv")
+	os.Setenv("blankEnv", "")
 	s := pzsvc.Session{}
 	for i, config := range configs {
 		planOut := planOuts[i]
@@ -42,12 +48,15 @@ func TestParseConfiguration(t *testing.T) {
 				`.  actual: ` + runOut.Version + `.  expected: ` + planOut.Version + `.`)
 		}
 	}
-	os.Setenv(authEnv, holdEnv)
+	os.Setenv("addrEnv", holdAddrEnv)
+	os.Setenv("portEnv", holdPortEnv)
+	os.Setenv("apiKeyEnv", holdAPIKeyEnv)
+	os.Setenv("blankEnv", holdBlankEnv)
 }
 
 func TestExecute(t *testing.T) {
 	config := getTestConfigWorkable()
-	s := pzsvc.Session{}
+	var s pzsvc.Session
 	var parsConfig ConfigParseOut
 	parsConfig, s = ParseConfigAndRegister(s, &config)
 	s.PzAddr = "testAddr"
@@ -61,7 +70,10 @@ func TestExecute(t *testing.T) {
 		InExtFiles: []string{"https://avatars0.githubusercontent.com/u/15457149?v=3&s=200"},
 		InExtNames: []string{"icon.png"},
 		OutTiffs:   []string{"icon.png"},
-		PzAuth:     "aaa"}
+		PzAuth:     "pzAuth",
+		PzAddr:     "pzAddr",
+		ExtAuth:    "extAuth",
+		UserID:     "user"}
 
 	byts, err := json.Marshal(inpObj)
 	if err != nil {
@@ -70,10 +82,47 @@ func TestExecute(t *testing.T) {
 
 	r.Body = pzsvc.GetMockReadCloser(string(byts))
 	outObj, _ := Execute(&r, s, config, parsConfig.ProcPool, parsConfig.Version)
-
 	if outObj.Errors != nil {
 		for _, errStr := range outObj.Errors {
 			t.Error(`TestExecute: Generated Error: ` + errStr)
 		}
 	}
+
+	r.Method = "GET"
+	outObj, _ = Execute(&r, s, config, parsConfig.ProcPool, parsConfig.Version)
+	if outObj.Errors == nil {
+		t.Error(`TestExecute: Did not error on GET.`)
+	}
+	r.Method = "POST"
+	/*
+		r.Body = pzsvc.GetMockReadCloser("}")
+		outObj, _ = Execute(&r, s, config, parsConfig.ProcPool, parsConfig.Version)
+		if outObj.Errors == nil {
+			objbyt, _ := json.Marshal(outObj)
+			t.Error(`TestExecute: Did not error on bad json: ` + string(objbyt))
+		}
+	*/
+	s.PzAddr = ""
+	inpObj.PzAddr = ""
+	r.Body = pzsvc.GetMockReadCloser(string(byts))
+	outObj, _ = Execute(&r, s, config, parsConfig.ProcPool, parsConfig.Version)
+	if outObj.Errors == nil {
+		t.Error(`TestExecute: Did not error on unfilled need for PzAddr.`)
+	}
+	s.PzAddr = "testAddr"
+	inpObj.PzAddr = "pzAddr"
+	byts, _ = json.Marshal(inpObj)
+
+	s.PzAuth = ""
+	inpObj.PzAuth = ""
+	byts, _ = json.Marshal(inpObj)
+	r.Body = pzsvc.GetMockReadCloser(string(byts))
+	outObj, _ = Execute(&r, s, config, parsConfig.ProcPool, parsConfig.Version)
+	if outObj.Errors == nil {
+		t.Error(`TestExecute: Did not error on unfilled need for PzAuth.`)
+	}
+	s.PzAuth = "testAuth"
+	inpObj.PzAuth = "pzAuth"
+	byts, _ = json.Marshal(inpObj)
+
 }

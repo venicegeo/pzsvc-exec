@@ -21,7 +21,7 @@ func getTestConfigWorkable() ConfigType {
 		VersionStr:  "0.0",
 		PzAddr:      "aaa",
 		APIKeyEnVar: "TESTENV",
-		SvcName:     "testSvc",
+		SvcName:     "",
 		URL:         "www.testSvc.nope",
 		Port:        0,
 		Description: "Insert Description Here",
@@ -32,17 +32,19 @@ func getTestConfigWorkable() ConfigType {
 		CanDownlExt: true}
 }
 
-func getTestConfigList() ([6]ConfigType, [6]ConfigParseOut, string) {
+func getTestConfigList() ([6]ConfigType, [6]ConfigParseOut) {
 
 	DefaultConfig := ConfigType{
 		CliCmd:        "ls -l",
 		VersionCmd:    "echo vers1",
 		VersionStr:    "vers2",
 		PzAddr:        "aaa",
-		APIKeyEnVar:   "APP",
+		PzAddrEnVar:   "addrEnv",
+		APIKeyEnVar:   "apiKeyEnv",
 		SvcName:       "testSvc",
 		URL:           "www.testSvc.nope",
 		Port:          8081,
+		PortEnVar:     "portEnv",
 		Description:   "Insert Description Here",
 		Attributes:    map[string]string{"testAttr": "testAtt"},
 		NumProcs:      0, //We'll test this part, but we'll do it on the full run-through, rather than the config-tester
@@ -52,8 +54,10 @@ func getTestConfigList() ([6]ConfigType, [6]ConfigParseOut, string) {
 		RegForTaskMgr: true,
 		MaxRunTime:    50,
 		LocalOnly:     false,
-		//JwtSecAuthURL: "secAuth",
-		LogAudit: true,
+		LogAudit:      true,
+		LimitUserData: false,
+		ExtRetryOn202: true,
+		DocURL:        "fakeURL",
 	}
 	var configList [6]ConfigType
 	var configParseList [6]ConfigParseOut
@@ -63,7 +67,9 @@ func getTestConfigList() ([6]ConfigType, [6]ConfigParseOut, string) {
 	//configList[1] = ConfigType{cliCmd, versionCmd, versionStr, "", apiKeyEnVar, svcName, url, 0, desc, attr, numProcs, false, false, false}
 	configList[1] = DefaultConfig
 	configList[1].PzAddr = ""
+	configList[1].PzAddrEnVar = "blankEnv"
 	configList[1].Port = 0
+	configList[1].PortEnVar = "blankEnv"
 	configList[1].CanUpload = false
 	configList[1].CanDownlPz = false
 	configList[1].CanDownlExt = false
@@ -71,8 +77,9 @@ func getTestConfigList() ([6]ConfigType, [6]ConfigParseOut, string) {
 
 	//configList[2] = ConfigType{cliCmd, versionCmd, "", pzAddr, "", "", url, port, desc, attr, numProcs, true, true, true}
 	configList[2] = DefaultConfig
+	configList[2].PzAddrEnVar = "blankEnv"
 	configList[2].VersionStr = ""
-	configList[2].APIKeyEnVar = ""
+	configList[2].APIKeyEnVar = "blankEnv"
 	configList[2].SvcName = ""
 	configParseList[2] = ConfigParseOut{":8081", "vers1", nil}
 
@@ -97,5 +104,5 @@ func getTestConfigList() ([6]ConfigType, [6]ConfigParseOut, string) {
 	configList[5].Description = ""
 	configParseList[5] = ConfigParseOut{":8081", "", nil}
 
-	return configList, configParseList, DefaultConfig.APIKeyEnVar
+	return configList, configParseList
 }

@@ -28,7 +28,7 @@ func TestDownloadByID(t *testing.T) {
 	dataID := "1234ID"
 	fileName := "tempTestFile.tmp"
 	subFold := "folderName"
-	s := Session{SubFold: subFold, PzAddr: url, PzAuth: authKey}
+	s := Session{SubFold: subFold, PzAddr: url, PzAuth: authKey, LogRootDir: "Test"}
 
 	os.Mkdir(subFold, 0777)
 	_, err := DownloadByID(s, dataID, fileName)
@@ -63,7 +63,7 @@ func TestIngestFile(t *testing.T) {
 	authKey := "testAuthKey"
 	fileName := "tempTestFile.tmp"
 	subFold := "folderName"
-	s := Session{SubFold: subFold, PzAddr: url, PzAuth: authKey}
+	s := Session{SubFold: subFold, PzAddr: url, PzAuth: authKey, LogAudit: true}
 
 	os.Mkdir(subFold, 0777)
 	err := ioutil.WriteFile("./"+subFold+"/"+fileName, []byte(fileName), 0666)
