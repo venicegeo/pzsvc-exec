@@ -55,7 +55,7 @@ func DownloadByURL(s Session, url, filename, authKey string, retryOn202 bool) (s
 		resp   *http.Response
 		x      int
 	)
-	LogAudit(s, s.UserID, "file download request for "+filename, url)
+	LogAudit(s, s.UserID, "file download request for "+filename, url, "", INFO)
 	for x = 0; x < 60; x++ {
 		resp, pErr = SubmitSinglePart("GET", "", url, authKey)
 		if !retryOn202 || resp == nil || !(resp.StatusCode == 202) {
@@ -64,7 +64,7 @@ func DownloadByURL(s Session, url, filename, authKey string, retryOn202 bool) (s
 		if resp != nil && resp.Body != nil {
 			resp.Body.Close()
 		}
-		LogAudit(s, url, "received 202.  Will wait minute, then retry. "+filename, s.UserID)
+		LogAudit(s, url, "received 202"+filename, s.UserID, "Will wait minute, then retry.", NOTICE)
 		time.Sleep(60 * time.Second)
 	}
 	if resp != nil {
@@ -73,7 +73,7 @@ func DownloadByURL(s Session, url, filename, authKey string, retryOn202 bool) (s
 	if pErr != nil {
 		return "", pErr.Log(s, "Download error: ")
 	}
-	LogAudit(s, url, "file download response for "+filename, s.UserID)
+	LogAudit(s, url, "file download response for "+filename, s.UserID, "", INFO)
 	if filename == "" {
 		contDisp := resp.Header.Get("Content-Disposition")
 		_, params, err = mime.ParseMediaType(contDisp)
@@ -85,7 +85,7 @@ func DownloadByURL(s Session, url, filename, authKey string, retryOn202 bool) (s
 			return "", LogSimpleErr(s, `Input file from URL "`+url+`" was not given a name.`, nil)
 		}
 	}
-	LogAudit(s, s.UserID, "local file creation and writing", filename) //file creation/manipulation
+	LogAudit(s, s.UserID, "local file creation and writing", filename, "", INFO) //file creation/manipulation
 	out, err := os.Create(locString(s.SubFold, filename))
 	if err != nil {
 		return "", LogSimpleErr(s, "Download: could not create file "+filename+": ", err)
@@ -183,7 +183,7 @@ func IngestFile(s Session, fName, fType, sourceName, version string,
 
 	path := locString(s.SubFold, fName)
 
-	LogAudit(s, s.UserID, "read file for ingest", path)
+	LogAudit(s, s.UserID, "read file for ingest", path, "", INFO)
 	fData, err := ioutil.ReadFile(path)
 	if err != nil {
 		return "", LogSimpleErr(s, `Error reading file `+fName+` for Ingest: `, err)

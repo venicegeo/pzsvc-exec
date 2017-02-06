@@ -245,21 +245,21 @@ func Execute(r *http.Request, s pzsvc.Session, configObj ConfigType, procPool pz
 		return output, s
 	}
 
-	pzsvc.LogAudit(s, s.AppName, "creating temp dir "+s.SubFold, "local hard drive")
+	pzsvc.LogAudit(s, s.AppName, "creating temp dir "+s.SubFold, "local hard drive", "", pzsvc.INFO)
 	err = os.Mkdir("./"+s.SubFold, 0777)
 	if err != nil {
 		pzsvc.LogSimpleErr(s, "os.Mkdir error: ", err)
 		addOutputError(&output, "pzsvc-exec internal error.  Check logs for further information.", http.StatusInternalServerError)
 	}
 	defer os.RemoveAll("./" + s.SubFold)
-	defer pzsvc.LogAudit(s, s.AppName, "deleting temp dir "+s.SubFold, "local hard drive")
+	defer pzsvc.LogAudit(s, s.AppName, "deleting temp dir "+s.SubFold, "local hard drive", "", pzsvc.INFO)
 
 	// this is done to enable use of handleFList, which lets us
 	// reduce a fair bit of code duplication in plowing through
 	// our upload/download lists.  handleFList gets used a fair
 	// bit more after the execute call.
 	pzDownlFunc := func(dataID, fname, fType string) (string, error) {
-		pzsvc.LogAudit(s, s.UserID, "pz File Download", dataID)
+		pzsvc.LogAudit(s, s.UserID, "pz File Download", dataID, "", pzsvc.INFO)
 		return pzsvc.DownloadByID(s, dataID, fname)
 	}
 	err = handleFList(s, inpObj.InPzFiles, inpObj.InPzNames, pzDownlFunc, "unspecified", "Pz download", &output, output.InFiles)
@@ -268,7 +268,7 @@ func Execute(r *http.Request, s pzsvc.Session, configObj ConfigType, procPool pz
 	}
 
 	extDownlFunc := func(url, fname, fType string) (string, error) {
-		pzsvc.LogAudit(s, s.UserID, "external File Download", url)
+		pzsvc.LogAudit(s, s.UserID, "external File Download", url, "", pzsvc.INFO)
 		return pzsvc.DownloadByURL(s, url, fname, s.ExtAuth, configObj.ExtRetryOn202)
 	}
 	handleFList(s, inpObj.InExtFiles, inpObj.InExtNames, extDownlFunc, "unspecified", "URL download", &output, output.InFiles)
@@ -300,7 +300,7 @@ func Execute(r *http.Request, s pzsvc.Session, configObj ConfigType, procPool pz
 	clc.Stderr = &stderr
 
 	pzsvc.LogInfo(s, "Executing `"+configObj.CliCmd+" "+inpObj.Command+"`.")
-	pzsvc.LogAudit(s, s.UserID, "Executing `"+configObj.CliCmd+" "+inpObj.Command+"`.", "cmdLine")
+	pzsvc.LogAudit(s, s.UserID, "Executing `"+configObj.CliCmd+" "+inpObj.Command+"`.", "cmdLine", "", pzsvc.INFO)
 	err = clc.Run()
 
 	if err != nil {
@@ -324,7 +324,7 @@ func Execute(r *http.Request, s pzsvc.Session, configObj ConfigType, procPool pz
 	// same principles.
 
 	ingFunc := func(fName, dummy, fType string) (string, error) {
-		pzsvc.LogAudit(s, s.UserID, "Pz File Ingest", fName)
+		pzsvc.LogAudit(s, s.UserID, "Pz File Ingest", fName, "", pzsvc.INFO)
 		return pzsvc.IngestFile(s, fName, fType, configObj.SvcName, version, attMap)
 	}
 

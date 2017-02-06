@@ -20,18 +20,23 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"os"
 	"runtime"
 	"strings"
+	"time"
 )
 
 // LogFunc is the function used to add entries to the log
-var (
-	LogFunc func(string)
-)
 
 func baseLogFunc(logString string) {
 	fmt.Println(logString)
 }
+
+var (
+	// LogFunc is the logging function in use by this instance.
+	// It exists as a way to easily control where your logs go.
+	LogFunc = baseLogFunc
+)
 
 // LoggedError is a duplicate of the "error" interface.  Its real point is to
 // indicate, when it is returned from a function, that the error it represents
@@ -46,9 +51,6 @@ type LoggedError error
 // to simplify the task of modifying log behavior in the future.
 func logMessage(s Session, prefix, message string) {
 	_, file, line, _ := runtime.Caller(2)
-	if LogFunc == nil {
-		LogFunc = baseLogFunc
-	}
 	if s.LogRootDir != "" {
 		splits := strings.SplitAfter(file, s.LogRootDir)
 		if len(splits) > 1 {
@@ -96,11 +98,28 @@ func LogAlert(s Session, message string) {
 // conform to Audit requirements.  This function is intended to maintain
 // uniformity of appearance and behavior, and also to ease maintainability
 // when routing requirements change.
-func LogAudit(s Session, actor, action, actee string) {
+func LogAudit(s Session, actor, action, actee, msg string, severity int) {
 	if s.LogAudit {
-		logMessage(s, "AUDIT", actor+": "+action+": "+actee)
+		time := time.Now().UTC().Format("2006-01-02T15:04:05.999Z")
+
+		hostName, _ := os.Hostname()
+		outStr := fmt.Sprintf(`<%d>1 %s %s %s - ID%d [pzaudit@48851 actor="%s" action="%s" actee="%s"] %s`,
+			8+severity, time, hostName, s.AppName, os.Getpid(), actor, action, actee, msg)
+		LogFunc(outStr)
+		//logMessage(s, "AUDIT", actor+": "+action+": "+actee)
 	}
 }
+
+// various constants representing the levels of severity for a given audit message
+const (
+	FATAL    = 0
+	CRITICAL = 2
+	ERROR    = 3
+	WARN     = 4
+	NOTICE   = 5
+	INFO     = 6
+	DEBUG    = 7
+)
 
 // LogAuditBuf is LogAudit for cases where it needs to include a request body, or
 // where it needs to include a response body and the contents of that body are

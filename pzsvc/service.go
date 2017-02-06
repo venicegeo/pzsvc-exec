@@ -26,7 +26,7 @@ import (
 func FindMySvc(s Session, svcName string) (string, LoggedError) {
 	query := s.PzAddr + "/service/me?per_page=1000&keyword=" + url.QueryEscape(svcName)
 	var respObj SvcList
-	LogAudit(s, s.UserID, "http request - looking for service "+svcName, query)
+	LogAudit(s, s.UserID, "http request - looking for service "+svcName, query, "", INFO)
 	byts, err := RequestKnownJSON("GET", "", query, s.PzAuth, &respObj)
 	LogAuditBuf(s, query, "http response to service listing request", string(byts), s.UserID)
 	if err != nil {

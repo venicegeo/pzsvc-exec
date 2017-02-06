@@ -29,7 +29,7 @@ import (
 func main() {
 
 	s := pzsvc.Session{AppName: "pzsvc-taskworker", SessionID: "startup", LogRootDir: "pzsvc-exec"}
-	pzsvc.LogAudit(s, s.AppName, "startup", s.AppName)
+	pzsvc.LogAudit(s, s.AppName, "startup", s.AppName, "", pzsvc.INFO)
 
 	if len(os.Args) < 2 {
 		pzsvc.LogSimpleErr(s, "error: Insufficient parameters.  You must specify a config file.", nil)
@@ -203,15 +203,15 @@ func workerThread(s pzsvc.Session, configObj pzse.ConfigType, svcID string) {
 				inpObj.PzAuth = "*****"
 				outByt, err = json.Marshal(inpObj)
 				if err != nil {
-					pzsvc.LogAudit(s, s.UserID, "Audit failure.  Could not Marshal.  Job Failed.", s.AppName)
-					sendExecResult(s, s.PzAddr, s.PzAuth, svcID, jobID, "Success", nil)
+					pzsvc.LogAudit(s, s.UserID, "Audit failure", s.AppName, "Could not Marshal.  Job Canceled.", pzsvc.ERROR)
+					sendExecResult(s, s.PzAddr, s.PzAuth, svcID, jobID, "Fail", nil)
 					time.Sleep(10 * time.Second)
 					continue
 				}
 				pzsvc.LogAuditBuf(s, s.UserID, "http request - calling pzsvc-exec", string(outByt), workAddr)
 			} else {
 				// if it's not a valid input object, we can assume that it's a JWT
-				pzsvc.LogAudit(s, s.UserID, "http request - calling pzsvc-exec with encrypted body", workAddr)
+				pzsvc.LogAudit(s, s.UserID, "http request - calling pzsvc-exec with encrypted body", workAddr, "", pzsvc.INFO)
 			}
 
 			outpByts, pErr := pzsvc.RequestKnownJSON("POST", inpStr, workAddr, "", &respObj)

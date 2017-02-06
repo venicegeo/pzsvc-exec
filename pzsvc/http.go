@@ -182,7 +182,7 @@ func GetJobResponse(s Session, jobID string) (*DataResult, *Error) {
 			Data JobStatusResp `json:"data,omitempty"`
 		}
 		targAddr := s.PzAddr + "/job/" + jobID
-		LogAudit(s, s.UserID, "http call - Checking job status - request", targAddr)
+		LogAudit(s, s.UserID, "http call - Checking job status - request", targAddr, "", INFO)
 		respBuf, err := RequestKnownJSON("GET", "", targAddr, s.PzAuth, &outpObj)
 		if err != nil {
 			return nil, err
@@ -244,12 +244,12 @@ func ReadBodyJSON(output interface{}, body io.ReadCloser) ([]byte, *Error) {
 // Piazza address
 func CheckAuth(s Session) *Error {
 	targURL := s.PzAddr + "/service"
-	LogAudit(s, s.UserID, "verify Piazza auth key request", targURL)
+	LogAudit(s, s.UserID, "verify Piazza auth key request", targURL, "", INFO)
 	_, err := SubmitSinglePart("GET", "", targURL, s.PzAuth)
 	if err != nil {
 		return &Error{LogMsg: "Could not confirm user authorization."}
 	}
-	LogAudit(s, targURL, "verify Piazza auth key response", s.UserID)
+	LogAudit(s, targURL, "verify Piazza auth key response", s.UserID, "", INFO)
 	return nil
 }
 
