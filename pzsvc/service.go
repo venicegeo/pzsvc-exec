@@ -28,7 +28,7 @@ func FindMySvc(s Session, svcName string) (string, LoggedError) {
 	var respObj SvcList
 	LogAudit(s, s.UserID, "http request - looking for service "+svcName, query, "", INFO)
 	byts, err := RequestKnownJSON("GET", "", query, s.PzAuth, &respObj)
-	LogAuditBuf(s, query, "http response to service listing request", string(byts), s.UserID)
+	LogAudit(s, query, "http response to service listing request", s.UserID, string(byts), INFO)
 	if err != nil {
 		return "", err.Log(s, "Error when finding Pz Service")
 	}
@@ -62,15 +62,15 @@ func ManageRegistration(s Session, svcObj Service) LoggedError {
 	if svcID == "" {
 		LogInfo(s, "Registering Service")
 		targURL := s.PzAddr + "/service"
-		LogAuditBuf(s, s.AppName, "Registering Service request", string(svcJSON), targURL)
+		LogAudit(s, s.AppName, "Registering Service request", targURL, string(svcJSON), INFO)
 		resp, pzErr = SubmitSinglePart("POST", string(svcJSON), targURL, s.PzAuth)
-		LogAuditResponse(s, targURL, "Registering Service Response", resp, s.AppName)
+		LogAuditResponse(s, targURL, "Registering Service Response", s.AppName, resp, INFO)
 	} else {
 		LogInfo(s, "Updating Service Registration")
 		targURL := s.PzAddr + "/service/" + svcID
-		LogAuditBuf(s, s.AppName, "Updating Service request", string(svcJSON), targURL)
+		LogAudit(s, s.AppName, "Updating Service request", targURL, string(svcJSON), INFO)
 		resp, pzErr = SubmitSinglePart("PUT", string(svcJSON), s.PzAddr+"/service/"+svcID, s.PzAuth)
-		LogAuditResponse(s, targURL, "Updating Service Response", resp, s.AppName)
+		LogAuditResponse(s, targURL, "Updating Service Response", s.AppName, resp, INFO)
 	}
 	if pzErr != nil {
 		return pzErr.Log(s, "Error managing registration: ")

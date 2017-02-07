@@ -208,7 +208,7 @@ func workerThread(s pzsvc.Session, configObj pzse.ConfigType, svcID string) {
 					time.Sleep(10 * time.Second)
 					continue
 				}
-				pzsvc.LogAuditBuf(s, s.UserID, "http request - calling pzsvc-exec", string(outByt), workAddr)
+				pzsvc.LogAudit(s, s.UserID, "http request - calling pzsvc-exec", workAddr, string(outByt), pzsvc.INFO)
 			} else {
 				// if it's not a valid input object, we can assume that it's a JWT
 				pzsvc.LogAudit(s, s.UserID, "http request - calling pzsvc-exec with encrypted body", workAddr, "", pzsvc.INFO)
@@ -219,7 +219,7 @@ func workerThread(s pzsvc.Session, configObj pzse.ConfigType, svcID string) {
 				pErr.Log(s, "Error calling pzsvc-exec")
 				sendExecResult(s, s.PzAddr, s.PzAuth, svcID, jobID, "Fail", nil)
 			} else {
-				pzsvc.LogAuditBuf(s, workAddr, "http response from pzsvc-exec", string(outpByts), s.UserID)
+				pzsvc.LogAudit(s, workAddr, "http response from pzsvc-exec", s.UserID, string(outpByts), pzsvc.INFO)
 				sendExecResult(s, s.PzAddr, s.PzAuth, svcID, jobID, "Success", outpByts)
 			}
 			time.Sleep(10 * time.Second)

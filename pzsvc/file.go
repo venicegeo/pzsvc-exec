@@ -153,17 +153,17 @@ func Ingest(s Session, fName, fType, sourceName, version string,
 	if fileData != nil {
 		targAddr = s.PzAddr + "/data/file"
 		LogInfo(s, "beginning file upload")
-		LogAuditBuf(s, s.UserID, "file upload http request", string(bbuff), targAddr)
+		LogAudit(s, s.UserID, "file upload http request", targAddr, string(bbuff), INFO)
 		resp, pErr = SubmitMultipart(string(bbuff), targAddr, fName, s.PzAuth, fileData)
 	} else {
 		targAddr = s.PzAddr + "/data"
-		LogAuditBuf(s, s.UserID, "file upload http request", string(bbuff), targAddr)
+		LogAudit(s, s.UserID, "file upload http request", targAddr, string(bbuff), INFO)
 		resp, pErr = SubmitSinglePart("POST", string(bbuff), targAddr, s.PzAuth)
 	}
 	if pErr != nil {
 		return "", pErr.Log(s, "Failure submitting Ingest request")
 	}
-	LogAuditResponse(s, targAddr, "file upload http response", resp, s.UserID)
+	LogAuditResponse(s, targAddr, "file upload http response", s.UserID, resp, INFO)
 
 	jobID, pErr := GetJobID(resp)
 	if pErr != nil {

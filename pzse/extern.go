@@ -33,12 +33,12 @@ func CallPzsvcExec(s pzsvc.Session, inpObj *InpStruct, algoURL string) (*OutStru
 		return nil, pzsvc.LogSimpleErr(s, "Failed to Marshal inpObj on call to pzsvc-exec.", err)
 
 	}
-	pzsvc.LogAuditBuf(s, s.UserID, "http request - calling pzsvc-exec", string(byts), algoURL)
+	pzsvc.LogAudit(s, s.UserID, "http request - calling pzsvc-exec", algoURL, string(byts), pzsvc.INFO)
 	byts, pErr := pzsvc.RequestKnownJSON("POST", string(byts), algoURL, "", &respObj)
 	if pErr != nil {
 		return nil, pErr.Log(s, "Error calling pzsvc-exec")
 	}
-	pzsvc.LogAuditBuf(s, algoURL, "http response from pzsvc-exec", string(byts), s.UserID)
+	pzsvc.LogAudit(s, algoURL, "http response from pzsvc-exec", s.UserID, string(byts), pzsvc.INFO)
 
 	if len(respObj.Errors) != 0 {
 		return nil, pzsvc.LogSimpleErr(s, `pzsvc-exec errors: `+pzsvc.SliceToCommaSep(respObj.Errors), nil)

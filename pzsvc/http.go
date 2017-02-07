@@ -187,7 +187,7 @@ func GetJobResponse(s Session, jobID string) (*DataResult, *Error) {
 		if err != nil {
 			return nil, err
 		}
-		LogAuditBuf(s, targAddr, "http call - Checking job status - response", string(respBuf), s.UserID)
+		LogAudit(s, targAddr, "http call - Checking job status - response", s.UserID, string(respBuf), INFO)
 
 		respObj := &outpObj.Data
 		if respObj.Status == "Submitted" ||

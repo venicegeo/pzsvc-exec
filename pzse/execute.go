@@ -205,7 +205,7 @@ func Execute(r *http.Request, s pzsvc.Session, configObj ConfigType, procPool pz
 
 	byts, _ = json.Marshal(inpObj)
 	pzsvc.LogInfo(s, `pzsvc-exec call initiated.  Input: `+string(byts))
-	pzsvc.LogAuditBuf(s, s.UserID, "pzsvc-exec execute call", string(byts), s.AppName)
+	pzsvc.LogAudit(s, s.UserID, "pzsvc-exec execute call", s.AppName, string(byts), pzsvc.INFO)
 
 	cmdParamSlice := splitOrNil(inpObj.Command, " ")
 	cmdConfigSlice := splitOrNil(configObj.CliCmd, " ")
