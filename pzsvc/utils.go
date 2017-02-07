@@ -148,6 +148,13 @@ type Error struct {
 	httpStatus int    // http status associated with the error (if any)
 }
 
+// OverwriteRequest exists because some requests contain auth information.  For security
+// reasons, that needs to be stripped out before logging, but the logic that knows
+// it needs to be removed only exists outside of the pzsvc library.
+func (err Error) OverwriteRequest(inReq string) {
+	err.request = inReq
+}
+
 // GenExtendedMsg is used to generate extended log messages from Error objects
 // for the cases where that's appropriate
 func (err Error) GenExtendedMsg() string {

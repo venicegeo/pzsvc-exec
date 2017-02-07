@@ -195,20 +195,24 @@ func workerThread(s pzsvc.Session, configObj pzse.ConfigType, svcID string) {
 			//}
 
 			var respObj pzse.OutStruct
-			var inpObj pzse.InpStruct
-			err = json.Unmarshal([]byte(inpStr), &inpObj)
+			var displayObj pzse.InpStruct
+			var displayByt []byte
+			err = json.Unmarshal([]byte(inpStr), &displayObj)
 			if err == nil {
-				var outByt []byte
-				inpObj.ExtAuth = "*****"
-				inpObj.PzAuth = "*****"
-				outByt, err = json.Marshal(inpObj)
+				if displayObj.ExtAuth != "" {
+					displayObj.ExtAuth = "*****"
+				}
+				if displayObj.PzAuth != "" {
+					displayObj.PzAuth = "*****"
+				}
+				displayByt, err = json.Marshal(displayObj)
 				if err != nil {
 					pzsvc.LogAudit(s, s.UserID, "Audit failure", s.AppName, "Could not Marshal.  Job Canceled.", pzsvc.ERROR)
 					sendExecResult(s, s.PzAddr, s.PzAuth, svcID, jobID, "Fail", nil)
 					time.Sleep(10 * time.Second)
 					continue
 				}
-				pzsvc.LogAudit(s, s.UserID, "http request - calling pzsvc-exec", workAddr, string(outByt), pzsvc.INFO)
+				pzsvc.LogAudit(s, s.UserID, "http request - calling pzsvc-exec", workAddr, string(displayByt), pzsvc.INFO)
 			} else {
 				// if it's not a valid input object, we can assume that it's a JWT
 				pzsvc.LogAudit(s, s.UserID, "http request - calling pzsvc-exec with encrypted body", workAddr, "", pzsvc.INFO)
@@ -216,6 +220,7 @@ func workerThread(s pzsvc.Session, configObj pzse.ConfigType, svcID string) {
 
 			outpByts, pErr := pzsvc.RequestKnownJSON("POST", inpStr, workAddr, "", &respObj)
 			if pErr != nil {
+				pErr.OverwriteRequest(string(displayByt))
 				pErr.Log(s, "Error calling pzsvc-exec")
 				sendExecResult(s, s.PzAddr, s.PzAuth, svcID, jobID, "Fail", nil)
 			} else {
