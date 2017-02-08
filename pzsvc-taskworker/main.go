@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"strconv"
 	"time"
 
 	"github.com/venicegeo/pzsvc-exec/pzse"
@@ -182,6 +183,7 @@ func workerThread(s pzsvc.Session, configObj pzse.ConfigType, svcID string) {
 		}
 		inpStr := pzJobObj.Data.SvcData.Data.DataInputs.Body.Content
 		jobID := pzJobObj.Data.SvcData.JobID
+		pzsvc.LogInfo(s, "input string size: "+strconv.Itoa(len(inpStr)))
 		if inpStr != "" {
 			pzsvc.LogInfo(s, "New Task Grabbed.  JobID: "+jobID)
 			failCount = 0

@@ -177,6 +177,7 @@ func Execute(r *http.Request, s pzsvc.Session, configObj ConfigType, procPool pz
 		addOutputError(&output, "Could not read request body.  Please use JSON format.", http.StatusBadRequest)
 		return output, s
 	}
+	pzsvc.LogInfo(s, "input received.  "+strconv.Itoa(len(byts))+"bytes.")
 
 	s.SessionID, err = pzsvc.PsuUUID()
 	if err != nil {
