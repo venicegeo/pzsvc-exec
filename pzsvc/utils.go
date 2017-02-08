@@ -151,7 +151,7 @@ type Error struct {
 // OverwriteRequest exists because some requests contain auth information.  For security
 // reasons, that needs to be stripped out before logging, but the logic that knows
 // it needs to be removed only exists outside of the pzsvc library.
-func (err Error) OverwriteRequest(inReq string) {
+func (err *Error) OverwriteRequest(inReq string) {
 	err.request = inReq
 }
 
