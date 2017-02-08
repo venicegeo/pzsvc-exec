@@ -303,16 +303,16 @@ func Execute(r *http.Request, s pzsvc.Session, configObj ConfigType, procPool pz
 	pzsvc.LogAudit(s, s.UserID, "Executing `"+configObj.CliCmd+" "+inpObj.Command+"`.", "cmdLine", "", pzsvc.INFO)
 	err = clc.Run()
 
+	output.ProgStdOut = stdout.String()
+	output.ProgStdErr = stderr.String()
+	pzsvc.LogInfo(s, `Program stdout: `+stdout.String())
+	pzsvc.LogInfo(s, `Program stderr: `+stderr.String())
+
 	if err != nil {
 		pzsvc.LogSimpleErr(s, "clc.Run error: ", err)
 		addOutputError(&output, "pzsvc-exec failed on cmd `"+inpObj.Command+"`.  If that was correct, check logs for further details.", http.StatusBadRequest)
 		return output, s
 	}
-
-	output.ProgStdOut = stdout.String()
-	output.ProgStdErr = stderr.String()
-	pzsvc.LogInfo(s, `Program stdout: `+stdout.String())
-	pzsvc.LogInfo(s, `Program stderr: `+stderr.String())
 
 	attMap := make(map[string]string)
 	attMap["algoName"] = configObj.SvcName
