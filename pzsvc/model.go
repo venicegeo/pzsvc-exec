@@ -323,3 +323,15 @@ type FileDataList struct {
 	Data       []DataDesc `json:"data,omitempty"`
 	Pagination PagStruct  `json:"pagination,omitempty"`
 }
+
+// UserProfileResp is the response object to the "/profile"
+// job call.  It contains user data.
+type UserProfileResp struct {
+	Data struct {
+		UserProfile struct {
+			UserName          string `json:"userName,omitempty"`
+			DistinguishedName string `json:"distinguishedName,omitempty"`
+			CreatedOn         string `json:"createdOn,omitempty"`
+		} `json:"userProfile,omitempty"`
+	} `json:"data,omitempty"`
+}

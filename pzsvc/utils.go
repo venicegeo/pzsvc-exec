@@ -46,54 +46,6 @@ var (
 // interface.
 type LoggedError error
 
-// logMessage receives a string to put to the logs.  It formats it correctly
-// and puts it in the right place.  This function exists partially in order
-// to simplify the task of modifying log behavior in the future.
-func logMessage(s Session, prefix, message string) {
-	_, file, line, _ := runtime.Caller(2)
-	if s.LogRootDir != "" {
-		splits := strings.SplitAfter(file, s.LogRootDir)
-		if len(splits) > 1 {
-			file = s.LogRootDir + splits[len(splits)-1]
-		}
-	}
-	outMsg := fmt.Sprintf("%s - [%s:%s %s %d] %s", prefix, s.AppName, s.SessionID, file, line, message)
-	LogFunc(outMsg)
-}
-
-// LogSimpleErr posts a logMessage call for simple error messages, and produces a pzsvc.Error
-// from the result.  The point is mostly to maintain uniformity of appearance and behavior.
-func LogSimpleErr(s Session, message string, err error) LoggedError {
-	if err != nil {
-		message += err.Error()
-	}
-	logMessage(s, "ERROR", message)
-	return fmt.Errorf(message)
-}
-
-// LogInfo posts a logMessage call for standard, non-error messages.  The
-// point is mostly to maintain uniformity of appearance and behavior.
-func LogInfo(s Session, message string) {
-	logMessage(s, "INFO", message)
-}
-
-// LogWarn posts a logMessage call for messages that suggest that something
-// may be going wrong, especially in the case of expected user error, but
-// that the program can make reasonable assumptions as to what was actually
-// intended and carry on.  The point of this function is mostly to maintain
-// uniformity of appearance and behavior.
-func LogWarn(s Session, message string) {
-	logMessage(s, "WARN", message)
-}
-
-// LogAlert posts a logMessage call for messages that suggest that someone
-// may be attempting to breach the security of the program, or point to the
-// possibility of a significant security vulnerability.  The point of this
-// function is mostly to maintain uniformity of appearance and behavior.
-func LogAlert(s Session, message string) {
-	logMessage(s, "ALERT", message)
-}
-
 // various constants representing the levels of severity for a given audit message
 const (
 	FATAL    = 0
@@ -105,19 +57,67 @@ const (
 	DEBUG    = 7
 )
 
+// logMessage receives a string to put to the logs.  It formats it correctly
+// and puts it in the right place.  This function exists partially in order
+// to simplify the task of modifying log behavior in the future.
+func logMessage(s Session, severity int, msg string) {
+	funcPtr, file, line, _ := runtime.Caller(2)
+	fname := runtime.FuncForPC(funcPtr).Name()
+	if s.LogRootDir != "" {
+		splits := strings.SplitAfter(file, s.LogRootDir)
+		if len(splits) > 1 {
+			file = s.LogRootDir + splits[len(splits)-1]
+		}
+	}
+	time := time.Now().UTC().Format("2006-01-02T15:04:05.999Z")
+
+	hostName, _ := os.Hostname()
+	outMsg := fmt.Sprintf(`<%d>1 %s %s %s - ID%d [pzsource@48851 file="%s" line="%d" function="%s"] %s`,
+		8+severity, time, hostName, s.AppName, os.Getpid(), file, line, fname, msg)
+	LogFunc(outMsg)
+}
+
+// LogSimpleErr posts a logMessage call for simple error messages, and produces a pzsvc.Error
+// from the result.  The point is mostly to maintain uniformity of appearance and behavior.
+func LogSimpleErr(s Session, message string, err error) LoggedError {
+	if err != nil {
+		message += err.Error()
+	}
+	logMessage(s, 3, message)
+	return fmt.Errorf(message)
+}
+
+// LogInfo posts a logMessage call for standard, non-error messages.  The
+// point is mostly to maintain uniformity of appearance and behavior.
+func LogInfo(s Session, message string) {
+	logMessage(s, 6, message)
+}
+
+// LogWarn posts a logMessage call for messages that suggest that something
+// may be going wrong, especially in the case of expected user error, but
+// that the program can make reasonable assumptions as to what was actually
+// intended and carry on.  The point of this function is mostly to maintain
+// uniformity of appearance and behavior.
+func LogWarn(s Session, message string) {
+	logMessage(s, 4, message)
+}
+
+// LogAlert posts a logMessage call for messages that suggest that someone
+// may be attempting to breach the security of the program, or point to the
+// possibility of a significant security vulnerability.  The point of this
+// function is mostly to maintain uniformity of appearance and behavior.
+func LogAlert(s Session, message string) {
+	logMessage(s, 5, "ALERT:"+message)
+}
+
 // LogAudit posts a logMessage call for messages that are generated to
 // conform to Audit requirements.  This function is intended to maintain
 // uniformity of appearance and behavior, and also to ease maintainability
 // when routing requirements change.
 func LogAudit(s Session, actor, action, actee, msg string, severity int) {
 	if s.LogAudit {
-		time := time.Now().UTC().Format("2006-01-02T15:04:05.999Z")
-
-		hostName, _ := os.Hostname()
-		outStr := fmt.Sprintf(`<%d>1 %s %s %s - ID%d [pzaudit@48851 actor="%s" action="%s" actee="%s"] %s`,
-			8+severity, time, hostName, s.AppName, os.Getpid(), actor, action, actee, msg)
-		LogFunc(outStr)
-		//logMessage(s, "AUDIT", actor+": "+action+": "+actee)
+		outMsg := fmt.Sprintf(`[pzaudit@48851 actor="%s" action="%s" actee="%s"] %s`, actor, action, actee, msg)
+		logMessage(s, severity, outMsg)
 	}
 }
 
@@ -195,10 +195,10 @@ func (err *Error) Log(s Session, msgAdd string) LoggedError {
 		if err.request != "" || err.response != "" {
 			outMsg = err.GenExtendedMsg()
 		}
-		logMessage(s, "ERROR", outMsg)
+		logMessage(s, 3, outMsg)
 		err.hasLogged = true
 	} else {
-		logMessage(s, "ERROR", "Meta-error.  Tried to log same message for a second time.")
+		logMessage(s, 3, "Meta-error.  Tried to log same message for a second time.")
 	}
 	if err.SimpleMsg != "" {
 		return fmt.Errorf(err.SimpleMsg)

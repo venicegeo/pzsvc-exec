@@ -24,10 +24,20 @@ import (
 // one, it returns the service ID.  If it does not, returns an empty string.  Currently
 // searches on service name and submitting user.
 func FindMySvc(s Session, svcName string) (string, LoggedError) {
-	query := s.PzAddr + "/service/me?per_page=1000&keyword=" + url.QueryEscape(svcName)
+
+	var profile UserProfileResp
+	query := s.PzAddr + "/profile"
+	LogAudit(s, s.UserID, "http request - looking for profile "+svcName, query, "", INFO)
+	byts, err := RequestKnownJSON("GET", "", query, s.PzAuth, &profile)
+	LogAudit(s, query, "http response to profile request", s.UserID, string(byts), INFO)
+	if err != nil {
+		return "", err.Log(s, "Error when acquiring profile")
+	}
+
 	var respObj SvcList
+	query = s.PzAddr + "/service?per_page=1000&keyword=" + url.QueryEscape(svcName) + "&createdBy=" + profile.Data.UserProfile.UserName
 	LogAudit(s, s.UserID, "http request - looking for service "+svcName, query, "", INFO)
-	byts, err := RequestKnownJSON("GET", "", query, s.PzAuth, &respObj)
+	byts, err = RequestKnownJSON("GET", "", query, s.PzAuth, &respObj)
 	LogAudit(s, query, "http response to service listing request", s.UserID, string(byts), INFO)
 	if err != nil {
 		return "", err.Log(s, "Error when finding Pz Service")
