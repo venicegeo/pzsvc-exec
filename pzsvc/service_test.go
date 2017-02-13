@@ -35,7 +35,9 @@ func TestManageRegistration(t *testing.T) {
 	svcL1 := SvcList{Data: []Service{Service{ServiceID: "123", URL: svcURL, Method: "POST", ResMeta: metaObj}}}
 	svcJSON, _ := json.Marshal(svcL1)
 
-	outStrs := []string{`---}`, string(svcJSON), `{"Data":[]}`}
+	profileStr := `{"type":"user-profile","data":{"userProfile":{"username":"PzTest","distinguishedName":"PzTestLong","createdOn":"aaa"}}}`
+
+	outStrs := []string{`---}`, profileStr, string(svcJSON), `{"Data":[]}`}
 	SetMockClient(outStrs, 250)
 
 	err := ManageRegistration(s, targService)
