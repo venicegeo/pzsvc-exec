@@ -24,7 +24,6 @@ import (
 // one, it returns the service ID.  If it does not, returns an empty string.  Currently
 // searches on service name and submitting user.
 func FindMySvc(s Session, svcName string) (string, LoggedError) {
-
 	var profile UserProfileResp
 	query := s.PzAddr + "/profile"
 	LogAudit(s, s.UserID, "http request - looking for profile "+svcName, query, "", INFO)

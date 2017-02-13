@@ -200,6 +200,18 @@ func Execute(r *http.Request, s pzsvc.Session, configObj ConfigType, procPool pz
 	}
 	if inpObj.UserID != "" {
 		s.UserID = inpObj.UserID
+	} else if s.PzAddr != "" && s.PzAuth != "" {
+		var profile pzsvc.UserProfileResp
+		query := s.PzAddr + "/profile"
+		pzsvc.LogAudit(s, s.AppName, "http request - looking for profile", query, "", pzsvc.INFO)
+		byts, pErr = pzsvc.RequestKnownJSON("GET", "", query, s.PzAuth, &profile)
+		pzsvc.LogAudit(s, query, "http response to profile request", s.AppName, string(byts), pzsvc.INFO)
+		if pErr != nil {
+			err = pErr.Log(s, "Error finding profile for session")
+			addOutputError(&output, "pzsvc-exec internal error.  Check logs for further information.", http.StatusInternalServerError)
+			return output, s
+		}
+		s.UserID = profile.Data.UserProfile.DistinguishedName
 	} else {
 		s.UserID = "anon user"
 	}
