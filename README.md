@@ -1,6 +1,6 @@
 # pzsvc-exec
 
-pzsvc-exec is a microservice written in the Go programming langauge.  It's purpose is to bring algorithms and other non-scalable applications and web services to the enterprise.  It provides such as load balanced to enable algorithms to be scalable in the Enterprise.
+pzsvc-exec is a microservice written in the Go programming langauge.  It's purpose is to bring algorithms and other non-scalable applications and web services to the enterprise.  It provides load balancing capabilities to enable algorithms and applications to be scalable in the Enterprise.
 
 "pzsvc-exec" is designed to serve command-line programs to Piazza, based on the contents of a config file.
 
