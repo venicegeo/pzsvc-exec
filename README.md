@@ -4,9 +4,9 @@ pzsvc-exec is a microservice written in the Go programming langauge.  It's purpo
 
 "pzsvc-exec" is designed to serve command-line programs to Piazza, based on the contents of a config file.
 
-## Contents
+## Table of Contents
 
-- [What and Why](#whatandwhy)
+- [What and Why](#what and why)
 - Installing and Running: You need this if you want to run/administrate a pzsvc-exec instance
 - Config File Format: You need this if you want to have any control over the instance you're running.  May be useful for understanding how pzsvc-exec works.
 - Service Endpoints: a listing of the service endpoints that pzsvc-exec makes available and what they are useful for.
