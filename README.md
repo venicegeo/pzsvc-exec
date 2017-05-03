@@ -6,7 +6,7 @@ pzsvc-exec is a microservice written in the Go programming langauge.  It's purpo
 
 ## Contents
 
-- What and Why: Useful background information and overview.
+- [What and Why](#whatandwhy)
 - Installing and Running: You need this if you want to run/administrate a pzsvc-exec instance
 - Config File Format: You need this if you want to have any control over the instance you're running.  May be useful for understanding how pzsvc-exec works.
 - Service Endpoints: a listing of the service endpoints that pzsvc-exec makes available and what they are useful for.
