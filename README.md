@@ -54,19 +54,19 @@ $ git clone git@github.com:venicegeo/pzsvc-exec.git
 
 ## Installing and Running
 
-Make sure you have Go installed on you machine, and an appropriate `GOPATH` (environment variable) set.
+Before installing pzsvc-exec, make sure you have Go installed on you machine, and the environment variables set.
 
-To install pzsvc-exec, do the following:
+To __*install*__ pzsvc-exec, do the following:
 	`$ go install github.com/venicegeo/pzsvc-exec/`
 
 Alternate install:
 	navigate to `GOPATH/src/github.com/venicegeo/pzsvc-exec`
 	then call `$ go install .`
 
-To run pzsvc-exec, do the following:
+To __*run*__ pzsvc-exec, do the following:
 	`$GOBIN/pzsvc-exec <configfile.txt>`
 	
-	where <configfile.txt> represents the path to an appropriately formatted configuration file, indicating what command line function to use, and where to find Piazza for registration.  Additionally, make sure that whatever application you wish to access is in path.
+ `configfile.txt` represents the path to an appropriately formatted configuration file, indicating what command line function to use, and where to find Piazza for registration.  Additionally, make sure that whatever application you wish to access is in path.
 
 ## Configuration File Format
 
