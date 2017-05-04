@@ -1,11 +1,11 @@
 # pzsvc-exec
 
-## Table of Contents
+## Contents
 
 - [Overview](#overview)
 - [Development Environment](#development-environment)
 - [Installing and Running](#installing-and-running)
-- Config File Format: You need this if you want to have any control over the instance you're running.  May be useful for understanding how pzsvc-exec works.
+- [Configuration File Definition](#configuration-file-definition) 
 - Service Endpoints: a listing of the service endpoints that pzsvc-exec makes available and what they are useful for.
 - Execute Endpoint Request Format: You need this if you want to make use of the /execute endpoint of pzsvc-exec with any control at all.
 - Pzsvc-Taskworker: What you need to know to use the associated pzsvc-taskworker app (and, by extension, to take advantage of the Piazza task queue for scalability)
@@ -68,7 +68,7 @@ To __*run*__ pzsvc-exec, do the following:
 	
  `configfile.txt` represents the path to an appropriately formatted configuration file, indicating what command line function to use, and where to find Piazza for registration.  Additionally, make sure that whatever application you wish to access is in path.
 
-## Configuration File Format
+## Configuration File Definition
 
 The example config file in this directory includes all pertinent potential entries, and may be used as an example, though some entries are left as 0/false/"".  Some entries are redundant with one another or mutually exclusive.  In cases like that, there is no behavioral difference between, for example, setting PzAddr to the empty string or leaving that entry out altogether.  Additional entries are meaningless but nonharmful, as long as standard JSON format is maintained.  No entries are strictly speaking mandatory, but leaving them out will often disable one or more pieces of of the pzsvc-exec functionality.
 
