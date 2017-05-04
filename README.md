@@ -36,7 +36,7 @@ Pzsvc-exec  is built using the Go, version 1.8.x. For details on installing Go, 
 
 2. Set up Go environment variables
 
-To function right, Go must have some environment variables set. Run the go env command to list all relevant environment variables. The two most important lines to look for are GOROOT and GOPATH:
+Before developing using Go, certain environment variables must set. To see all the relevant environment variables, run the *go env* command. The two most important lines to look for are GOROOT and GOPATH:
 
 GOROOT must point to the base directory at which Go is installed
 GOPATH must point to a directory that is to serve as your development environment. This is where this code and dependencies will live.
@@ -46,8 +46,10 @@ GOPATH must point to a directory that is to serve as your development environmen
 Create the directory the respository must live in, then clone the repository there:
 
 $ mkdir -p $GOPATH/src/github.com/venicegeo
+
 $ cd $GOPATH/src/github.com/venicegeo
-$ git clone git@github.com:venicegeo/bf-ia-broker.git
+
+$ git clone git@github.com:venicegeo/pzsvc-exec.git
 
 ## Installing and Running
 
