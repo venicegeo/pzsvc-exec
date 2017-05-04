@@ -14,11 +14,9 @@
 
 Pzsvc-exec is a microservice written in the Go programming langauge.  It's purpose is to bring algorithms and other non-scalable applications and web services to the enterprise.  It provides load balancing capabilities to enable algorithms and applications to be scalable in the Enterprise.
 
-"pzsvc-exec" is designed to serve command-line programs to Piazza, based on the contents of a config file.
+Ppzsvc-exec is designed to serve command-line programs to Piazza, based on the contents of a config file.  Piazza is an open-source framework and tool-suite enabling rapid geospatial information systems (GIS) solutions for the enterprise.   It is designed to do the heavy lifting needed by developers moving solutions to the cloud.  Piazza leverages pzsvc-exec so algorithm developers can have their algorithms deployed to the cloud so developers can discover and utilize these algorithms within the GIS solutions they develop.   For more details on Piazza, see https://pz-docs.geointservices.io/ for details.
 
-Pzsvc-exec is at its most basic level something that publishes the exec() call as a service to Piazza (with lots of useful bells and whistles).
-
-When it is launched, it is given a config file, from which it derives all persistent information.  If the config file allows, it will start by automatically registering itself as a service to a specified Piazza instance.  Regardless, it will then begin to serve.
+When pzsvc-exec is launched, it reads from a configuration file, from which it derives all persistent information.  Based on settings in the configuration file, pzsvc-exec starts automatically registering itself as a service to a specified Piazza instance.  
 
 When a request comes in, it has up to three parts - a set of files to download, a command string to execute, and a set of files to upload.  It will generate a temporary folder, download the files into the folder, execute its command in the folder, upload the files from the folder, reply to the service request, and then delete the folder.  The command it attempts to execute is the `CliCmd` parameter from the config file, with the `cmd` from the service request appended on.  The reply to the service request will take the form of a JSON string, and contains a list of the files downloaded, a list of the files uploaded, and the stdout return of command executed.
 
@@ -29,6 +27,27 @@ As a secondary benefit, pzsvc-exec will be kept current with the existing Piazza
 Additionally, and associated, pzsvc-exec contains a secondary application of pzsvc-taskworker.  Pzvc-taskworker is designed to run off the same config file that pzsvc-exec does and coordinate with pzsvc-exec in such a way as to take advantage of the Piazza task manager functionality, offering improvements in things like security and scalability.  Pzsvc-taskworker is optional, like much of the functionality associated with pzsvc-exec, and will be described more in depth in its own section.
 
 ## Development Environment
+
+Pzsvc-exec is written in the go programming language.  To develop capabilities in pzsvc-exec, do the following:
+
+1. Install Go
+
+Pzsvc-exec  is built using the Go, version 1.8.x. For details on installing Go, see https://golang.org/dl/.  Once Go is instaled, make sure the Go tool is on your path once the install is done.
+
+2. Set up Go environment variables
+
+To function right, Go must have some environment variables set. Run the go env command to list all relevant environment variables. The two most important lines to look for are GOROOT and GOPATH:
+
+GOROOT must point to the base directory at which Go is installed
+GOPATH must point to a directory that is to serve as your development environment. This is where this code and dependencies will live.
+
+3. Clone the repository
+
+Create the directory the respository must live in, then clone the repository there:
+
+$ mkdir -p $GOPATH/src/github.com/venicegeo
+$ cd $GOPATH/src/github.com/venicegeo
+$ git clone git@github.com:venicegeo/bf-ia-broker.git
 
 ## Installing and Running
 
