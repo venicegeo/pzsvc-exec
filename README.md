@@ -44,13 +44,13 @@ Before developing using Go, certain environment variables must set. To see all t
 
 ### 3. Clone the Pzsvc-exec repository
 
-Create the directory the respository must live in, then clone the repository there:
+To clone the pzsvc-exec repository, do the following commands
 
-$ mkdir -p $GOPATH/src/github.com/venicegeo
+1. `$ mkdir -p $GOPATH/src/github.com/venicegeo`
 
-$ cd $GOPATH/src/github.com/venicegeo
+2. `$ cd $GOPATH/src/github.com/venicegeo`
 
-$ git clone git@github.com:venicegeo/pzsvc-exec.git
+3. `$ git clone git@github.com:venicegeo/pzsvc-exec.git`
 
 ## Installing and Running
 
