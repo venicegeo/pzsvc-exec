@@ -28,6 +28,8 @@ As a secondary benefit, pzsvc-exec will be kept current with the existing Piazza
 
 Additionally, and associated, pzsvc-exec contains a secondary application of pzsvc-taskworker.  Pzvc-taskworker is designed to run off the same config file that pzsvc-exec does and coordinate with pzsvc-exec in such a way as to take advantage of the Piazza task manager functionality, offering improvements in things like security and scalability.  Pzsvc-taskworker is optional, like much of the functionality associated with pzsvc-exec, and will be described more in depth in its own section.
 
+## Development Environment
+
 ## Installing and Running
 
 Make sure you have Go installed on you machine, and an appropriate GOPATH (environment variable) set.
