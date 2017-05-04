@@ -6,9 +6,9 @@
 - [Development Environment](#development-environment)
 - [Installing and Running](#installing-and-running)
 - [Configuration File Definition](#configuration-file-definition) 
-- Service Endpoints: a listing of the service endpoints that pzsvc-exec makes available and what they are useful for.
-- Execute Endpoint Request Format: You need this if you want to make use of the /execute endpoint of pzsvc-exec with any control at all.
-- Pzsvc-Taskworker: What you need to know to use the associated pzsvc-taskworker app (and, by extension, to take advantage of the Piazza task queue for scalability)
+- [Service Endpoints](#service-endpoints)
+- [Execute Endpoint Request Format](#execute-endpoint-request-format)
+- [Incorporating Scalability](#incorporating-scalability)
 
 ## Overview
 
@@ -164,7 +164,7 @@ As an example (fully functional as an input to pzsvc-ossim, other than the auth 
 }
 ```
 
-## Pzsvc-taskworker
+## Incorporating Scalability
 
 Pzsvc-taskworker exists inside of the pzsvc-taskworker subfolder of the pzsvc-exec folder, and can be installed via `go get` or `go install` appropriately.  it can be run with `GOPATH/bin/pzsvc-taskworker <configfile.txt>`. It should be called using the same config file as was used for the instance of pzsvc-exec it has been paired with.
 
