@@ -4,7 +4,7 @@
 
 - [Overview](#overview)
 - [Development Environment](#development-environment)
-- Installing and Running: You need this if you want to run/administrate a pzsvc-exec instance
+- [Installing and Running](#installing-and-running)
 - Config File Format: You need this if you want to have any control over the instance you're running.  May be useful for understanding how pzsvc-exec works.
 - Service Endpoints: a listing of the service endpoints that pzsvc-exec makes available and what they are useful for.
 - Execute Endpoint Request Format: You need this if you want to make use of the /execute endpoint of pzsvc-exec with any control at all.
