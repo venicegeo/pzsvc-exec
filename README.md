@@ -30,18 +30,19 @@ Additionally, and associated, pzsvc-exec contains a secondary application of pzs
 
 Pzsvc-exec is written in the go programming language.  To develop capabilities in pzsvc-exec, do the following:
 
-1. Install Go
+### 1. Install Go
 
 Pzsvc-exec  is built using the Go, version 1.8.x. For details on installing Go, see https://golang.org/dl/.  Once Go is instaled, make sure the Go tool is on your path once the install is done.
 
-2. Set up Go environment variables
+### 2. Set up Go environment variables
 
-Before developing using Go, certain environment variables must set. To see all the relevant environment variables, run the *go env* command. The two most important lines to look for are GOROOT and GOPATH:
+Before developing using Go, certain environment variables must set. To see all the relevant environment variables, run the *go env* command. Below is a list of key Go environment variables:
 
-GOROOT must point to the base directory at which Go is installed
-GOPATH must point to a directory that is to serve as your development environment. This is where this code and dependencies will live.
+- `GOROOT` - Should be set to point to the base directory at which Go is installed
+- `GOPATH` - Should be set to point to a directory that is to serve as your development environment. This is where this code and dependencies will live.
+- `GOBIN` - Should be set to point to a directory where the executable will live.  If not set, this defaults to the $GOPATH/bin directory.
 
-3. Clone the repository
+### 3. Clone the Pzsvc-exec repository
 
 Create the directory the respository must live in, then clone the repository there:
 
@@ -53,22 +54,21 @@ $ git clone git@github.com:venicegeo/pzsvc-exec.git
 
 ## Installing and Running
 
-Make sure you have Go installed on you machine, and an appropriate GOPATH (environment variable) set.
+Make sure you have Go installed on you machine, and an appropriate `GOPATH` (environment variable) set.
 
-Use `go get` to install the latest version of both the CLI and the library.
-	`$ go get -v github.com/venicegeo/pzsvc-exec/...`
-
-To install:
-	`$ go install github.com/venicegeo/pzsvc-exec/...`
+To install pzsvc-exec, do the following:
+	`$ go install github.com/venicegeo/pzsvc-exec/`
 
 Alternate install:
 	navigate to `GOPATH/src/github.com/venicegeo/pzsvc-exec`
 	then call `$ go install .`
 
-To Run:
-	`GOPATH/bin/pzsvc-exec <configfile.txt>`, where <configfile.txt> represents the path to an appropriately formatted config file, indicating what command line function to use, and where to find Piazza for registration.  Additionally, make sure that whatever application you wish to access is in path.
+To run pzsvc-exec, do the following:
+	`$GOBIN/pzsvc-exec <configfile.txt>`
+	
+	where <configfile.txt> represents the path to an appropriately formatted configuration file, indicating what command line function to use, and where to find Piazza for registration.  Additionally, make sure that whatever application you wish to access is in path.
 
-## Config File Format
+## Configuration File Format
 
 The example config file in this directory includes all pertinent potential entries, and may be used as an example, though some entries are left as 0/false/"".  Some entries are redundant with one another or mutually exclusive.  In cases like that, there is no behavioral difference between, for example, setting PzAddr to the empty string or leaving that entry out altogether.  Additional entries are meaningless but nonharmful, as long as standard JSON format is maintained.  No entries are strictly speaking mandatory, but leaving them out will often disable one or more pieces of of the pzsvc-exec functionality.
 
