@@ -98,7 +98,7 @@ Either one of the `Port` parameters is required or else your user service will b
 
 **Description**: A simple text description of your service.   This is used as metadata when your service is registered with Piazza's user service registry.
 
-Attributes: A block of freeform key/value pairs for you to set additional descriptive attributes.  This is primarily intended to aid communication between services and service consumers with respect to the details of a service.  Information provided might be things like service type (so that the correct service consumers can identify you), interface (so they know how to interact with you) and image requirements (so they know what sorts of images to send you).
+**Attributes**: A block of freeform key/value pairs for you to set additional descriptive attributes.  This is primarily intended to aid communication between services and service consumers with respect to the details of a service.  Information provided might be things like service type (so that the correct service consumers can identify you), interface (so they know how to interact with you) and image requirements (so they know what sorts of images to send you).
 
 **NumProcs**: An integer vaue specifying the maximum number of simultaneous jobs to allow.  This will generally depend on the amount of data you are uploading and downloading, the overall computational load of the command you are executing, and the resources each instance has available to draw on.  If the service is crashing regularly from overload, you want to drop this number.  If it is running at low load but processing too slowly, you'll want to increase it.  Defaults to no thread control, allowing all jobs to run as they arrive.
 
