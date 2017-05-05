@@ -108,7 +108,7 @@ Either one of the `Port` parameters is required or else your user service will b
 
 **CanDownlExt**: A boolean indicating whether external downloads can be done before processing.  Defaults to false.
 
-**RegForTaskMgr**: A boolean indicating whether your service should run as a task managed service.  This is the Piazza feature that taskworker was designed to take advantage of.  For more details on how task management works, see https://pz-docs.stage.geointservices.io/userguide/index.html#_task_management. **Required for Task Managed Service**
+**RegForTaskMgr**: A boolean indicating whether your service should run as a task managed service.  This is the Piazza feature that taskworker was designed to take advantage of.  For more details on how task management works, see [the Piazza User's Guide](https://pz-docs.stage.geointservices.io/userguide/index.html#_task_management) . **Required for Task Managed Service**
 
 **MaxRunTime**: An integer which is used when registering for task manager.  Indicates how long Piazza should wait after a job has been taken before assuming that the process has failed.  **Required for Task Managed Service**
 
@@ -170,7 +170,7 @@ As an example (fully functional as an input to pzsvc-ossim, other than the auth 
 
 ## Incorporating Scalability
 
-Pzsvc-taskworker exists inside of the pzsvc-taskworker subfolder of the pzsvc-exec folder, and can be installed via `go get` or `go install` appropriately.  it can be run with `GOPATH/bin/pzsvc-taskworker <configfile.txt>`. It should be called using the same config file as was used for the instance of pzsvc-exec it has been paired with.
+`Pzsvc-taskworker` exists inside of the pzsvc-taskworker subfolder of the pzsvc-exec folder, and can be installed via `go get` or `go install` appropriately.  it can be run with `GOPATH/bin/pzsvc-taskworker <configuration file>`. It should be called using the same config file as was used for the instance of pzsvc-exec it has been paired with.
 
 Pzsvc-taskworker is designed to connect to the task manager feature of Piazza.  In that system, rather than passing jobs through to a service directly, Piazza stores them in a queue, and waits for a service to request jobs to complete.  This can be useful for scalability and security purposes.  It allows arbitrary scalability while letting each pzsvc-exec/pzsvc-taskworker pair control the number of jobs they're running at a time.
 
