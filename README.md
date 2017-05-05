@@ -85,41 +85,42 @@ An example configuration file, `examplecfg.txt` is located in the root directory
 Either one of the `PzAddr` parameters is required.  Specifying `PzAddrEnVar` overwrites the value of `PzAddr`.
 
 
-**APIKeyEnVar**: The name of the environment variable that will contain your Piazza API key.  When using Piazza, an API key is necessary.  For details see on obtaining the key and using Piazza, see the User's Guide for details https://pz-docs.geointservices.io/userguide/index.html.  **Required*
+**APIKeyEnVar**: The name of the environment variable that will contain your Piazza API key.  When using Piazza, an API key is necessary.  For details see on obtaining the key and using Piazza, see the User's Guide for details https://pz-docs.geointservices.io/userguide/index.html.  **Required**
 
 **SvcName**: A unique name of the service.  The name specified is used to register your web service so it can be discovered.  This name is also added as metadata for any loaded files.   **Required**
 
 **URL**: The URL for where pzsvc-exec is running.  This address is used during autoregistration with Piazza so the service can be discovered.  **Required**
 
-Port: The port this service serves on.  If not defined, will default to `8080`.
+**Port**: The port this service serves on.  If not defined, will default to `8080`.
 
-PortEnVar: Environment variable, containing a port number.  When defined and non-empty, overwrites Port.  Intended for systems where the buid/push process may call for an arbitrary port.
+**PortEnVar**: Environment variable, containing a port number. 
+Either one of the `Port` parameters is required or else your user service will be default to port `8080`.  Specifying `PortEnVar` overwrites the value of `Port`.
 
-Description: A simple text description of your service.  Used in registration, and also available through the "/description" endpoint.
+**Description**: A simple text description of your service.   This is used as metadata when your service is registered with Piazza's user service registry.
 
-Attributes: A block of freeform key/value pairs for you to set additional descriptive attributes.  Used in registration, and also available through the "/attributes" endpoint.  Primarily intended to aid communication between services and service consumers with respect to the details of a service.  Information provided might be things like service type (so that the correct service consumers can identify you), interface (so they know how to interact with you) and image requirements (so they know what sorts of images to send you).
+Attributes: A block of freeform key/value pairs for you to set additional descriptive attributes.  This is primarily intended to aid communication between services and service consumers with respect to the details of a service.  Information provided might be things like service type (so that the correct service consumers can identify you), interface (so they know how to interact with you) and image requirements (so they know what sorts of images to send you).
 
-NumProcs: Integer.  The maximum number of simultaneous jobs to allow.  This will generally depend on the amount of data you are uploading and downloading, the overall computational load of the command you are executing, and the resources each instance has available to draw on.  If the service is crashing regularly from overload, you want to drop this number.  If it is running at low load but processing too slowly, you'll want to increase it.  Defaults to no thread control, allowing all jobs to run as they arrive.
+**NumProcs**: An integer vaue specifying the maximum number of simultaneous jobs to allow.  This will generally depend on the amount of data you are uploading and downloading, the overall computational load of the command you are executing, and the resources each instance has available to draw on.  If the service is crashing regularly from overload, you want to drop this number.  If it is running at low load but processing too slowly, you'll want to increase it.  Defaults to no thread control, allowing all jobs to run as they arrive.
 
-CanUpload: Boolean.  If false, does not allow uploads after processing.  Defaults to false.
+**CanUpload: Boolean**: A boolean indicating if data results should be loaded after your service processes a request.  Defaults to false.
 
-CanDownlPz: Boolean.  If false, does not allow Piazza downloads before processing.  Defaults to false.
+**CanDownlPz**:  A boolean indicating whether data can downloaded by Piazza before processsing. Defaults to false.
 
-CanDownlExt: Boolean.  If false, does not allow external downloads before processing.  Defaults to false.
+**CanDownlExt**: A boolean indicating whether external downloads can be done before processing.  Defaults to false.
 
-RegForTaskMgr: Boolean.  If true, registers as a Task Manager service.  This is the Pz feature that taskworker was designed to take advantage of.  Required for taskworker. 
+**RegForTaskMgr**: A boolean indicating whether your service should run as a task managed service.  This is the Piazza feature that taskworker was designed to take advantage of.  For more details on how task management works, see https://pz-docs.stage.geointservices.io/userguide/index.html#_task_management. **Required for Task Managed Service**
 
-MaxRunTime: int.  Only applicable when registering for task manager.  Indicates how long Pz should wait after a job has been taken before assuming that the process has failed.
+**MaxRunTime**: An integer which is used when registering for task manager.  Indicates how long Piazza should wait after a job has been taken before assuming that the process has failed.  **Required for Task Managed Service**
 
-LocalOnly: Boolean.  If true, this pzsvc-exec instance will only accept connections from localhost.  Intended as an additional security measure when using a local takworker
+**LocalOnly**: A boolean indicating whether pzsvc-exec should accept connections externally or locally.  Specifying `true` means your service will only accept calls from requests coming from the same host.  Intended as an additional security measure when using a local taskworker.  **Required**
 
-LogAudit: Boolean.  If true, pzsvc-exec will produce audit logs.  If false, does not produce audit logs.  Audit logs are useful as an added security feature, if you can manage them properly, but add significant bulk to the log outputs.
+**LogAudit**: A boolean indicating whether pzsvc-exec should produce audit logs.
 
-LimitUserData: Boolean.  If true, this instance reduces the overall amount of data it returns to the user significantly, causing any attempts at meaningful debugging to require access to the logs.  This is intended to serve as something of a security measure - reducing the ability of an external attacker to discover details of how the system works.
+**LimitUserData**: A boolean indicating whether logs should be obfuscated to prevent reverse engineering and determining the details of how your service works. 
 
-ExtRetryOn202: Boolean.  If true, pzsvc-exec will respond to HTTP Code 202 responses on external file downloads by waiting a minute and trying again, for up to an hour.  This is offered as a way to enable dealings with systems like Planetlabs, where files must be activated before they are made available.
+**ExtRetryOn202:** Boolean.  If true, pzsvc-exec will respond to HTTP Code 202 responses on external file downloads by waiting a minute and trying again, for up to an hour.  This is offered as a way to enable dealings with systems like Planetlabs, where files must be activated before they are made available.
 
-DocURL: string.  Specifies a URL to provide to autoregistration and to the /documentation REST endpoint.  This URL shoudl point to some sort of online documentation about this pzsvc-exec instance.
+**DocURL**: A string specifying a URL to provide to autoregistration and to the /documentation REST endpoint.  This URL should point to some sort of online documentation about your service instance.
 
 ## Service Endpoints
 
