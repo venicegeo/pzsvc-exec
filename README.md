@@ -70,19 +70,19 @@ To __*run*__ pzsvc-exec, do the following:
 
 ## Configuration File Definition
 
-An example configuration file, `examplecfg.txt` is located in the root directory of this repository.  Below is a list of the parameters that should be specified within the configuration file.  
+An example configuration file, `examplecfg.txt` is located in the root directory of this repository.  Below is a list of the parameters that should be specified within your configuration file.  
 
-**CliCmd**: The initial parameters to feed to the exec call.  For security reasons, you are strongly encouraged to define this entry as something other than whitespace or the empty string, thus limiting your service to a single application.  If you do not, you are essentially offering open command-line access on the serving computer to anyone capable of calling your service.  Should be spaced normally, as if entering into the command line directly
+**CliCmd**: The command line to execute when called.  This should include any parameters that are necessary for running the algoirthm
 
-VersionStr: Version of the software pointed to, in the form of a string.  Added to the service data in autoregistration and to the file metadata for uploaded files.  The version string is also available through the "/version" endpoint.  Redundant with VersionCmd.
+**VersionStr**: The version of the software pointed to, in the form of a string.  If provided, this is added as metadata about the service when registered with Piazza.  
 
-VersionCmd: as with versionStr, except that this is a command line call which expects the version string as a return.  Reloads fresh each time pzsvc-exec is called.  Redundant with VersionStr.
+**VersionCmd**: The command line command to use to obtain the version of the algorithm.
 
-PzAddr: For use with a Piazza instance.  This is the base https address of the chosen Piazza instance.  It is useful for file upload and Pz file download.  It is necessary for autoregistration and taskworker.
+**PzAddr**: The URL for where pzsvc-exec is running.  This address is used during autoregistration with Piazza so the service can be discovered. 
 
-PzAddrEnVar: Environment variable, containing the piazza address.  When defined and non-empty, overwrites PzAddr.  Intended for cases where, for example, multiple domains exist using the same set of seeds.
+**PzAddrEnVar**: Environment variable, containing the piazza address.  When defined and non-empty, overwrites PzAddr.  Intended for cases where, for example, multiple domains exist using the same set of seeds.
 
-APIKeyEnVar: The name of the environment variable that will contain your Piazza API key.  It is useful for file upload and Pz file download.  It is necessary for autoregistration and taskworker.
+**APIKeyEnVar**: The name of the environment variable that will contain your Piazza API key.  When using Piazza, an API key is necessary.  For details see on obtaining the key and using Piazza, see the User's Guide for details https://pz-docs.geointservices.io/userguide/index.html.
 
 SvcName: This is the name by which the service will identify itself.  Maintaining SvcName uniqueness among your services is important, as it will be used to determine on execution whether a service is being launched for the first time, or whether it is a continuation of a previous service.  Maintaining SvcName uniqueness in general is not as critical, as identity of launching user will also be used as a component.  It is added to file metadata for uploaded files, and is necessary for autoregistration.
 
