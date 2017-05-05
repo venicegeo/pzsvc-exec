@@ -85,7 +85,7 @@ An example configuration file, `examplecfg.txt` is located in the root directory
 Either one of the `PzAddr` parameters is required.  Specifying `PzAddrEnVar` overwrites the value of `PzAddr`.
 
 
-**APIKeyEnVar**: The name of the environment variable that will contain your Piazza API key.  When using Piazza, an API key is necessary.  For details see on obtaining the key and using Piazza, see the User's Guide for details https://pz-docs.geointservices.io/userguide/index.html.  **Required**
+**APIKeyEnVar**: The name of the environment variable that will contain your Piazza API key.  When using Piazza, an API key is necessary.  For details see on obtaining the key and using Piazza, see the [Piazza User's Guide](https://pz-docs.stage.geointservices.io/userguide/index.html).  **Required**
 
 **SvcName**: A unique name of the service.  The name specified is used to register your web service so it can be discovered.  This name is also added as metadata for any loaded files.   **Required**
 
@@ -108,7 +108,7 @@ Either one of the `Port` parameters is required or else your user service will b
 
 **CanDownlExt**: A boolean indicating whether external downloads can be done before processing.  Defaults to false.
 
-**RegForTaskMgr**: A boolean indicating whether your service should run as a task managed service.  This is the Piazza feature that taskworker was designed to take advantage of.  For more details on how task management works, see [the Piazza User's Guide](https://pz-docs.stage.geointservices.io/userguide/index.html#_task_management) . **Required for Task Managed Service**
+**RegForTaskMgr**: A boolean indicating whether your service should run as a task managed service.  This is the Piazza feature that taskworker was designed to take advantage of.  For more details on how task management works, see the [Piazza the  Guide](https://pz-docs.stage.geointservices.io/userguide/index.html#_task_management) . **Required for Task Managed Service**
 
 **MaxRunTime**: An integer which is used when registering for task manager.  Indicates how long Piazza should wait after a job has been taken before assuming that the process has failed.  **Required for Task Managed Service**
 
@@ -172,7 +172,7 @@ As an example (fully functional as an input to pzsvc-ossim, other than the auth 
 
 Pzsvc-taskworker exists inside of the pzsvc-taskworker subfolder of the pzsvc-exec folder, and can be installed via `go get` or `go install` appropriately.  it can be run with `GOPATH/bin/pzsvc-taskworker <configuration file>`. It should be called using the same config file as was used for the instance of pzsvc-exec it has been paired with.
 
-For details on how task management works, see [the Piazza User's Guide](https://pz-docs.stage.geointservices.io/userguide/index.html#_task_management).
+For details on how task management works, see the [Piazza User's Guide](https://pz-docs.stage.geointservices.io/userguide/index.html#_task_management).
 
 Pzsvc-taskworker is designed to connect to the task manager feature of Piazza.  In that system, rather than passing jobs through to a service directly, Piazza stores them in a queue, and waits for a service to request jobs to complete.  This can be useful for scalability and security purposes.  It allows arbitrary scalability while letting each pzsvc-exec/pzsvc-taskworker pair control the number of jobs they're running at a time.
 
