@@ -1,14 +1,14 @@
 # pzsvc-exec
 
-## Table of Contents
+## Contents
 
 - [Overview](#overview)
 - [Development Environment](#development-environment)
 - [Installing and Running](#installing-and-running)
-- Config File Format: You need this if you want to have any control over the instance you're running.  May be useful for understanding how pzsvc-exec works.
-- Service Endpoints: a listing of the service endpoints that pzsvc-exec makes available and what they are useful for.
-- Execute Endpoint Request Format: You need this if you want to make use of the /execute endpoint of pzsvc-exec with any control at all.
-- Pzsvc-Taskworker: What you need to know to use the associated pzsvc-taskworker app (and, by extension, to take advantage of the Piazza task queue for scalability)
+- [Configuration File Definition](#configuration-file-definition) 
+- [Service Endpoints](#service-endpoints)
+- [Execute Endpoint Request Format](#execute-endpoint-request-format)
+- [Incorporating Scalability](#incorporating-scalability)
 
 ## Overview
 
@@ -44,13 +44,13 @@ Before developing using Go, certain environment variables must set. To see all t
 
 ### 3. Clone the Pzsvc-exec repository
 
-Create the directory the respository must live in, then clone the repository there:
+To clone the pzsvc-exec repository, do the following commands
 
-$ mkdir -p $GOPATH/src/github.com/venicegeo
+1. `$ mkdir -p $GOPATH/src/github.com/venicegeo`
 
-$ cd $GOPATH/src/github.com/venicegeo
+2. `$ cd $GOPATH/src/github.com/venicegeo`
 
-$ git clone git@github.com:venicegeo/pzsvc-exec.git
+3. `$ git clone git@github.com:venicegeo/pzsvc-exec.git`
 
 ## Installing and Running
 
@@ -64,59 +64,63 @@ Alternate install:
 	then call `$ go install .`
 
 To __*run*__ pzsvc-exec, do the following:
-	`$GOBIN/pzsvc-exec <configfile.txt>`
+	`$GOBIN/pzsvc-exec <configuration file>`
 	
- `configfile.txt` represents the path to an appropriately formatted configuration file, indicating what command line function to use, and where to find Piazza for registration.  Additionally, make sure that whatever application you wish to access is in path.
+ where `<configuration file>` represents the path to an appropriately formatted configuration file, indicating what command line function to use and the information to register with Piazza.  Additionally, when running pzsvc-exec, make sure that whatever application you wish to access is in path.
 
-## Configuration File Format
+## Configuration File Definition
 
-The example config file in this directory includes all pertinent potential entries, and may be used as an example, though some entries are left as 0/false/"".  Some entries are redundant with one another or mutually exclusive.  In cases like that, there is no behavioral difference between, for example, setting PzAddr to the empty string or leaving that entry out altogether.  Additional entries are meaningless but nonharmful, as long as standard JSON format is maintained.  No entries are strictly speaking mandatory, but leaving them out will often disable one or more pieces of of the pzsvc-exec functionality.
+An example configuration file, `examplecfg.txt` is located in the root directory of this repository.  Below is a list of the parameters that should be specified within your configuration file.  
 
-CliCmd: The initial parameters to feed to the exec call.  For security reasons, you are strongly encouraged to define this entry as something other than whitespace or the empty string, thus limiting your service to a single application.  If you do not, you are essentially offering open command-line access on the serving computer to anyone capable of calling your service.  Should be spaced normally, as if entering into the command line directly
+**CliCmd**: The command line to execute when called.  This should include any parameters that are necessary for running the algoirthm.  **Required**
 
-VersionStr: Version of the software pointed to, in the form of a string.  Added to the service data in autoregistration and to the file metadata for uploaded files.  The version string is also available through the "/version" endpoint.  Redundant with VersionCmd.
+**VersionStr**: The version of the software pointed to, in the form of a string.  If provided, this is added as metadata about the service when registered with Piazza.  
 
-VersionCmd: as with versionStr, except that this is a command line call which expects the version string as a return.  Reloads fresh each time pzsvc-exec is called.  Redundant with VersionStr.
+**VersionCmd**: The command line command to use to obtain the version of the algorithm.
 
-PzAddr: For use with a Piazza instance.  This is the base https address of the chosen Piazza instance.  It is useful for file upload and Pz file download.  It is necessary for autoregistration and taskworker.
+**PzAddr**: The URL for where pzsvc-exec is running.  This address is used during autoregistration with Piazza so the service can be discovered. 
 
-PzAddrEnVar: Environment variable, containing the piazza address.  When defined and non-empty, overwrites PzAddr.  Intended for cases where, for example, multiple domains exist using the same set of seeds.
+**PzAddrEnVar**: Environment variable, containing the piazza address.  
 
-APIKeyEnVar: The name of the environment variable that will contain your Piazza API key.  It is useful for file upload and Pz file download.  It is necessary for autoregistration and taskworker.
+Either one of the `PzAddr` parameters is required.  Specifying `PzAddrEnVar` overwrites the value of `PzAddr`.
 
-SvcName: This is the name by which the service will identify itself.  Maintaining SvcName uniqueness among your services is important, as it will be used to determine on execution whether a service is being launched for the first time, or whether it is a continuation of a previous service.  Maintaining SvcName uniqueness in general is not as critical, as identity of launching user will also be used as a component.  It is added to file metadata for uploaded files, and is necessary for autoregistration.
 
-URL: This is the URL that the service will be served on.  It is necessary for autoregistration when not registering as a task manager service.
+**APIKeyEnVar**: The name of the environment variable that will contain your Piazza API key.  When using Piazza, an API key is necessary.  For details see on obtaining the key and using Piazza, see the [Piazza User's Guide](https://pz-docs.stage.geointservices.io/userguide/index.html).  **Required**
 
-Port: The port this service serves on.  If not defined, will default to 8080.
+**SvcName**: A unique name of the service.  The name specified is used to register your web service so it can be discovered.  This name is also added as metadata for any loaded files.   **Required**
 
-PortEnVar: Environment variable, containing a port number.  When defined and non-empty, overwrites Port.  Intended for systems where the buid/push process may call for an arbitrary port.
+**URL**: The URL for where pzsvc-exec is running.  This address is used during autoregistration with Piazza so the service can be discovered.  **Required**
 
-Description: A simple text description of your service.  Used in registration, and also available through the "/description" endpoint.
+**Port**: The port this service serves on.  If not defined, will default to `8080`.
 
-Attributes: A block of freeform key/value pairs for you to set additional descriptive attributes.  Used in registration, and also available through the "/attributes" endpoint.  Primarily intended to aid communication between services and service consumers with respect to the details of a service.  Information provided might be things like service type (so that the correct service consumers can identify you), interface (so they know how to interact with you) and image requirements (so they know what sorts of images to send you).
+**PortEnVar**: Environment variable, containing a port number. 
+Either one of the `Port` parameters is required or else your user service will be default to port `8080`.  Specifying `PortEnVar` overwrites the value of `Port`.
 
-NumProcs: Integer.  The maximum number of simultaneous jobs to allow.  This will generally depend on the amount of data you are uploading and downloading, the overall computational load of the command you are executing, and the resources each instance has available to draw on.  If the service is crashing regularly from overload, you want to drop this number.  If it is running at low load but processing too slowly, you'll want to increase it.  Defaults to no thread control, allowing all jobs to run as they arrive.
+**Description**: A simple text description of your service.   This is used as metadata when your service is registered with Piazza's user service registry.
 
-CanUpload: Boolean.  If false, does not allow uploads after processing.  Defaults to false.
+**Attributes**: A block of freeform key/value pairs for you to set additional descriptive attributes.  This is primarily intended to aid communication between services and service consumers with respect to the details of a service.  Information provided might be things like service type (so that the correct service consumers can identify you), interface (so they know how to interact with you) and image requirements (so they know what sorts of images to send you).
 
-CanDownlPz: Boolean.  If false, does not allow Piazza downloads before processing.  Defaults to false.
+**NumProcs**: An integer vaue specifying the maximum number of simultaneous jobs to allow.  This will generally depend on the amount of data you are uploading and downloading, the overall computational load of the command you are executing, and the resources each instance has available to draw on.  If the service is crashing regularly from overload, you want to drop this number.  If it is running at low load but processing too slowly, you'll want to increase it.  Defaults to no thread control, allowing all jobs to run as they arrive.
 
-CanDownlExt: Boolean.  If false, does not allow external downloads before processing.  Defaults to false.
+**CanUpload: Boolean**: A boolean indicating if data results should be loaded after your service processes a request.  Defaults to false.
 
-RegForTaskMgr: Boolean.  If true, registers as a Task Manager service.  This is the Pz feature that taskworker was designed to take advantage of.  Required for taskworker. 
+**CanDownlPz**:  A boolean indicating whether data can downloaded by Piazza before processsing. Defaults to false.
 
-MaxRunTime: int.  Only applicable when registering for task manager.  Indicates how long Pz should wait after a job has been taken before assuming that the process has failed.
+**CanDownlExt**: A boolean indicating whether external downloads can be done before processing.  Defaults to false.
 
-LocalOnly: Boolean.  If true, this pzsvc-exec instance will only accept connections from localhost.  Intended as an additional security measure when using a local takworker
+**RegForTaskMgr**: A boolean indicating whether your service should run as a task managed service.  This is the Piazza feature that taskworker was designed to take advantage of.  For more details on how task management works, see the [Piazza the  Guide](https://pz-docs.stage.geointservices.io/userguide/index.html#_task_management) . **Required for Task Managed Service**
 
-LogAudit: Boolean.  If true, pzsvc-exec will produce audit logs.  If false, does not produce audit logs.  Audit logs are useful as an added security feature, if you can manage them properly, but add significant bulk to the log outputs.
+**MaxRunTime**: An integer which is used when registering for task manager.  Indicates how long Piazza should wait after a job has been taken before assuming that the process has failed.  **Required for Task Managed Service**
 
-LimitUserData: Boolean.  If true, this instance reduces the overall amount of data it returns to the user significantly, causing any attempts at meaningful debugging to require access to the logs.  This is intended to serve as something of a security measure - reducing the ability of an external attacker to discover details of how the system works.
+**LocalOnly**: A boolean indicating whether pzsvc-exec should accept connections externally or locally.  Specifying `true` means your service will only accept calls from requests coming from the same host.  Intended as an additional security measure when using a local taskworker.  **Required**
 
-ExtRetryOn202: Boolean.  If true, pzsvc-exec will respond to HTTP Code 202 responses on external file downloads by waiting a minute and trying again, for up to an hour.  This is offered as a way to enable dealings with systems like Planetlabs, where files must be activated before they are made available.
+**LogAudit**: A boolean indicating whether pzsvc-exec should produce audit logs.
 
-DocURL: string.  Specifies a URL to provide to autoregistration and to the /documentation REST endpoint.  This URL shoudl point to some sort of online documentation about this pzsvc-exec instance.
+**LimitUserData**: A boolean indicating whether logs should be obfuscated to prevent reverse engineering and determining the details of how your service works. 
+
+**ExtRetryOn202:** Boolean.  If true, pzsvc-exec will respond to HTTP Code 202 responses on external file downloads by waiting a minute and trying again, for up to an hour.  This is offered as a way to enable dealings with systems like Planetlabs, where files must be activated before they are made available.
+
+**DocURL**: A string specifying a URL to provide to autoregistration and to the /documentation REST endpoint.  This URL should point to some sort of online documentation about your service instance.
 
 ## Service Endpoints
 
@@ -164,9 +168,11 @@ As an example (fully functional as an input to pzsvc-ossim, other than the auth 
 }
 ```
 
-## Pzsvc-taskworker
+## Incorporating Scalability
 
-Pzsvc-taskworker exists inside of the pzsvc-taskworker subfolder of the pzsvc-exec folder, and can be installed via `go get` or `go install` appropriately.  it can be run with `GOPATH/bin/pzsvc-taskworker <configfile.txt>`. It should be called using the same config file as was used for the instance of pzsvc-exec it has been paired with.
+Pzsvc-taskworker exists inside of the pzsvc-taskworker subfolder of the pzsvc-exec folder, and can be installed via `go get` or `go install` appropriately.  it can be run with `GOPATH/bin/pzsvc-taskworker <configuration file>`. It should be called using the same config file as was used for the instance of pzsvc-exec it has been paired with.
+
+For details on how task management works, see the [Piazza User's Guide](https://pz-docs.stage.geointservices.io/userguide/index.html#_task_management).
 
 Pzsvc-taskworker is designed to connect to the task manager feature of Piazza.  In that system, rather than passing jobs through to a service directly, Piazza stores them in a queue, and waits for a service to request jobs to complete.  This can be useful for scalability and security purposes.  It allows arbitrary scalability while letting each pzsvc-exec/pzsvc-taskworker pair control the number of jobs they're running at a time.
 
