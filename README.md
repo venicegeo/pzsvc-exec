@@ -64,15 +64,15 @@ Alternate install:
 	then call `$ go install .`
 
 To __*run*__ pzsvc-exec, do the following:
-	`$GOBIN/pzsvc-exec <configfile.txt>`
+	`$GOBIN/pzsvc-exec <configuration file>`
 	
- `configfile.txt` represents the path to an appropriately formatted configuration file, indicating what command line function to use, and where to find Piazza for registration.  Additionally, make sure that whatever application you wish to access is in path.
+ where `<configuration file>` represents the path to an appropriately formatted configuration file, indicating what command line function to use and the information to register with Piazza.  Additionally, when running pzsvc-exec, make sure that whatever application you wish to access is in path.
 
 ## Configuration File Definition
 
-The example config file in this directory includes all pertinent potential entries, and may be used as an example, though some entries are left as 0/false/"".  Some entries are redundant with one another or mutually exclusive.  In cases like that, there is no behavioral difference between, for example, setting PzAddr to the empty string or leaving that entry out altogether.  Additional entries are meaningless but nonharmful, as long as standard JSON format is maintained.  No entries are strictly speaking mandatory, but leaving them out will often disable one or more pieces of of the pzsvc-exec functionality.
+An example configuration file, `examplecfg.txt` is located in the root directory of this repository.  Below is a list of the parameters that should be specified within the configuration file.  
 
-CliCmd: The initial parameters to feed to the exec call.  For security reasons, you are strongly encouraged to define this entry as something other than whitespace or the empty string, thus limiting your service to a single application.  If you do not, you are essentially offering open command-line access on the serving computer to anyone capable of calling your service.  Should be spaced normally, as if entering into the command line directly
+**CliCmd**: The initial parameters to feed to the exec call.  For security reasons, you are strongly encouraged to define this entry as something other than whitespace or the empty string, thus limiting your service to a single application.  If you do not, you are essentially offering open command-line access on the serving computer to anyone capable of calling your service.  Should be spaced normally, as if entering into the command line directly
 
 VersionStr: Version of the software pointed to, in the form of a string.  Added to the service data in autoregistration and to the file metadata for uploaded files.  The version string is also available through the "/version" endpoint.  Redundant with VersionCmd.
 
