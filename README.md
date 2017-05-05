@@ -72,7 +72,7 @@ To __*run*__ pzsvc-exec, do the following:
 
 An example configuration file, `examplecfg.txt` is located in the root directory of this repository.  Below is a list of the parameters that should be specified within your configuration file.  
 
-**CliCmd**: The command line to execute when called.  This should include any parameters that are necessary for running the algoirthm
+**CliCmd**: The command line to execute when called.  This should include any parameters that are necessary for running the algoirthm.  **Required**
 
 **VersionStr**: The version of the software pointed to, in the form of a string.  If provided, this is added as metadata about the service when registered with Piazza.  
 
@@ -80,15 +80,18 @@ An example configuration file, `examplecfg.txt` is located in the root directory
 
 **PzAddr**: The URL for where pzsvc-exec is running.  This address is used during autoregistration with Piazza so the service can be discovered. 
 
-**PzAddrEnVar**: Environment variable, containing the piazza address.  When defined and non-empty, overwrites PzAddr.  Intended for cases where, for example, multiple domains exist using the same set of seeds.
+**PzAddrEnVar**: Environment variable, containing the piazza address.  
 
-**APIKeyEnVar**: The name of the environment variable that will contain your Piazza API key.  When using Piazza, an API key is necessary.  For details see on obtaining the key and using Piazza, see the User's Guide for details https://pz-docs.geointservices.io/userguide/index.html.
+Either one of the `PzAddr` parameters is required.  Specifying `PzAddrEnVar` overwrites the value of `PzAddr`.
 
-SvcName: This is the name by which the service will identify itself.  Maintaining SvcName uniqueness among your services is important, as it will be used to determine on execution whether a service is being launched for the first time, or whether it is a continuation of a previous service.  Maintaining SvcName uniqueness in general is not as critical, as identity of launching user will also be used as a component.  It is added to file metadata for uploaded files, and is necessary for autoregistration.
 
-URL: This is the URL that the service will be served on.  It is necessary for autoregistration when not registering as a task manager service.
+**APIKeyEnVar**: The name of the environment variable that will contain your Piazza API key.  When using Piazza, an API key is necessary.  For details see on obtaining the key and using Piazza, see the User's Guide for details https://pz-docs.geointservices.io/userguide/index.html.  **Required*
 
-Port: The port this service serves on.  If not defined, will default to 8080.
+**SvcName**: A unique name of the service.  The name specified is used to register your web service so it can be discovered.  This name is also added as metadata for any loaded files.   **Required**
+
+**URL**: The URL for where pzsvc-exec is running.  This address is used during autoregistration with Piazza so the service can be discovered.  **Required**
+
+Port: The port this service serves on.  If not defined, will default to `8080`.
 
 PortEnVar: Environment variable, containing a port number.  When defined and non-empty, overwrites Port.  Intended for systems where the buid/push process may call for an arbitrary port.
 
