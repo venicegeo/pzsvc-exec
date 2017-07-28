@@ -1,0 +1,14 @@
+package:
+  name: pzsvc-exec
+  version: 0.1.0
+
+source:
+  path: ../vendor/pzsvc-exec
+
+build:
+  number: BUILD_NUMBER
+
+about:
+  home: https://github.com/venicegeo/pzsvc-exec
+  summary: "Serve command-line programs to Piazza, based on the contents of a config file."
+  license: Apache 2.0

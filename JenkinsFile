@@ -1,0 +1,69 @@
+node {
+    def root = pwd()
+    def golangTool = tool 'golang_1.7'
+    
+    def appvers = ""
+    
+    stage("Setup") {
+        deleteDir()
+        withEnv([
+          "PATH+=${golangTool}/bin:${root}/gopath/bin",
+          "GOROOT=${golangTool}",
+          "GOPATH=${root}/gopath"
+        ]) {
+            sh """
+              mkdir -p ${root}/gopath/bin ${root}/gopath/pkg ${root}/gopath/src/github.com/venicegeo/pzsvc-exec
+              go version
+            """
+        }
+		dir("${root}/gopath/src/github.com/venicegeo/pzsvc-exec") {
+			if(env.GITLAB_CREDS) {
+				git url: "${env.GIT_URL}", branch: "${env.GIT_BRANCH}", credentialsId: "${env.GITLAB_CREDS}"
+			} else {
+				git url: "${env.GIT_URL}", branch: "${env.GIT_BRANCH}"
+			}
+            appvers = sh(script: """git describe --long --tags --always | sed 's/\\./-/'g""", returnStdout: true).trim()
+        }
+    }
+    
+    stage("Go Build") {
+        dir("${root}/gopath/src/github.com/venicegeo/pzsvc-exec") {
+            withEnv([
+              "PATH+=${golangTool}/bin:${root}/gopath/bin",
+              "GOROOT=${golangTool}",
+              "GOPATH=${root}/gopath"
+            ]) {
+                 sh """
+                   go build
+                   cd pzsvc-taskworker && go build
+                 """
+            }
+            sh """
+              mv pzsvc-exec ${root}/
+              mv pzsvc-taskworker/pzsvc-taskworker ${root}/
+              mv docker ${root}
+            """
+        }
+        sh "rm -rf gopath"
+    }
+
+    stage("Conda Build") {
+        sh """
+          sed -i 's/BUILD_NUMBER/${env.BUILD_NUMBER}/g' docker/share/pzsvc-exec/meta.yaml
+          mkdir -p docker/share/vendor/pzsvc-exec
+          cp pzsvc-exec docker/share/vendor/pzsvc-exec/
+          cp pzsvc-taskworker docker/share/vendor/pzsvc-exec/"""
+        dir("docker") {
+            sh """docker-compose rm -f --all
+              docker-compose up --build --no-color"""
+        }
+    }
+    
+    stage("Nexus Deploy") {
+        dir("docker/share") {
+            withCredentials([[$class: 'UsernamePasswordMultiBinding', credentialsId: 'ldap_baxtersh', usernameVariable: 'NEXUSUSER', passwordVariable: 'NEXUSPASS']]) {
+                sh "bash nexus-deploy.sh"
+            }
+        }
+    }
+}

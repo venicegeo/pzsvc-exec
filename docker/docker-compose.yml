@@ -1,0 +1,6 @@
+version: '2'
+services:
+  pzsvc-exec-build:
+    build: .
+    volumes:
+     - ./share:/root/share
