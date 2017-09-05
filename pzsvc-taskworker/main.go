@@ -125,7 +125,7 @@ func main() {
 	}
 	for i := 0; i < 10; i++ {
 		resp, err := http.Get(healthCheckURL.String())
-		if resp.StatusCode == http.StatusOK {
+		if err == nil && resp.StatusCode == http.StatusOK {
 			break
 		}
 		message := fmt.Sprintf("Service not yet online.  Will sleep and wait. (Status: %s, Error: %v)", resp.Status, err)
