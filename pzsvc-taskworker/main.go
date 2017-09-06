@@ -19,6 +19,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"net/http"
+	"net/url"
 	"os"
 	"strconv"
 	"time"
@@ -114,6 +116,24 @@ func main() {
 	}
 
 	pzsvc.LogInfo(s, "Found target service.  ServiceID: "+svcID)
+	pzsvc.LogInfo(s, "Waiting for service to come online...")
+
+	healthCheckURL := &url.URL{
+		Scheme: "http",
+		Host:   fmt.Sprintf("localhost:%d", configObj.Port),
+		Path:   "/",
+	}
+	for i := 0; i < 10; i++ {
+		resp, err := http.Get(healthCheckURL.String())
+		if err == nil && resp.StatusCode == http.StatusOK {
+			break
+		}
+		message := fmt.Sprintf("Service not yet online.  Will sleep and wait. (Status: %s, Error: %v)", resp.Status, err)
+		pzsvc.LogInfo(s, message)
+		time.Sleep(15 * time.Second)
+	}
+	pzsvc.LogInfo(s, "Service found and online, starting worker threads.")
+
 	for i := 0; i < configObj.NumProcs; i++ {
 		go workerThread(s, configObj, svcID)
 	}
