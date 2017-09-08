@@ -128,7 +128,11 @@ func main() {
 		if err == nil && resp.StatusCode == http.StatusOK {
 			break
 		}
-		message := fmt.Sprintf("Service not yet online.  Will sleep and wait. (Status: %s, Error: %v)", resp.Status, err)
+		statusText := "<nil>"
+		if resp != nil {
+			statusText = resp.Status
+		}
+		message := fmt.Sprintf("Service not yet online.  Will sleep and wait. (Status: %s, Error: %v)", statusText, err)
 		pzsvc.LogInfo(s, message)
 		time.Sleep(15 * time.Second)
 	}
