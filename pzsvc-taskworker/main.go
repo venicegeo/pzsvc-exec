@@ -27,7 +27,11 @@ import (
 
 	"github.com/venicegeo/pzsvc-exec/pzse"
 	"github.com/venicegeo/pzsvc-exec/pzsvc"
+	statmon "github.com/venicegeo/pzsvc-exec/status-monitor"
 )
+
+var monitor *statmon.StatusMonitor
+var monitorDestinations = []string{"/dev/stderr", "/home/vcap/pzsvc-taskworker.monitor.log", "/tmp/pzsvc-taskworker.monitor.log"}
 
 func main() {
 
@@ -36,7 +40,14 @@ func main() {
 
 	if len(os.Args) < 2 {
 		pzsvc.LogSimpleErr(s, "error: Insufficient parameters.  You must specify a config file.", nil)
-		return
+		os.Exit(1)
+	}
+
+	var smErr error
+	monitor, smErr = statmon.New("pzsvc-taskworker", time.Duration(10*time.Second), monitorDestinations...)
+	if smErr != nil {
+		pzsvc.LogSimpleErr(s, "error: initializing secondary status monitor failed", smErr)
+		os.Exit(1)
 	}
 
 	// First argument after the base call should be the path to the config file.
@@ -134,6 +145,7 @@ func main() {
 		}
 		message := fmt.Sprintf("Service not yet online.  Will sleep and wait. (Status: %s, Error: %v)", statusText, err)
 		pzsvc.LogInfo(s, message)
+		monitor.Failure(message)
 		time.Sleep(15 * time.Second)
 	}
 	pzsvc.LogInfo(s, "Service found and online, starting worker threads.")
@@ -201,6 +213,7 @@ func workerThread(s pzsvc.Session, configObj pzse.ConfigType, svcID string) {
 		byts, pErr := pzsvc.RequestKnownJSON("POST", "", s.PzAddr+"/service/"+svcID+"/task", s.PzAuth, &pzJobObj)
 		if pErr != nil {
 			pErr.Log(s, "Taskworker worker thread: error getting new task:")
+			monitor.Failure("Taskworker worker thread: error getting new task: " + pErr.GenExtendedMsg())
 			failCount++
 			time.Sleep(time.Duration(10*failCount) * time.Second)
 			continue
@@ -209,6 +222,7 @@ func workerThread(s pzsvc.Session, configObj pzse.ConfigType, svcID string) {
 		jobID := pzJobObj.Data.SvcData.JobID
 		pzsvc.LogInfo(s, "input string size: "+strconv.Itoa(len(inpStr)))
 		if inpStr != "" {
+			monitor.Success()
 			pzsvc.LogInfo(s, "New Task Grabbed.  JobID: "+jobID)
 			failCount = 0
 
