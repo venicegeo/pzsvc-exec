@@ -101,7 +101,7 @@ func (m *StatusMonitor) asyncHandleReports() {
 
 func (m *StatusMonitor) asyncHandleInterval() {
 	for _ = range m.intervalTicker.C {
-		if len(m.successBuffer) > 0 {
+		if len(m.successBuffer) == 0 {
 			m.printAll("Interval aggregate: No successes queued up")
 			continue
 		}
