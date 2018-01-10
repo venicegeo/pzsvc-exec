@@ -35,7 +35,10 @@ func FetchInputs(session pzsvc.Session, inputs []config.InputSource) error {
 		}
 	}
 
-	return fmt.Errorf("%v", errors)
+	if len(errors) > 0 {
+		return fmt.Errorf("%v", errors)
+	}
+	return nil
 }
 
 func downloadInputAsync(source config.InputSource) chan error {

@@ -21,7 +21,7 @@ func init() {
 
 	cliApp.Flags = []cli.Flag{
 		cli.StringFlag{Name: "config", Usage: "JSON pzsvc-exec configuration file (required)"},
-		cli.StringFlag{Name: "cliArgs", Usage: "supplemental command arguments to run the Piazza job"},
+		cli.StringFlag{Name: "cliExtra", Usage: "supplemental command arguments to run the Piazza job"},
 		cli.StringFlag{Name: "piazzaBaseURL", Usage: "base URL for querying Piazza API (required if not in vcap)"},
 		cli.StringFlag{Name: "piazzaAPIKey", Usage: "API key for use for communicating with Piazza (required if not in vcap)"},
 		cli.StringFlag{Name: "userID", Usage: "key authentication string (required)"},
@@ -32,20 +32,17 @@ func init() {
 
 func runCmd(ctx *cli.Context) error {
 	cfg := config.WorkerConfig{
-		Session:       pzsvc.Session{AppName: "pzsvc-worker", SessionID: "startup", LogRootDir: "pzsvc-exec"},
-		CLICommand:    ctx.String("cliCmd"),
-		PiazzaBaseURL: ctx.String("piazzaBaseURL"),
-		PiazzaAPIKey:  ctx.String("piazzaAPIKey"),
-		UserID:        ctx.String("userID"),
-		Inputs:        []config.InputSource{},
-		Outputs:       ctx.StringSlice("output"),
-		PzSEConfig:    pzse.ConfigType{},
+		Session:         pzsvc.Session{AppName: "pzsvc-worker", SessionID: "startup", LogRootDir: "pzsvc-exec"},
+		CLICommandExtra: ctx.String("cliExtra"),
+		PiazzaBaseURL:   ctx.String("piazzaBaseURL"),
+		PiazzaAPIKey:    ctx.String("piazzaAPIKey"),
+		UserID:          ctx.String("userID"),
+		Inputs:          []config.InputSource{},
+		Outputs:         ctx.StringSlice("output"),
+		PzSEConfig:      pzse.ConfigType{},
 	}
 	pzsvc.LogInfo(cfg.Session, "startup")
 
-	if cfg.CLICommand == "" {
-		return cli.NewExitError("CLI command is required", 1)
-	}
 	if cfg.PiazzaBaseURL == "" {
 		return cli.NewExitError("Piazza base URL is required", 1)
 	}

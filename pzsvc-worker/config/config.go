@@ -31,14 +31,14 @@ func ParseInputSource(sourceString string) (*InputSource, error) {
 
 // WorkerConfig encapsulates all configuration necessary for the  worker process
 type WorkerConfig struct {
-	Session       pzsvc.Session `json:"-"`
-	PiazzaBaseURL string
-	PiazzaAPIKey  string
-	CLICommand    string
-	UserID        string
-	Inputs        []InputSource
-	Outputs       []string
-	PzSEConfig    pzse.ConfigType
+	Session         pzsvc.Session `json:"-"`
+	PiazzaBaseURL   string
+	PiazzaAPIKey    string
+	CLICommandExtra string
+	UserID          string
+	Inputs          []InputSource
+	Outputs         []string
+	PzSEConfig      pzse.ConfigType
 }
 
 // ReadPzSEConfig reads the pzsvc-exec.config data from the given path
