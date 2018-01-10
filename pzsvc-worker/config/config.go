@@ -3,8 +3,10 @@ package config
 import (
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"strings"
 
+	"github.com/venicegeo/pzsvc-exec/pzse"
 	"github.com/venicegeo/pzsvc-exec/pzsvc"
 )
 
@@ -36,6 +38,18 @@ type WorkerConfig struct {
 	UserID        string
 	Inputs        []InputSource
 	Outputs       []string
+	PzSEConfig    pzse.ConfigType
+}
+
+// ReadPzSEConfig reads the pzsvc-exec.config data from the given path
+func (wc *WorkerConfig) ReadPzSEConfig(path string) error {
+	data, err := ioutil.ReadFile(path)
+	if err != nil {
+		return err
+	}
+
+	err = json.Unmarshal(data, &wc.PzSEConfig)
+	return err
 }
 
 // Serialize turns the configuration into something readable (JSON)

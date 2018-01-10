@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/venicegeo/pzsvc-exec/pzse"
 	"github.com/venicegeo/pzsvc-exec/pzsvc"
 	"github.com/venicegeo/pzsvc-exec/pzsvc-worker/config"
 
@@ -19,12 +20,13 @@ func init() {
 	cliApp.Action = runCmd
 
 	cliApp.Flags = []cli.Flag{
-		cli.StringFlag{Name: "cliCmd", Usage: "command to run the Piazza job"},
-		cli.StringFlag{Name: "piazzaBaseURL", Usage: "base URL for querying Piazza API", EnvVar: "PIAZZA_URL"},
-		cli.StringFlag{Name: "piazzaAPIKey", Usage: "API key for use for communicating with Piazza"},
-		cli.StringFlag{Name: "userID", Usage: "key authentication string"},
+		cli.StringFlag{Name: "config", Usage: "JSON pzsvc-exec configuration file (required)"},
+		cli.StringFlag{Name: "cliArgs", Usage: "supplemental command arguments to run the Piazza job"},
+		cli.StringFlag{Name: "piazzaBaseURL", Usage: "base URL for querying Piazza API (required if not in vcap)"},
+		cli.StringFlag{Name: "piazzaAPIKey", Usage: "API key for use for communicating with Piazza (required if not in vcap)"},
+		cli.StringFlag{Name: "userID", Usage: "key authentication string (required)"},
 		cli.StringSliceFlag{Name: "input, i", Usage: "input source specification (as \"filename:URL\")"},
-		cli.StringSliceFlag{Name: "output, o", Usage: "output file name (usable multiple times)"},
+		cli.StringSliceFlag{Name: "output, o", Usage: "output file name (usable multiple times; at least one required)"},
 	}
 }
 
@@ -37,6 +39,7 @@ func runCmd(ctx *cli.Context) error {
 		UserID:        ctx.String("userID"),
 		Inputs:        []config.InputSource{},
 		Outputs:       ctx.StringSlice("output"),
+		PzSEConfig:    pzse.ConfigType{},
 	}
 	pzsvc.LogInfo(cfg.Session, "startup")
 
@@ -51,6 +54,12 @@ func runCmd(ctx *cli.Context) error {
 	}
 	if len(cfg.Outputs) == 0 {
 		return cli.NewExitError("1 or more output files are required", 1)
+	}
+	if ctx.String("config") == "" {
+		return cli.NewExitError("pzsvc-exec config file is required", 1)
+	}
+	if err := cfg.ReadPzSEConfig(ctx.String("config")); err != nil {
+		return cli.NewExitError(err, 1)
 	}
 
 	for _, sourceString := range ctx.StringSlice("input") {
