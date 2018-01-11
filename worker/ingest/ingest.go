@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/venicegeo/pzsvc-exec/pzsvc"
-	"github.com/venicegeo/pzsvc-exec/pzsvc-worker/config"
+	"github.com/venicegeo/pzsvc-exec/worker/config"
 )
 
 const ingestTimeout = 1 * time.Minute

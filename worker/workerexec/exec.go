@@ -5,9 +5,9 @@ import (
 	"strings"
 
 	"github.com/venicegeo/pzsvc-exec/pzsvc"
-	"github.com/venicegeo/pzsvc-exec/pzsvc-worker/config"
-	"github.com/venicegeo/pzsvc-exec/pzsvc-worker/ingest"
-	"github.com/venicegeo/pzsvc-exec/pzsvc-worker/input"
+	"github.com/venicegeo/pzsvc-exec/worker/config"
+	"github.com/venicegeo/pzsvc-exec/worker/ingest"
+	"github.com/venicegeo/pzsvc-exec/worker/input"
 )
 
 // WorkerExec runs the main worker exec subprocess

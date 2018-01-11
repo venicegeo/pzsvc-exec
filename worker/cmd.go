@@ -6,8 +6,8 @@ import (
 
 	"github.com/venicegeo/pzsvc-exec/pzse"
 	"github.com/venicegeo/pzsvc-exec/pzsvc"
-	"github.com/venicegeo/pzsvc-exec/pzsvc-worker/config"
-	"github.com/venicegeo/pzsvc-exec/pzsvc-worker/workerexec"
+	"github.com/venicegeo/pzsvc-exec/worker/config"
+	"github.com/venicegeo/pzsvc-exec/worker/workerexec"
 
 	cli "gopkg.in/urfave/cli.v1"
 )
