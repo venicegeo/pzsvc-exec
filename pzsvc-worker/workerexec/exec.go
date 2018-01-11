@@ -12,18 +12,19 @@ import (
 
 // WorkerExec runs the main worker exec subprocess
 func WorkerExec(cfg config.WorkerConfig) (err error) {
-	err = input.FetchInputs(cfg.Session, cfg.Inputs)
+	err = input.FetchInputs(*cfg.Session, cfg.Inputs)
 	if err != nil {
 		return
 	}
 
-	version, err := runCommandOutput(cfg.Session, cfg.PzSEConfig.VersionCmd)
+	version, err := runCommandOutput(*cfg.Session, cfg.PzSEConfig.VersionCmd)
 	if err != nil {
 		return
 	}
+	version = strings.TrimSpace(version)
 
 	command := strings.Join([]string{cfg.PzSEConfig.CliCmd, cfg.CLICommandExtra}, " ")
-	err = runCommandNoOutput(cfg.Session, command)
+	err = runCommandNoOutput(*cfg.Session, command)
 	if err != nil {
 		return
 	}

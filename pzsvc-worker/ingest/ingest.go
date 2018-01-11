@@ -34,7 +34,7 @@ func OutputFilesToPiazza(cfg config.WorkerConfig, algFullCommand string, algVers
 			"algoProcTime": time.Now().UTC().Format("20060102.150405.99999"),
 		}
 
-		errChan := ingestFileAsync(cfg.Session, filePath, fileType, cfg.PiazzaServiceID, algVersion, attMap)
+		errChan := ingestFileAsync(*cfg.Session, filePath, fileType, cfg.PiazzaServiceID, algVersion, attMap)
 		ingestErrChans = append(ingestErrChans, errChan)
 	}
 

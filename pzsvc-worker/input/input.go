@@ -51,7 +51,7 @@ func downloadInputAsync(source config.InputSource) chan error {
 		_, fStatErr := os.Stat(source.FileName)
 		if fStatErr == nil {
 			err = fmt.Errorf("File already exists: %v", source.FileName)
-		} else if fStatErr != os.ErrNotExist {
+		} else if !os.IsNotExist(fStatErr) {
 			err = fmt.Errorf("Error statting file: %v; %v", source.FileName, fStatErr)
 		}
 		if err != nil {

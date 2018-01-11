@@ -31,7 +31,7 @@ func ParseInputSource(sourceString string) (*InputSource, error) {
 
 // WorkerConfig encapsulates all configuration necessary for the  worker process
 type WorkerConfig struct {
-	Session         pzsvc.Session `json:"-"`
+	Session         *pzsvc.Session `json:"-"`
 	PiazzaBaseURL   string
 	PiazzaAPIKey    string
 	PiazzaServiceID string
