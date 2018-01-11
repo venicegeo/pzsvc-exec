@@ -195,7 +195,7 @@ func pollForJobs(s pzsvc.Session, configObj pzse.ConfigType, svcID string, confi
 			// -i coastal.TIF:https://someplace.foo.bar.baz -i swir1.TIF:https://someplate.else.foo.bar/baz.foo
 			//  --userId "cn=PzTestPass13, OU=People, OU=NGA, OU=DoD, O=U.S. Government, C=US" --config pzsvc-exec.conf`
 
-			workerCommand := fmt.Sprintf("worker --cliCmd \"%s\" --userId \"%s\" --config \"%s\"", jobInputContent.Command, jobInputContent.UserID, configPath)
+			workerCommand := fmt.Sprintf("worker --cliCmd \"%s\" --userId \"%s\" --config \"%s\" --serviceId", jobInputContent.Command, jobInputContent.UserID, configPath, svcID)
 			// For each input image, add that image ref as an argument to the CLI
 			for i, imageFile := range jobInputContent.InExtFiles {
 				workerCommand += fmt.Sprintf("-i %s:%s", jobInputContent.InExtNames[i], jobInputContent.InExtFiles[i])
