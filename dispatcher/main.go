@@ -41,7 +41,8 @@ func main() {
 
 	// First argument after the base call should be the path to the config file.
 	// ReadFile returns the contents of the file as a byte buffer.
-	configBuf, err := ioutil.ReadFile(os.Args[1])
+	configPath := os.Args[1]
+	configBuf, err := ioutil.ReadFile(configPath)
 	if err != nil {
 		pzsvc.LogSimpleErr(s, "Dispatcher error in reading config: ", err)
 		return
@@ -108,7 +109,7 @@ func main() {
 
 	pzsvc.LogInfo(s, "Found target service.  ServiceID: "+ svcID + ". Beginning Polling.")
 
-	pollForJobs(s, configObj, svcID)
+	pollForJobs(s, configObj, svcID, configPath)
 }
 
 // WorkBody exists as part of the response format of the Piazza job manager task request endpoint.
@@ -142,7 +143,7 @@ type WorkOutData struct {
 	SvcData WorkSvcData `json:"serviceData"`
 }
 
-func pollForJobs(s pzsvc.Session, configObj pzse.ConfigType, svcID string) {
+func pollForJobs(s pzsvc.Session, configObj pzse.ConfigType, svcID string, configPath string) {
 	var (
 		err       error
 	)
@@ -169,17 +170,17 @@ func pollForJobs(s pzsvc.Session, configObj pzse.ConfigType, svcID string) {
 			var outpByts []byte
 
 			var respObj pzse.OutStruct
-			var displayObj pzse.InpStruct
+			var jobInputContent pzse.InpStruct
 			var displayByt []byte
-			err = json.Unmarshal([]byte(inpStr), &displayObj)
+			err = json.Unmarshal([]byte(inpStr), &jobInputContent)
 			if err == nil {
-				if displayObj.ExtAuth != "" {
-					displayObj.ExtAuth = "*****"
+				if jobInputContent.ExtAuth != "" {
+					jobInputContent.ExtAuth = "*****"
 				}
-				if displayObj.PzAuth != "" {
-					displayObj.PzAuth = "*****"
+				if jobInputContent.PzAuth != "" {
+					jobInputContent.PzAuth = "*****"
 				}
-				displayByt, err = json.Marshal(displayObj)
+				displayByt, err = json.Marshal(jobInputContent)
 				if err != nil {
 					pzsvc.LogAudit(s, s.UserID, "Audit failure", s.AppName, "Could not Marshal.  Job Canceled.", pzsvc.ERROR)
 					sendExecResult(s, s.PzAddr, s.PzAuth, svcID, jobID, "Fail", nil)
@@ -189,6 +190,16 @@ func pollForJobs(s pzsvc.Session, configObj pzse.ConfigType, svcID string) {
 			}
 
 			pzsvc.LogAudit(s, s.UserID, "Creating CF Task for Job", s.AppName, string(displayByt), pzsvc.INFO)
+
+			// `worker --cliCmd "-i coastal.TIF -i swir1.TIF --bands 1 1 --basename shoreline --smooth 1.0 --coastmask"
+			// -i coastal.TIF:https://someplace.foo.bar.baz -i swir1.TIF:https://someplate.else.foo.bar/baz.foo
+			//  --userId "cn=PzTestPass13, OU=People, OU=NGA, OU=DoD, O=U.S. Government, C=US" --config pzsvc-exec.conf`
+
+			workerCommand := fmt.Sprintf("worker --cliCmd \"%s\" --userId \"%s\" --config \"%s\"", jobInputContent.Command, jobInputContent.UserID, configPath)
+			// For each input image, add that image ref as an argument to the CLI
+			for i, imageFile := range jobInputContent.InExtFiles {
+				workerCommand += fmt.Sprintf("-i %s:%s", jobInputContent.InExtNames[i], jobInputContent.InExtFiles[i])
+			}
 
 			// Call Run-Task
 			//outpByts, pErr := pzsvc.RequestKnownJSON("POST", inpStr, workAddr, "", &respObj)
