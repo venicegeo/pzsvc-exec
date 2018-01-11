@@ -7,6 +7,7 @@ import (
 	"github.com/venicegeo/pzsvc-exec/pzse"
 	"github.com/venicegeo/pzsvc-exec/pzsvc"
 	"github.com/venicegeo/pzsvc-exec/pzsvc-worker/config"
+	"github.com/venicegeo/pzsvc-exec/pzsvc-worker/workerexec"
 
 	cli "gopkg.in/urfave/cli.v1"
 )
@@ -69,10 +70,11 @@ func runCmd(ctx *cli.Context) error {
 
 	pzsvc.LogInfo(cfg.Session, fmt.Sprintf("config validated: %s", cfg.Serialize()))
 
-	err := mainWorkerProcess(cfg)
+	err := workerexec.WorkerExec(cfg)
 	if err != nil {
 		return cli.NewExitError(err, 1)
 	}
+
 	return nil
 }
 

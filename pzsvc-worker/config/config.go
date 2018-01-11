@@ -34,6 +34,7 @@ type WorkerConfig struct {
 	Session         pzsvc.Session `json:"-"`
 	PiazzaBaseURL   string
 	PiazzaAPIKey    string
+	PiazzaServiceID string
 	CLICommandExtra string
 	UserID          string
 	Inputs          []InputSource
