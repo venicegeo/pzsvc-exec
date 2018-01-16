@@ -171,7 +171,11 @@ func pollForJobs(s pzsvc.Session, configObj pzse.ConfigType, svcID string, confi
 		pzsvc.LogSimpleErr(s, "Cannot proceed: Error in reading VCAP Application properties: ", err)
 		return
 	}
-	appName, ok := vcapJsonContainer["application_name"].(string)
+	appName, err := vcapJsonContainer["application_name"].(string)
+	if pErr != nil {
+		pzsvc.LogSimpleErr(s, "Cannot Read Application Name from VCAP Application properties: ", err)
+		return
+	}
 
 	for {
 		var pzJobObj struct {
