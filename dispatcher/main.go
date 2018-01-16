@@ -19,15 +19,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"net/http"
-	"net/url"
 	"os"
-	"strconv"
 	"time"
 
+	"github.com/cloudfoundry-community/go-cfclient"
 	"github.com/venicegeo/pzsvc-exec/pzse"
 	"github.com/venicegeo/pzsvc-exec/pzsvc"
-	"github.com/cloudfoundry-community/go-cfclient"
 )
 
 func main() {
@@ -90,7 +87,6 @@ func main() {
 	}
 	s.PzAuth = "Basic " + base64.StdEncoding.EncodeToString([]byte(apiKey+":"))
 
-
 	svcID := ""
 	for i := 0; svcID == "" && i < 10; i++ {
 		svcID, err = pzsvc.FindMySvc(s, configObj.SvcName)
@@ -108,15 +104,15 @@ func main() {
 		return
 	}
 
-	pzsvc.LogInfo(s, "Found target service.  ServiceID: "+ svcID + ".")
+	pzsvc.LogInfo(s, "Found target service.  ServiceID: "+svcID+".")
 
 	// Initialize the CF Client
 	clientConfig := &cfclient.Config{
-		ApiAddress:   os.Getenv("CF_API"),
-		Username:     os.Getenv("CF_USER"),
-		Password:     os.Getenv("CF_PASS")
+		ApiAddress: os.Getenv("CF_API"),
+		Username:   os.Getenv("CF_USER"),
+		Password:   os.Getenv("CF_PASS"),
 	}
-	client, err := cfclient.NewClient(c)
+	client, err := cfclient.NewClient(clientConfig)
 	if err != nil {
 		pzsvc.LogSimpleErr(s, "Error in Inflating Cloud Foundry API Client: ", err)
 		return
@@ -158,22 +154,22 @@ type WorkOutData struct {
 	SvcData WorkSvcData `json:"serviceData"`
 }
 
-func pollForJobs(s pzsvc.Session, configObj pzse.ConfigType, svcID string, configPath string, cfClient Client) {
+func pollForJobs(s pzsvc.Session, configObj pzse.ConfigType, svcID string, configPath string, cfClient *cfclient.Client) {
 	var (
-		err       error
+		err error
 	)
 	s.SessionID = "Polling"
 
 	// Get the application name
 	vcapJsonContainer := make(map[string]interface{})
-	err := json.Unmarshal(os.Getenv("VCAP_APPLICATION"), &vcapJsonContainer)
-	if pErr != nil {
+	err = json.Unmarshal([]byte(os.Getenv("VCAP_APPLICATION")), &vcapJsonContainer)
+	if err != nil {
 		pzsvc.LogSimpleErr(s, "Cannot proceed: Error in reading VCAP Application properties: ", err)
 		return
 	}
-	appName, err := vcapJsonContainer["application_name"].(string)
-	if pErr != nil {
-		pzsvc.LogSimpleErr(s, "Cannot Read Application Name from VCAP Application properties: ", err)
+	appName, ok := vcapJsonContainer["application_name"].(string)
+	if !ok {
+		pzsvc.LogSimpleErr(s, "Cannot Read Application Name from VCAP Application properties: string type assertion failed", nil)
 		return
 	}
 
@@ -195,9 +191,6 @@ func pollForJobs(s pzsvc.Session, configObj pzse.ConfigType, svcID string, confi
 		if inpStr != "" {
 			pzsvc.LogInfo(s, "New Task Grabbed.  JobID: "+jobID)
 
-			var outpByts []byte
-
-			var respObj pzse.OutStruct
 			var jobInputContent pzse.InpStruct
 			var displayByt []byte
 			err = json.Unmarshal([]byte(inpStr), &jobInputContent)
@@ -217,23 +210,23 @@ func pollForJobs(s pzsvc.Session, configObj pzse.ConfigType, svcID string, confi
 				}
 			}
 
-			pzsvc.LogAudit(s, s.UserID, "Creating CF Task for Job" + jobID, s.AppName, string(displayByt), pzsvc.INFO)
+			pzsvc.LogAudit(s, s.UserID, "Creating CF Task for Job"+jobID, s.AppName, string(displayByt), pzsvc.INFO)
 
 			// Form the CLI for the Algorithm Task
 			workerCommand := fmt.Sprintf("worker --cliCmd \"%s\" --userId \"%s\" --config \"%s\" --serviceId \"%s\" --output \"%s\"", jobInputContent.Command, jobInputContent.UserID, configPath, svcID, jobInputContent.OutGeoJs[0])
 			// For each input image, add that image ref as an argument to the CLI
-			for i, imageFile := range jobInputContent.InExtFiles {
+			for i := range jobInputContent.InExtFiles {
 				workerCommand += fmt.Sprintf(" -i %s:%s", jobInputContent.InExtNames[i], jobInputContent.InExtFiles[i])
 			}
 
-			taskRequest := TaskRequest{
-				Command: workerCommand,
-				Name: jobID,
-				DropletGUID: jobID,
+			taskRequest := cfclient.TaskRequest{
+				Command:     workerCommand,
+				Name:        jobID,
+				DropletGUID: appName,
 			}
 
 			// Send Run-Task request to CF
-			task, err := cfClient.CreateTask(taskRequest)
+			_, err := cfClient.CreateTask(taskRequest) // TODO: do something with the created task
 			if err != nil {
 				pzsvc.LogAudit(s, s.UserID, "Audit failure", s.AppName, "Could not Create PCF Task for Job. Job Failed.", pzsvc.ERROR)
 				sendExecResult(s, s.PzAddr, s.PzAuth, svcID, jobID, "Fail", nil)
@@ -241,7 +234,7 @@ func pollForJobs(s pzsvc.Session, configObj pzse.ConfigType, svcID string, confi
 				continue
 			}
 
-			pzsvc.LogAudit(s, s.UserID, "Task Created for CF Job" + , s.AppName, string(displayByt), pzsvc.INFO)
+			pzsvc.LogAudit(s, s.UserID, "Task Created for CF Job", s.AppName, string(displayByt), pzsvc.INFO)
 
 			time.Sleep(5 * time.Second)
 		} else {
