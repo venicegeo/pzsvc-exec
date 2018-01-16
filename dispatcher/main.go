@@ -220,22 +220,20 @@ func pollForJobs(s pzsvc.Session, configObj pzse.ConfigType, svcID string, confi
 			pzsvc.LogAudit(s, s.UserID, "Creating CF Task for Job" + jobID, s.AppName, string(displayByt), pzsvc.INFO)
 
 			// Form the CLI for the Algorithm Task
-			workerCommand := fmt.Sprintf("worker --cliCmd \"%s\" --userId \"%s\" --config \"%s\" --serviceId \"%s\"", jobInputContent.Command, jobInputContent.UserID, configPath, svcID)
+			workerCommand := fmt.Sprintf("worker --cliCmd \"%s\" --userId \"%s\" --config \"%s\" --serviceId \"%s\" --output \"%s\"", jobInputContent.Command, jobInputContent.UserID, configPath, svcID, jobInputContent.OutGeoJs[0])
 			// For each input image, add that image ref as an argument to the CLI
 			for i, imageFile := range jobInputContent.InExtFiles {
 				workerCommand += fmt.Sprintf(" -i %s:%s", jobInputContent.InExtNames[i], jobInputContent.InExtFiles[i])
 			}
 
 			taskRequest := TaskRequest{
-				Command: workerCommand
-				Name: jobID
-				MemoryInMegabyte: 0
-				DiskInMegabyte: 0
-				DropletGUID: jobID
+				Command: workerCommand,
+				Name: jobID,
+				DropletGUID: jobID,
 			}
 
 			// Send Run-Task request to CF
-			task, error := cfClient.CreateTask(taskRequest)
+			task, err := cfClient.CreateTask(taskRequest)
 			if err != nil {
 				pzsvc.LogAudit(s, s.UserID, "Audit failure", s.AppName, "Could not Create PCF Task for Job. Job Failed.", pzsvc.ERROR)
 				sendExecResult(s, s.PzAddr, s.PzAuth, svcID, jobID, "Fail", nil)
