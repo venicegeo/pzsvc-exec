@@ -27,6 +27,7 @@ import (
 
 	"github.com/venicegeo/pzsvc-exec/pzse"
 	"github.com/venicegeo/pzsvc-exec/pzsvc"
+	"github.com/cloudfoundry-community/go-cfclient"
 )
 
 func main() {
@@ -107,9 +108,23 @@ func main() {
 		return
 	}
 
-	pzsvc.LogInfo(s, "Found target service.  ServiceID: "+ svcID + ". Beginning Polling.")
+	pzsvc.LogInfo(s, "Found target service.  ServiceID: "+ svcID + ".")
 
-	pollForJobs(s, configObj, svcID, configPath)
+	// Initialize the CF Client
+	clientConfig := &cfclient.Config{
+		ApiAddress:   os.Getenv("CF_API"),
+		Username:     os.Getenv("CF_USER"),
+		Password:     os.Getenv("CF_PASS")
+	}
+	client, err := cfclient.NewClient(c)
+	if err != nil {
+		pzsvc.LogSimpleErr(s, "Error in Inflating Cloud Foundry API Client: ", err)
+		return
+	}
+
+	pzsvc.LogInfo(s, "Cloud Foundry Client initialized. Beginning Polling.")
+
+	pollForJobs(s, configObj, svcID, configPath, client)
 }
 
 // WorkBody exists as part of the response format of the Piazza job manager task request endpoint.
@@ -143,11 +158,20 @@ type WorkOutData struct {
 	SvcData WorkSvcData `json:"serviceData"`
 }
 
-func pollForJobs(s pzsvc.Session, configObj pzse.ConfigType, svcID string, configPath string) {
+func pollForJobs(s pzsvc.Session, configObj pzse.ConfigType, svcID string, configPath string, cfClient Client) {
 	var (
 		err       error
 	)
 	s.SessionID = "Polling"
+
+	// Get the application name
+	vcapJsonContainer := make(map[string]interface{})
+	err := json.Unmarshal(os.Getenv("VCAP_APPLICATION"), &vcapJsonContainer)
+	if pErr != nil {
+		pzsvc.LogSimpleErr(s, "Cannot proceed: Error in reading VCAP Application properties: ", err)
+		return
+	}
+	appName := // TODO
 
 	for {
 		var pzJobObj struct {
@@ -158,7 +182,7 @@ func pollForJobs(s pzsvc.Session, configObj pzse.ConfigType, svcID string, confi
 		byts, pErr := pzsvc.RequestKnownJSON("POST", "", s.PzAddr+"/service/"+svcID+"/task", s.PzAuth, &pzJobObj)
 		if pErr != nil {
 			pErr.Log(s, "Dispatcher: error getting new task:")
-			time.Sleep(time.Duration(10) * time.Second)
+			time.Sleep(time.Duration(5) * time.Second)
 			continue
 		}
 
@@ -184,40 +208,43 @@ func pollForJobs(s pzsvc.Session, configObj pzse.ConfigType, svcID string, confi
 				if err != nil {
 					pzsvc.LogAudit(s, s.UserID, "Audit failure", s.AppName, "Could not Marshal.  Job Canceled.", pzsvc.ERROR)
 					sendExecResult(s, s.PzAddr, s.PzAuth, svcID, jobID, "Fail", nil)
-					time.Sleep(10 * time.Second)
+					time.Sleep(5 * time.Second)
 					continue
 				}
 			}
 
-			pzsvc.LogAudit(s, s.UserID, "Creating CF Task for Job", s.AppName, string(displayByt), pzsvc.INFO)
+			pzsvc.LogAudit(s, s.UserID, "Creating CF Task for Job" + jobID, s.AppName, string(displayByt), pzsvc.INFO)
 
-			// `worker --cliCmd "-i coastal.TIF -i swir1.TIF --bands 1 1 --basename shoreline --smooth 1.0 --coastmask"
-			// -i coastal.TIF:https://someplace.foo.bar.baz -i swir1.TIF:https://someplate.else.foo.bar/baz.foo
-			//  --userId "cn=PzTestPass13, OU=People, OU=NGA, OU=DoD, O=U.S. Government, C=US" --config pzsvc-exec.conf`
-
+			// Form the CLI for the Algorithm Task
 			workerCommand := fmt.Sprintf("worker --cliCmd \"%s\" --userId \"%s\" --config \"%s\" --serviceId \"%s\"", jobInputContent.Command, jobInputContent.UserID, configPath, svcID)
 			// For each input image, add that image ref as an argument to the CLI
 			for i, imageFile := range jobInputContent.InExtFiles {
 				workerCommand += fmt.Sprintf(" -i %s:%s", jobInputContent.InExtNames[i], jobInputContent.InExtFiles[i])
 			}
 
+			taskRequest := TaskRequest{
+				Command: workerCommand
+				Name: jobID
+				MemoryInMegabyte: 0
+				DiskInMegabyte: 0
+				DropletGUID: jobID
+			}
 
+			// Send Run-Task request to CF
+			task, error := cfClient.CreateTask(taskRequest)
+			if err != nil {
+				pzsvc.LogAudit(s, s.UserID, "Audit failure", s.AppName, "Could not Create PCF Task for Job. Job Failed.", pzsvc.ERROR)
+				sendExecResult(s, s.PzAddr, s.PzAuth, svcID, jobID, "Fail", nil)
+				time.Sleep(5 * time.Second)
+				continue
+			}
 
-			// Call Run-Task
-			//outpByts, pErr := pzsvc.RequestKnownJSON("POST", inpStr, workAddr, "", &respObj)
-			//if pErr != nil {
-			//	pErr.OverwriteRequest(string(displayByt))
-			//	pErr.Log(s, "Error calling pzsvc-exec")
-			//	sendExecResult(s, s.PzAddr, s.PzAuth, svcID, jobID, "Fail", nil)
-			//} else {
-			//	pzsvc.LogAudit(s, jobId, "http response from pzsvc-exec", s.UserID, string(outpByts), pzsvc.INFO)
-			//	sendExecResult(s, s.PzAddr, s.PzAuth, svcID, jobID, "Success", outpByts)
-			//}
-			time.Sleep(10 * time.Second)
+			pzsvc.LogAudit(s, s.UserID, "Task Created for CF Job" + , s.AppName, string(displayByt), pzsvc.INFO)
 
+			time.Sleep(5 * time.Second)
 		} else {
 			pzsvc.LogInfo(s, "No Task.  Sleeping now.  input: "+string(byts))
-			time.Sleep(60 * time.Second)
+			time.Sleep(5 * time.Second)
 		}
 	}
 
