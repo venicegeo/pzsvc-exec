@@ -21,6 +21,8 @@ import (
 	"io/ioutil"
 	"os"
 	"time"
+	"strconv"
+	"net/url"
 
 	"github.com/cloudfoundry-community/go-cfclient"
 	"github.com/venicegeo/pzsvc-exec/pzse"
@@ -176,13 +178,13 @@ func pollForJobs(s pzsvc.Session, configObj pzse.ConfigType, svcID string, confi
 	// Read the # of simultaneous Tasks that are allowed to be run by the Dispatcher
 	taskLimit := 5
 	if envTaskLimit := os.Getenv("TASK_LIMIT"); envTaskLimit != "" {
-		taskLimit = strconv.Atoi(envTaskLimit)
+		taskLimit, err = strconv.Atoi(envTaskLimit)
 	}
 
 	// Polling Loop
 	for {
 		// First, check to see if there is room for tasks. If we've reached the task limit, then do not poll Piazza for jobs.
-		query := url.Values()
+		query := url.Values{}
 		query.Add("states", "RUNNING")
 		tasks, err := cfClient.TasksByAppByQuery(appName, query)
 		if len(tasks) > taskLimit {
