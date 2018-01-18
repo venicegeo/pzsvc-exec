@@ -1,4 +1,4 @@
-# pzsvc-exec
+# Piazza Service Executor
 
 ## Contents
 
@@ -12,19 +12,13 @@
 
 ## Overview
 
-Pzsvc-exec is a microservice written in the Go programming langauge.  It's purpose is to bring algorithms and other non-scalable applications and web services to the enterprise.  It provides load balancing capabilities to enable algorithms and applications to be scalable in the Enterprise.
+Piazza Service Executor is a microservice written in the Go programming langauge whose purpose is to bring algorithms and other non-scalable applications to the enterprise by using Piazza and Cloud Foundry load balancing capabilities to enable algorithms and applications to be scalable in the Enterprise.
 
-Ppzsvc-exec is designed to serve command-line programs to Piazza, based on the contents of a config file.  Piazza is an open-source framework and tool-suite enabling rapid geospatial information systems (GIS) solutions for the enterprise.   It is designed to do the heavy lifting needed by developers moving solutions to the cloud.  Piazza leverages pzsvc-exec so algorithm developers can have their algorithms deployed to the cloud so developers can discover and utilize these algorithms within the GIS solutions they develop.   For more details on Piazza, see https://pz-docs.geointservices.io/ for details.
+The Service Executor is designed to serve command-line programs to Piazza, based on the contents of a config file.  Piazza is an open-source framework and tool-suite enabling rapid geospatial information systems (GIS) solutions for the enterprise.  It is designed to do the heavy lifting needed by developers moving solutions to the cloud.  Piazza leverages this Service Executor so algorithm developers can have their algorithms deployed to the cloud so developers can discover and utilize these algorithms within the GIS solutions they develop. 
 
-When pzsvc-exec is launched, it reads from a configuration file, from which it derives all persistent information.  Based on settings in the configuration file, pzsvc-exec starts automatically registering itself as a service to a specified Piazza instance.  
+When the Service Executor is launched, it reads from a configuration file, from which it derives all persistent information (in addition to some information from Environment Variables).  Based on settings in the configuration file and the environment, the Service Executor starts automatically registering itself as a Service to a specified Piazza instance.  
 
-When a request comes in, it has up to three parts - a set of files to download, a command string to execute, and a set of files to upload.  It will generate a temporary folder, download the files into the folder, execute its command in the folder, upload the files from the folder, reply to the service request, and then delete the folder.  The command it attempts to execute is the `CliCmd` parameter from the config file, with the `cmd` from the service request appended on.  The reply to the service request will take the form of a JSON string, and contains a list of the files downloaded, a list of the files uploaded, and the stdout return of command executed.
-
-The idea of this meta-service is to simplify the task of launch and maintenance on Pz services.  If you have execute access to an algorithm or similar program, its meaningful inputs consist of files and a command-line call, and its meaningful outputs consist of files, stderr, and stdout, you can provide it as a Piazza service.  All you should have to do is fill out the config file properly (and have a Piazza instance to connect to) and pzsvc-exec will take care of the rest.
-
-As a secondary benefit, pzsvc-exec will be kept current with the existing Piazza interface, meaning that it can serve as living example code for those of you who find its limitations overly constraining.  For those of you writing in Go, it even contains a library (pzsvc) built to handle interactions with Piazza.
-
-Additionally, and associated, pzsvc-exec contains a secondary application of pzsvc-taskworker.  Pzvc-taskworker is designed to run off the same config file that pzsvc-exec does and coordinate with pzsvc-exec in such a way as to take advantage of the Piazza task manager functionality, offering improvements in things like security and scalability.  Pzsvc-taskworker is optional, like much of the functionality associated with pzsvc-exec, and will be described more in depth in its own section.
+Service Executor has two main components: the Dispatcher and the Worker.  Service Executor's Dispatcher component will begin polling Piazza, on startup, for work that it has received for its particular Service. When a Service Job request comes in, it has up to three parts - a set of files to download, a command string to execute, and a set of files to upload.  The Dispatcher component will use Cloud Foundry Tasks in order to spin up a new container that will run the Service Executor's Worker component. This Worker component will read the input Job request and execute the CLI algorithm in this Task Container, and send any results or status updates back to Piazza where the requesting user can read the status of the algorithm, and fetch results. 
 
 ## Development Environment
 
@@ -32,7 +26,7 @@ Pzsvc-exec is written in the go programming language.  To develop capabilities i
 
 ### 1. Install Go
 
-Pzsvc-exec  is built using the Go, version 1.8.x. For details on installing Go, see https://golang.org/dl/.  Once Go is instaled, make sure the Go tool is on your path once the install is done.
+Pzsvc-exec is built using the Go, version 1.8.x. For details on installing Go, see https://golang.org/dl/.  Once Go is instaled, make sure the Go tool is on your path once the install is done.
 
 ### 2. Set up Go environment variables
 
@@ -84,23 +78,13 @@ An example configuration file, `examplecfg.txt` is located in the root directory
 
 Either one of the `PzAddr` parameters is required.  Specifying `PzAddrEnVar` overwrites the value of `PzAddr`.
 
-
 **APIKeyEnVar**: The name of the environment variable that will contain your Piazza API key.  When using Piazza, an API key is necessary.  For details see on obtaining the key and using Piazza, see the [Piazza User's Guide](https://pz-docs.stage.geointservices.io/userguide/index.html).  **Required**
 
 **SvcName**: A unique name of the service.  The name specified is used to register your web service so it can be discovered.  This name is also added as metadata for any loaded files.   **Required**
 
-**URL**: The URL for where pzsvc-exec is running.  This address is used during autoregistration with Piazza so the service can be discovered.  **Required**
-
-**Port**: The port this service serves on.  If not defined, will default to `8080`.
-
-**PortEnVar**: Environment variable, containing a port number. 
-Either one of the `Port` parameters is required or else your user service will be default to port `8080`.  Specifying `PortEnVar` overwrites the value of `Port`.
-
 **Description**: A simple text description of your service.   This is used as metadata when your service is registered with Piazza's user service registry.
 
 **Attributes**: A block of freeform key/value pairs for you to set additional descriptive attributes.  This is primarily intended to aid communication between services and service consumers with respect to the details of a service.  Information provided might be things like service type (so that the correct service consumers can identify you), interface (so they know how to interact with you) and image requirements (so they know what sorts of images to send you).
-
-**NumProcs**: An integer vaue specifying the maximum number of simultaneous jobs to allow.  This will generally depend on the amount of data you are uploading and downloading, the overall computational load of the command you are executing, and the resources each instance has available to draw on.  If the service is crashing regularly from overload, you want to drop this number.  If it is running at low load but processing too slowly, you'll want to increase it.  Defaults to no thread control, allowing all jobs to run as they arrive.
 
 **CanUpload: Boolean**: A boolean indicating if data results should be loaded after your service processes a request.  Defaults to false.
 
@@ -108,74 +92,12 @@ Either one of the `Port` parameters is required or else your user service will b
 
 **CanDownlExt**: A boolean indicating whether external downloads can be done before processing.  Defaults to false.
 
-**RegForTaskMgr**: A boolean indicating whether your service should run as a task managed service.  This is the Piazza feature that taskworker was designed to take advantage of.  For more details on how task management works, see the [Piazza the  Guide](https://pz-docs.stage.geointservices.io/userguide/index.html#_task_management) . **Required for Task Managed Service**
-
 **MaxRunTime**: An integer which is used when registering for task manager.  Indicates how long Piazza should wait after a job has been taken before assuming that the process has failed.  **Required for Task Managed Service**
-
-**LocalOnly**: A boolean indicating whether pzsvc-exec should accept connections externally or locally.  Specifying `true` means your service will only accept calls from requests coming from the same host.  Intended as an additional security measure when using a local taskworker.  **Required**
 
 **LogAudit**: A boolean indicating whether pzsvc-exec should produce audit logs.
 
-**LimitUserData**: A boolean indicating whether logs should be obfuscated to prevent reverse engineering and determining the details of how your service works. 
+## Environment Variables
 
-**ExtRetryOn202:** Boolean.  If true, pzsvc-exec will respond to HTTP Code 202 responses on external file downloads by waiting a minute and trying again, for up to an hour.  This is offered as a way to enable dealings with systems like Planetlabs, where files must be activated before they are made available.
+In addition to the config, certain environment variables are required. The `CF_API`, `CF_USER`, and `CF_PASS` variables are required in order to spin up the Cloud Foundry Task container. 
 
-**DocURL**: A string specifying a URL to provide to autoregistration and to the /documentation REST endpoint.  This URL should point to some sort of online documentation about your service instance.
-
-## Service Endpoints
-
-The pzsvc-exec service endpoints are as follows:
-
-- '/': The entry point.  Displays the 'CliCmd' parameter, if any, and suggests other endpoints.
-- '/execute': The meat of the program.  Downloads files, executes on them, and uploads the results.
-See the Execute Endpoint Request Format section of this Readme for interface details.
-- '/description': When enabled, provides a description of this particular pzsvc-exec instance.
-- '/documentation': When enabled, provides a url containing documentation for this particular pzsvc-exec instance.
-- '/attributes': When enabled, provides a list of key/value attributes for this pzsvc-exec instance.
-- '/version': When enabled, provides version number for the application served by this pzsvc-exec instance.
-- '/help': Provides the Service Endpoint data available here.
-
-## Execute Endpoint Request Format
-
-The intended use of the '/execute' endpoint is through the Piazza service, but it can also be used as a standalone service.  It currently requires POST calls.  Parameters should be as a json-formatted body. Format as follows:
-
-
-Input Format:
-```
-cmd           string    // Command string - appended to CliCmd from the config file
-userID        string    // Unique ID of initiating user - used for logging purposes
-inPzFiles     []string  // Pz dataIds for files to download before processing
-inExtFiles    []string  // URLs for external files to download before processing
-inPzNames     []string  // Parallel to InPzFiles - name for each file
-inExtNames    []string  // Parallel to inExtFiles - name for each file
-outTiffs      []string  // Filenames of GeoTIFFs to ingest after processing
-outTxts       []string  // Filenames of text files to ingest after processing
-outGeoJson    []string  // Filenames of GeoJSON files to ingest after processing
-inExtAuthKey  string    // Auth key for accessing external files
-pzAuthKey     string    // Auth key for accessing Piazza
-pzAddr        string    // URL for the targeted Pz instance
-```
-
-As an example (fully functional as an input to pzsvc-ossim, other than the auth key):
-```
-{
-"cmd":"shoreline --image coastal.TIF,swir1.TIF --projection geo-scaled shoreline.json",
-"inExtFiles":["https://landsat-pds.s3.amazonaws.com/L8/090/089/LC80900892015290LGN00/LC80900892015290LGN00_B1.TIF","https://landsat-pds.s3.amazonaws.com/L8/090/089/LC80900892015290LGN00/LC80900892015290LGN00_B6.TIF"],
-"inExtNames":["coastal.TIF","swir1.TIF"],
-"outGeoJson":["shoreline.json"],
-"pzAuthKey":"******"
-"inExtAuthKey":"******"
-}
-```
-
-## Incorporating Scalability
-
-Pzsvc-taskworker exists inside of the pzsvc-taskworker subfolder of the pzsvc-exec folder, and can be installed via `go get` or `go install` appropriately.  it can be run with `GOPATH/bin/pzsvc-taskworker <configuration file>`. It should be called using the same config file as was used for the instance of pzsvc-exec it has been paired with.
-
-For details on how task management works, see the [Piazza User's Guide](https://pz-docs.stage.geointservices.io/userguide/index.html#_task_management).
-
-Pzsvc-taskworker is designed to connect to the task manager feature of Piazza.  In that system, rather than passing jobs through to a service directly, Piazza stores them in a queue, and waits for a service to request jobs to complete.  This can be useful for scalability and security purposes.  It allows arbitrary scalability while letting each pzsvc-exec/pzsvc-taskworker pair control the number of jobs they're running at a time.
-
-Currently, pszvc-taskworker is designed to work with a colocated copy of pzsvc-exec.  It is possible to use it to work with a colocated copy of some other REST service, but that requires additional effort and is not supported.  Support for that feature may be expanded in the future if there is enough demand.  
-
-A copy of pzsvc-taskworker requires only the config file it is called on and the environment variables specified by same.  No other input is necessary
+Additionally, the `TASK_LIMIT` environment variable can be used to tune the number of simultaneous Cloud Foundry Tasks that the Dispatcher will be allowed to create.  By default this value is 5. The number of Cloud Foundry Task containers is limited only by the available resources in a CF organization, so it is recommended to supply a realistic limit for this value, depending on your organization. 

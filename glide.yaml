@@ -1,0 +1,5 @@
+package: github.com/venicegeo/pzsvc-exec
+import:
+- package: gopkg.in/urfave/cli.v1
+  version: ^1.20.0
+- package: github.com/cloudfoundry-community/go-cfclient
