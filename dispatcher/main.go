@@ -173,6 +173,8 @@ func pollForJobs(s pzsvc.Session, configObj pzse.ConfigType, svcID string, confi
 	if !ok {
 		pzsvc.LogSimpleErr(s, "Cannot Read Application Name from VCAP Application properties: string type assertion failed", nil)
 		return
+	} else {
+		pzsvc.LogInfo(s, "Found application name from VCAP Tree: " + appName)
 	}
 
 	// Read the # of simultaneous Tasks that are allowed to be run by the Dispatcher
@@ -229,8 +231,6 @@ func pollForJobs(s pzsvc.Session, configObj pzse.ConfigType, svcID string, confi
 				}
 			}
 
-			pzsvc.LogAudit(s, s.UserID, "Creating CF Task for Job"+jobID, s.AppName, string(displayByt), pzsvc.INFO)
-
 			// Form the CLI for the Algorithm Task
 			workerCommand := fmt.Sprintf("worker --cliCmd \"%s\" --userId \"%s\" --config \"%s\" --serviceId \"%s\" --output \"%s\"", jobInputContent.Command, jobInputContent.UserID, configPath, svcID, jobInputContent.OutGeoJs[0])
 			// For each input image, add that image ref as an argument to the CLI
@@ -244,10 +244,11 @@ func pollForJobs(s pzsvc.Session, configObj pzse.ConfigType, svcID string, confi
 				DropletGUID: appName,
 			}
 
+			pzsvc.LogAudit(s, s.UserID, "Creating CF Task for Job " + jobID + " : " + workerCommand, s.AppName, string(displayByt), pzsvc.INFO)
+
 			// Send Run-Task request to CF
-			_, err := cfClient.CreateTask(taskRequest) // TODO: do something with the created task
+			_, err := cfClient.CreateTask(taskRequest)
 			if err != nil {
-				pzsvc.LogAudit(s, s.UserID, "Audit failure", s.AppName, "Could not Create PCF Task for Job. Job Failed.", pzsvc.ERROR)
 				sendExecResult(s, s.PzAddr, s.PzAuth, svcID, jobID, "Fail", nil)
 				time.Sleep(5 * time.Second)
 				continue
