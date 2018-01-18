@@ -249,6 +249,7 @@ func pollForJobs(s pzsvc.Session, configObj pzse.ConfigType, svcID string, confi
 			// Send Run-Task request to CF
 			_, err := cfClient.CreateTask(taskRequest)
 			if err != nil {
+				pzsvc.LogAudit(s, s.UserID, "Audit failure", s.AppName, "Could not Create PCF Task for Job. Job Failed: " + err.Error(), pzsvc.ERROR)
 				sendExecResult(s, s.PzAddr, s.PzAuth, svcID, jobID, "Fail", nil)
 				time.Sleep(5 * time.Second)
 				continue
