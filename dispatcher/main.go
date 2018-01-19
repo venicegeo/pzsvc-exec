@@ -21,6 +21,8 @@ import (
 	"io/ioutil"
 	"os"
 	"time"
+	"strconv"
+	"net/url"
 
 	"github.com/cloudfoundry-community/go-cfclient"
 	"github.com/venicegeo/pzsvc-exec/pzse"
@@ -171,9 +173,28 @@ func pollForJobs(s pzsvc.Session, configObj pzse.ConfigType, svcID string, confi
 	if !ok {
 		pzsvc.LogSimpleErr(s, "Cannot Read Application Name from VCAP Application properties: string type assertion failed", nil)
 		return
+	} else {
+		pzsvc.LogInfo(s, "Found application name from VCAP Tree: " + appName)
 	}
 
+	// Read the # of simultaneous Tasks that are allowed to be run by the Dispatcher
+	taskLimit := 5
+	if envTaskLimit := os.Getenv("TASK_LIMIT"); envTaskLimit != "" {
+		taskLimit, err = strconv.Atoi(envTaskLimit)
+	}
+
+	// Polling Loop
 	for {
+		// First, check to see if there is room for tasks. If we've reached the task limit, then do not poll Piazza for jobs.
+		query := url.Values{}
+		query.Add("states", "RUNNING")
+		tasks, err := cfClient.TasksByAppByQuery(appName, query)
+		if len(tasks) > taskLimit {
+			pzsvc.LogInfo(s, "Maximum Tasks reached for App. Will not poll for work until current work has completed.")
+			continue
+		}
+
+
 		var pzJobObj struct {
 			Data WorkOutData `json:"data"`
 		}
@@ -210,13 +231,11 @@ func pollForJobs(s pzsvc.Session, configObj pzse.ConfigType, svcID string, confi
 				}
 			}
 
-			pzsvc.LogAudit(s, s.UserID, "Creating CF Task for Job"+jobID, s.AppName, string(displayByt), pzsvc.INFO)
-
 			// Form the CLI for the Algorithm Task
-			workerCommand := fmt.Sprintf("worker --cliCmd \"%s\" --userId \"%s\" --config \"%s\" --serviceId \"%s\" --output \"%s\"", jobInputContent.Command, jobInputContent.UserID, configPath, svcID, jobInputContent.OutGeoJs[0])
+			workerCommand := fmt.Sprintf("worker --cliExtra '%s' --userID '%s' --config '%s' --serviceID '%s' --output '%s'", jobInputContent.Command, jobInputContent.UserID, configPath, svcID, jobInputContent.OutGeoJs[0])
 			// For each input image, add that image ref as an argument to the CLI
 			for i := range jobInputContent.InExtFiles {
-				workerCommand += fmt.Sprintf(" -i %s:%s", jobInputContent.InExtNames[i], jobInputContent.InExtFiles[i])
+				workerCommand += fmt.Sprintf(" -i '%s:%s'", jobInputContent.InExtNames[i], jobInputContent.InExtFiles[i])
 			}
 
 			taskRequest := cfclient.TaskRequest{
@@ -225,10 +244,12 @@ func pollForJobs(s pzsvc.Session, configObj pzse.ConfigType, svcID string, confi
 				DropletGUID: appName,
 			}
 
+			pzsvc.LogAudit(s, s.UserID, "Creating CF Task for Job " + jobID + " : " + workerCommand, s.AppName, string(displayByt), pzsvc.INFO)
+
 			// Send Run-Task request to CF
-			_, err := cfClient.CreateTask(taskRequest) // TODO: do something with the created task
+			_, err := cfClient.CreateTask(taskRequest)
 			if err != nil {
-				pzsvc.LogAudit(s, s.UserID, "Audit failure", s.AppName, "Could not Create PCF Task for Job. Job Failed.", pzsvc.ERROR)
+				pzsvc.LogAudit(s, s.UserID, "Audit failure", s.AppName, "Could not Create PCF Task for Job. Job Failed: " + err.Error(), pzsvc.ERROR)
 				sendExecResult(s, s.PzAddr, s.PzAuth, svcID, jobID, "Fail", nil)
 				time.Sleep(5 * time.Second)
 				continue
