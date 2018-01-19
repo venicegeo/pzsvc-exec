@@ -239,9 +239,11 @@ func pollForJobs(s pzsvc.Session, configObj pzse.ConfigType, svcID string, confi
 			}
 
 			taskRequest := cfclient.TaskRequest{
-				Command:     workerCommand,
-				Name:        jobID,
-				DropletGUID: appName,
+				Command:     		workerCommand,
+				Name:        		jobID,
+				DropletGUID: 		appName,
+				MemoryInMegabyte:	4096,
+				DiskInMegabyte:		4096,
 			}
 
 			pzsvc.LogAudit(s, s.UserID, "Creating CF Task for Job " + jobID + " : " + workerCommand, s.AppName, string(displayByt), pzsvc.INFO)
