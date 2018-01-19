@@ -26,6 +26,7 @@ func init() {
 		cli.StringFlag{Name: "piazzaBaseURL", Usage: "base URL for querying Piazza API (required if not PZ_ADDR)"},
 		cli.StringFlag{Name: "piazzaAPIKey", Usage: "API key for use for communicating with Piazza (required if not in vcap)"},
 		cli.StringFlag{Name: "userID", Usage: "key authentication string (required)"},
+		cli.StringFlag{Name: "serviceID", Usage: "piazza service ID (algorithm name) (required)"},
 		cli.StringSliceFlag{Name: "input, i", Usage: "input source specification (as \"filename:URL\")"},
 		cli.StringSliceFlag{Name: "output, o", Usage: "output file name (usable multiple times; at least one required)"},
 	}
@@ -37,6 +38,7 @@ func runCmd(ctx *cli.Context) error {
 		CLICommandExtra: ctx.String("cliExtra"),
 		PiazzaBaseURL:   ctx.String("piazzaBaseURL"),
 		PiazzaAPIKey:    ctx.String("piazzaAPIKey"),
+		PiazzaServiceID: ctx.String("serviceID"),
 		UserID:          ctx.String("userID"),
 		Inputs:          []config.InputSource{},
 		Outputs:         ctx.StringSlice("output"),
@@ -49,6 +51,10 @@ func runCmd(ctx *cli.Context) error {
 	}
 	if err := cfg.ReadPzSEConfig(ctx.String("config")); err != nil {
 		return cli.NewExitError(err, 1)
+	}
+
+	if cfg.PiazzaServiceID == "" {
+		return cli.NewExitError("Service ID is required", 1)
 	}
 
 	if cfg.PiazzaBaseURL == "" {
