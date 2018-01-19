@@ -7,8 +7,8 @@ import (
 	"os"
 	"time"
 
-	"github.com/venicegeo/pzsvc-exec/pzsvc"
 	"github.com/venicegeo/pzsvc-exec/worker/config"
+	"github.com/venicegeo/pzsvc-exec/worker/log"
 )
 
 var httpClient = http.Client{
@@ -16,11 +16,11 @@ var httpClient = http.Client{
 }
 
 // FetchInputs recovers and writes input files, using the input source configuration
-func FetchInputs(session pzsvc.Session, inputs []config.InputSource) error {
+func FetchInputs(cfg config.WorkerConfig, inputs []config.InputSource) error {
 	inputResults := []chan error{}
 	for _, source := range inputs {
 		errChan := downloadInputAsync(source)
-		pzsvc.LogInfo(session, fmt.Sprintf("async downloading input: %s; from: %s", source.FileName, source.URL))
+		workerlog.Info(cfg, fmt.Sprintf("async downloading input: %s; from: %s", source.FileName, source.URL))
 		inputResults = append(inputResults, errChan)
 	}
 
@@ -31,7 +31,7 @@ func FetchInputs(session pzsvc.Session, inputs []config.InputSource) error {
 		if err != nil {
 			errors = append(errors, fmt.Errorf("error downloading input: %s; %v", inputs[i].FileName, err))
 		} else {
-			pzsvc.LogInfo(session, fmt.Sprintf("downloaded input: %s", inputs[i].FileName))
+			workerlog.Info(cfg, fmt.Sprintf("downloaded input: %s", inputs[i].FileName))
 		}
 	}
 

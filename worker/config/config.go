@@ -37,6 +37,7 @@ type WorkerConfig struct {
 	PiazzaServiceID string
 	CLICommandExtra string
 	UserID          string
+	JobID           string
 	Inputs          []InputSource
 	Outputs         []string
 	PzSEConfig      pzse.ConfigType

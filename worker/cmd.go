@@ -7,6 +7,7 @@ import (
 	"github.com/venicegeo/pzsvc-exec/pzse"
 	"github.com/venicegeo/pzsvc-exec/pzsvc"
 	"github.com/venicegeo/pzsvc-exec/worker/config"
+	"github.com/venicegeo/pzsvc-exec/worker/log"
 	"github.com/venicegeo/pzsvc-exec/worker/workerexec"
 
 	cli "gopkg.in/urfave/cli.v1"
@@ -27,6 +28,7 @@ func init() {
 		cli.StringFlag{Name: "piazzaAPIKey", Usage: "API key for use for communicating with Piazza (required if not in vcap)"},
 		cli.StringFlag{Name: "userID", Usage: "key authentication string (required)"},
 		cli.StringFlag{Name: "serviceID", Usage: "piazza service ID (algorithm name) (required)"},
+		cli.StringFlag{Name: "jobID", Usage: "job ID for this run, used for logging"},
 		cli.StringSliceFlag{Name: "input, i", Usage: "input source specification (as \"filename:URL\")"},
 		cli.StringSliceFlag{Name: "output, o", Usage: "output file name (usable multiple times; at least one required)"},
 	}
@@ -40,11 +42,12 @@ func runCmd(ctx *cli.Context) error {
 		PiazzaAPIKey:    ctx.String("piazzaAPIKey"),
 		PiazzaServiceID: ctx.String("serviceID"),
 		UserID:          ctx.String("userID"),
+		JobID:           ctx.String("jobID"),
 		Inputs:          []config.InputSource{},
 		Outputs:         ctx.StringSlice("output"),
 		PzSEConfig:      pzse.ConfigType{},
 	}
-	pzsvc.LogInfo(*cfg.Session, "startup")
+	workerlog.Info(cfg, "startup")
 
 	if ctx.String("config") == "" {
 		return cli.NewExitError("pzsvc-exec config file is required", 1)
@@ -83,13 +86,16 @@ func runCmd(ctx *cli.Context) error {
 		cfg.Inputs = append(cfg.Inputs, *inFile)
 	}
 
-	pzsvc.LogInfo(*cfg.Session, fmt.Sprintf("config validated: %s", cfg.Serialize()))
+	workerlog.Info(cfg, fmt.Sprintf("config validated: %s", cfg.Serialize()))
 
+	workerlog.Info(cfg, "Starting actual worker execution")
 	err := workerexec.WorkerExec(cfg)
 	if err != nil {
+		workerlog.SimpleErr(cfg, "execution error, quitting with status 1", err)
 		return cli.NewExitError(err, 1)
 	}
 
+	workerlog.Info(cfg, "worker done, exiting")
 	return nil
 }
 

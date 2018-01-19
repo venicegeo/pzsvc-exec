@@ -10,6 +10,7 @@ import (
 
 	"github.com/venicegeo/pzsvc-exec/pzsvc"
 	"github.com/venicegeo/pzsvc-exec/worker/config"
+	"github.com/venicegeo/pzsvc-exec/worker/log"
 )
 
 const ingestTimeout = 1 * time.Minute
@@ -20,8 +21,11 @@ func OutputFilesToPiazza(cfg config.WorkerConfig, algFullCommand string, algVers
 	ingestErrChans := []<-chan error{}
 
 	for _, filePath := range cfg.Outputs {
+		workerlog.Info(cfg, "ingesting file to Piazza: "+filePath)
 		if _, fStatErr := os.Stat(filePath); fStatErr != nil {
-			errorTexts = append(errorTexts, fmt.Sprintf("file does not exist (%s)", filePath))
+			errMsg := fmt.Sprintf("error statting file `%s`: %v", filePath, fStatErr)
+			workerlog.SimpleErr(cfg, errMsg, fStatErr)
+			errorTexts = append(errorTexts, errMsg)
 			continue
 		}
 
@@ -34,6 +38,8 @@ func OutputFilesToPiazza(cfg config.WorkerConfig, algFullCommand string, algVers
 			"algoProcTime": time.Now().UTC().Format("20060102.150405.99999"),
 		}
 
+		workerlog.Info(cfg, fmt.Sprintf("async ingest call: path=%s type=%s serviceID=%s, version=%s, attMap=%v",
+			filePath, fileType, cfg.PiazzaServiceID, algVersion, attMap))
 		errChan := ingestFileAsync(*cfg.Session, filePath, fileType, cfg.PiazzaServiceID, algVersion, attMap)
 		ingestErrChans = append(ingestErrChans, errChan)
 	}
@@ -41,6 +47,7 @@ func OutputFilesToPiazza(cfg config.WorkerConfig, algFullCommand string, algVers
 	for _, errChan := range ingestErrChans {
 		for err := range errChan {
 			if err != nil {
+				workerlog.SimpleErr(cfg, "received async ingest error", err)
 				errorTexts = append(errorTexts, err.Error())
 			}
 		}
@@ -48,7 +55,9 @@ func OutputFilesToPiazza(cfg config.WorkerConfig, algFullCommand string, algVers
 
 	if len(errorTexts) > 0 {
 		fullErrorText := strings.Join(errorTexts, "; ")
-		return errors.New("ingest errors: " + fullErrorText)
+		err := errors.New("ingest errors: " + fullErrorText)
+		workerlog.SimpleErr(cfg, "concatenated ingest errors", err)
+		return err
 	}
 
 	return nil
