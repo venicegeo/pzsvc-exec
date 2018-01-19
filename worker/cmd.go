@@ -74,6 +74,8 @@ func runCmd(ctx *cli.Context) error {
 	if cfg.PiazzaAPIKey == "" {
 		return cli.NewExitError("Piazza API key is required", 1)
 	}
+	cfg.Session.PzAuth = cfg.PiazzaAPIKey
+
 	if len(cfg.Outputs) == 0 {
 		return cli.NewExitError("1 or more output files are required", 1)
 	}
