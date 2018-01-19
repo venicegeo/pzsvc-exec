@@ -13,7 +13,7 @@ import (
 // WorkerExec runs the main worker exec subprocess
 func WorkerExec(cfg config.WorkerConfig) (err error) {
 	workerlog.Info(cfg, "Fetching inputs")
-	err = input.FetchInputs(*cfg.Session, cfg.Inputs)
+	err = input.FetchInputs(cfg, cfg.Inputs)
 	if err != nil {
 		return
 	}
