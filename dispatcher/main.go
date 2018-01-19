@@ -163,24 +163,23 @@ func pollForJobs(s pzsvc.Session, configObj pzse.ConfigType, svcID string, confi
 	s.SessionID = "Polling"
 
 	// Get the application name
-	vcapJsonContainer := make(map[string]interface{})
-	err = json.Unmarshal([]byte(os.Getenv("VCAP_APPLICATION")), &vcapJsonContainer)
+	vcapJSONContainer := make(map[string]interface{})
+	err = json.Unmarshal([]byte(os.Getenv("VCAP_APPLICATION")), &vcapJSONContainer)
 	if err != nil {
 		pzsvc.LogSimpleErr(s, "Cannot proceed: Error in reading VCAP Application properties: ", err)
 		return
 	}
-	appID, ok := vcapJsonContainer["application_id"].(string)
+	appID, ok := vcapJSONContainer["application_id"].(string)
 	if !ok {
 		pzsvc.LogSimpleErr(s, "Cannot Read Application Name from VCAP Application properties: string type assertion failed", nil)
 		return
-	} else {
-		pzsvc.LogInfo(s, "Found application name from VCAP Tree: "+appID)
 	}
+	pzsvc.LogInfo(s, "Found application name from VCAP Tree: "+appID)
 
 	// Read the # of simultaneous Tasks that are allowed to be run by the Dispatcher
 	taskLimit := 5
 	if envTaskLimit := os.Getenv("TASK_LIMIT"); envTaskLimit != "" {
-		taskLimit, err = strconv.Atoi(envTaskLimit)
+		taskLimit, _ = strconv.Atoi(envTaskLimit)
 	}
 
 	// Polling Loop
@@ -189,6 +188,10 @@ func pollForJobs(s pzsvc.Session, configObj pzse.ConfigType, svcID string, confi
 		query := url.Values{}
 		query.Add("states", "RUNNING")
 		tasks, err := cfClient.TasksByAppByQuery(appID, query)
+		if err != nil {
+			pzsvc.LogSimpleErr(s, "Cannot poll CF tasks", err)
+		}
+
 		if len(tasks) > taskLimit {
 			pzsvc.LogInfo(s, "Maximum Tasks reached for App. Will not poll for work until current work has completed.")
 			continue
