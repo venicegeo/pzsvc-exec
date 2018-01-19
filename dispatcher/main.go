@@ -232,10 +232,10 @@ func pollForJobs(s pzsvc.Session, configObj pzse.ConfigType, svcID string, confi
 			}
 
 			// Form the CLI for the Algorithm Task
-			workerCommand := fmt.Sprintf("worker --cliCmd \"%s\" --userId \"%s\" --config \"%s\" --serviceId \"%s\" --output \"%s\"", jobInputContent.Command, jobInputContent.UserID, configPath, svcID, jobInputContent.OutGeoJs[0])
+			workerCommand := fmt.Sprintf("worker --cliExtra '%s' --userID '%s' --config '%s' --serviceID '%s' --output '%s'", jobInputContent.Command, jobInputContent.UserID, configPath, svcID, jobInputContent.OutGeoJs[0])
 			// For each input image, add that image ref as an argument to the CLI
 			for i := range jobInputContent.InExtFiles {
-				workerCommand += fmt.Sprintf(" -i %s:%s", jobInputContent.InExtNames[i], jobInputContent.InExtFiles[i])
+				workerCommand += fmt.Sprintf(" -i '%s:%s'", jobInputContent.InExtNames[i], jobInputContent.InExtFiles[i])
 			}
 
 			taskRequest := cfclient.TaskRequest{
