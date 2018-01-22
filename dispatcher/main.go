@@ -245,7 +245,7 @@ func pollForJobs(s pzsvc.Session, configObj pzse.ConfigType, svcID string, confi
 				Name:             jobID,
 				DropletGUID:      appID,
 				MemoryInMegabyte: 4096,
-				DiskInMegabyte:   4096,
+				DiskInMegabyte:   6142,
 			}
 
 			pzsvc.LogAudit(s, s.UserID, "Creating CF Task for Job "+jobID+" : "+workerCommand, s.AppName, string(displayByt), pzsvc.INFO)
