@@ -335,3 +335,15 @@ type UserProfileResp struct {
 		} `json:"userProfile,omitempty"`
 	} `json:"data,omitempty"`
 }
+
+// PiazzaStatus is an alias type for a Piazza job status
+type PiazzaStatus string
+
+// PiazzaStatusSuccess is a Piazza job status corresponding to success
+var PiazzaStatusSuccess PiazzaStatus = "Success"
+
+// PiazzaStatusError is a Piazza job status corresponding to an error running the job
+var PiazzaStatusError PiazzaStatus = "Error"
+
+// PiazzaStatusFail is a Piazza job status corresponding to failure prior to running the job
+var PiazzaStatusFail PiazzaStatus = "Fail"

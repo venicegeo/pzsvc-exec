@@ -59,3 +59,12 @@ func (wc WorkerConfig) Serialize() string {
 	data, _ := json.Marshal(wc)
 	return string(data)
 }
+
+// InputsAsMap returns a string:string map representing the worker inputs
+func (wc WorkerConfig) InputsAsMap() map[string]string {
+	converted := map[string]string{}
+	for _, input := range wc.Inputs {
+		converted[input.FileName] = input.URL
+	}
+	return converted
+}

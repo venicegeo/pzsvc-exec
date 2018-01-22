@@ -227,7 +227,7 @@ func pollForJobs(s pzsvc.Session, configObj pzse.ConfigType, svcID string, confi
 				displayByt, err = json.Marshal(jobInputContent)
 				if err != nil {
 					pzsvc.LogAudit(s, s.UserID, "Audit failure", s.AppName, "Could not Marshal.  Job Canceled.", pzsvc.ERROR)
-					sendExecResult(s, s.PzAddr, s.PzAuth, svcID, jobID, "Fail", nil)
+					pzsvc.SendExecResultNoData(s, s.PzAddr, svcID, jobID, pzsvc.PiazzaStatusFail)
 					time.Sleep(5 * time.Second)
 					continue
 				}
@@ -254,7 +254,7 @@ func pollForJobs(s pzsvc.Session, configObj pzse.ConfigType, svcID string, confi
 			_, err := cfClient.CreateTask(taskRequest)
 			if err != nil {
 				pzsvc.LogAudit(s, s.UserID, "Audit failure", s.AppName, "Could not Create PCF Task for Job. Job Failed: "+err.Error(), pzsvc.ERROR)
-				sendExecResult(s, s.PzAddr, s.PzAuth, svcID, jobID, "Fail", nil)
+				pzsvc.SendExecResultNoData(s, s.PzAddr, svcID, jobID, pzsvc.PiazzaStatusFail)
 				time.Sleep(5 * time.Second)
 				continue
 			}
@@ -267,24 +267,4 @@ func pollForJobs(s pzsvc.Session, configObj pzse.ConfigType, svcID string, confi
 			time.Sleep(5 * time.Second)
 		}
 	}
-
-}
-
-func sendExecResult(s pzsvc.Session, pzAddr, pzAuth, svcID, jobID, status string, resJSON []byte) {
-	outAddr := pzAddr + `/service/` + svcID + `/task/` + jobID
-
-	pzsvc.LogInfo(s, "Sending Exec Results.  Status: "+status+".")
-	if resJSON != nil {
-		dataID, err := pzsvc.Ingest(s, "Output", "text", "Dispatcher", "", resJSON, nil)
-		if err == nil {
-			outStr := `{ "status" : "` + status + `", "result" : { "type" : "data", "dataId" : "` + dataID + `" } }`
-			pzsvc.SubmitSinglePart("POST", outStr, outAddr, s.PzAuth)
-			return
-		}
-		pzsvc.LogInfo(s, "Send Exec Results: Ingest failed.")
-		status = "Fail"
-	}
-
-	outStr := `{ "status" : "` + status + `" }`
-	pzsvc.SubmitSinglePart("POST", outStr, outAddr, s.PzAuth)
 }
