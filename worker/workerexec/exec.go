@@ -83,5 +83,8 @@ func sendPiazzaJobOutput(cfg config.WorkerConfig, outData workerOutputData) erro
 		jobStatus = pzsvc.PiazzaStatusError
 	}
 	pzsvcErr := pzsvc.SendExecResultData(*cfg.Session, cfg.PiazzaBaseURL, cfg.PiazzaServiceID, cfg.JobID, jobStatus, serializedOutData)
-	return pzsvcErr.Log(*cfg.Session, "failed to send result data")
+	if pzsvcErr != nil {
+		return pzsvcErr.Log(*cfg.Session, "failed to send result data")
+	}
+	return nil
 }
