@@ -204,7 +204,7 @@ func pollForJobs(s pzsvc.Session, configObj pzse.ConfigType, svcID string, confi
 
 		byts, pErr := pzsvc.RequestKnownJSON("POST", "", s.PzAddr+"/service/"+svcID+"/task", s.PzAuth, &pzJobObj)
 		if pErr != nil {
-			pErr.Log(s, "Dispatcher: error getting new task:")
+			pErr.Log(s, "Dispatcher: error getting new task:" + string(byts))
 			time.Sleep(time.Duration(5) * time.Second)
 			continue
 		}
@@ -244,7 +244,7 @@ func pollForJobs(s pzsvc.Session, configObj pzse.ConfigType, svcID string, confi
 				Command:          workerCommand,
 				Name:             jobID,
 				DropletGUID:      appID,
-				MemoryInMegabyte: 3072,
+				MemoryInMegabyte: 4096,
 				DiskInMegabyte:   6142,
 			}
 
@@ -263,7 +263,7 @@ func pollForJobs(s pzsvc.Session, configObj pzse.ConfigType, svcID string, confi
 
 			time.Sleep(5 * time.Second)
 		} else {
-			pzsvc.LogInfo(s, "No Tasks found in Job Queue.")
+			pzsvc.LogInfo(s, "No Jobs found during Poll; Trying again shortly.")
 			time.Sleep(5 * time.Second)
 		}
 	}
