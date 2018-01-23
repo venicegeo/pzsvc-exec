@@ -263,7 +263,8 @@ func pollForJobs(s pzsvc.Session, configObj pzse.ConfigType, svcID string, confi
 
 			time.Sleep(5 * time.Second)
 		} else {
-			pzsvc.LogInfo(s, "No Jobs found during Poll; Trying again shortly.")
+			// This is way too chatty. I don't think it's needed at this point in time. 
+			// pzsvc.LogInfo(s, "No Jobs found during Poll; Trying again shortly.")
 			time.Sleep(5 * time.Second)
 		}
 	}
