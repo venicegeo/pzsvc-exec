@@ -244,7 +244,7 @@ func pollForJobs(s pzsvc.Session, configObj pzse.ConfigType, svcID string, confi
 				Command:          workerCommand,
 				Name:             jobID,
 				DropletGUID:      appID,
-				MemoryInMegabyte: 4096,
+				MemoryInMegabyte: 3072,
 				DiskInMegabyte:   6142,
 			}
 
@@ -263,7 +263,7 @@ func pollForJobs(s pzsvc.Session, configObj pzse.ConfigType, svcID string, confi
 
 			time.Sleep(5 * time.Second)
 		} else {
-			pzsvc.LogInfo(s, "No Task.  Sleeping now.  input: "+string(byts))
+			pzsvc.LogInfo(s, "No Tasks found in Job Queue.")
 			time.Sleep(5 * time.Second)
 		}
 	}
