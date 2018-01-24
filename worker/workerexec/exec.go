@@ -76,6 +76,7 @@ func WorkerExec(cfg config.WorkerConfig) (err error) {
 
 func sendPiazzaJobOutput(cfg config.WorkerConfig, outData workerOutputData) error {
 	serializedOutData, _ := json.Marshal(outData)
+	workerlog.Info(cfg, "sending serialized output: "+string(serializedOutData))
 	var jobStatus pzsvc.PiazzaStatus
 	if len(outData.Errors) == 0 {
 		jobStatus = pzsvc.PiazzaStatusSuccess

@@ -12,7 +12,7 @@ type statusUpdateJSON struct {
 
 type statusUpdateResultJSON struct {
 	Type   string `json:"type"`
-	DataID string `json:"dataID"`
+	DataID string `json:"dataId"`
 }
 
 // SendExecResultNoData sends the result of a job execution to Piazza
