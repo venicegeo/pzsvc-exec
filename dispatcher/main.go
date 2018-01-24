@@ -23,6 +23,7 @@ import (
 	"os"
 	"strconv"
 	"time"
+	"strings"
 
 	"github.com/cloudfoundry-community/go-cfclient"
 	"github.com/venicegeo/pzsvc-exec/pzse"
@@ -235,17 +236,30 @@ func pollForJobs(s pzsvc.Session, configObj pzse.ConfigType, svcID string, confi
 
 			// Form the CLI for the Algorithm Task
 			workerCommand := fmt.Sprintf("worker --cliExtra '%s' --userID '%s' --config '%s' --serviceID '%s' --output '%s' --jobID '%s'", jobInputContent.Command, jobInputContent.UserID, configPath, svcID, jobInputContent.OutGeoJs[0], jobID)
-			// For each input image, add that image ref as an argument to the CLI
+			// For each input image, add that image ref as an argument to the CLI.
+			// If AWS images, track the total file size to appropriately size the PCF task container.
+			var fileSizeTotal int
 			for i := range jobInputContent.InExtFiles {
 				workerCommand += fmt.Sprintf(" -i '%s:%s'", jobInputContent.InExtNames[i], jobInputContent.InExtFiles[i])
+				if strings.Contains(jobInputContent.InExtFiles[i], "amazonaws") {
+					fileSize := GetS3FileSize(jobInputContent.InExtFiles[i])
+					if fileSize != nil {
+						fileSizeTotal += fileSize
+					}
+				}
+			}
+			diskInMegabyte := 6142
+			if fileSizeTotal != 0 {
+				// Allocate 2G for the filesystem and executables (with some buffer), then add the image sizes
+				diskInMegaByte = 2048 + fileSizeTotal
 			}
 
 			taskRequest := cfclient.TaskRequest{
 				Command:          workerCommand,
 				Name:             jobID,
 				DropletGUID:      appID,
-				MemoryInMegabyte: 4096,
-				DiskInMegabyte:   6142,
+				MemoryInMegabyte: 3072,
+				DiskInMegabyte:   diskInMegabyte,
 			}
 
 			pzsvc.LogAudit(s, s.UserID, "Creating CF Task for Job "+jobID+" : "+workerCommand, s.AppName, string(displayByt), pzsvc.INFO)

@@ -23,6 +23,7 @@ import (
 	"mime/multipart"
 	"net/http"
 	"time"
+	"strconv"
 )
 
 var httpClient *http.Client
@@ -287,4 +288,24 @@ func PrintJSON(w http.ResponseWriter, output interface{}, httpStatus int) []byte
 		HTTPOut(w, string(outBuf), httpStatus)
 	}
 	return outBuf
+}
+
+// Gets the file size of an S3 File by performing a HEAD to read the content-length header
+func GetS3FileSize(url string) (*http.Response, *Error) {
+	client = HTTPClient()
+	response, err := client.Head(url)
+	if err != nil {
+		return nil
+	}
+	if response.status != 200 {
+		return nil
+	}
+	fileSize = response.Header.get("Content-Length")
+	if fileSize == "" {
+		// No header found, we can't get the size
+		return nil
+	} else {
+		// Return File Size
+		return strconv.Atoi(fileSize)
+	}
 }
