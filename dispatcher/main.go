@@ -23,6 +23,7 @@ import (
 	"os"
 	"strconv"
 	"time"
+	"strings"
 
 	"github.com/cloudfoundry-community/go-cfclient"
 	"github.com/venicegeo/pzsvc-exec/pzse"
@@ -235,17 +236,35 @@ func pollForJobs(s pzsvc.Session, configObj pzse.ConfigType, svcID string, confi
 
 			// Form the CLI for the Algorithm Task
 			workerCommand := fmt.Sprintf("worker --cliExtra '%s' --userID '%s' --config '%s' --serviceID '%s' --output '%s' --jobID '%s'", jobInputContent.Command, jobInputContent.UserID, configPath, svcID, jobInputContent.OutGeoJs[0], jobID)
-			// For each input image, add that image ref as an argument to the CLI
+			// For each input image, add that image ref as an argument to the CLI.
+			// If AWS images, track the total file size to appropriately size the PCF task container.
+			var fileSizeTotal int
 			for i := range jobInputContent.InExtFiles {
 				workerCommand += fmt.Sprintf(" -i '%s:%s'", jobInputContent.InExtNames[i], jobInputContent.InExtFiles[i])
+				if strings.Contains(jobInputContent.InExtFiles[i], "amazonaws") {
+					fileSize, err := GetS3FileSizeInMegabytes(jobInputContent.InExtFiles[i])
+					if err == nil {
+						fileSizeTotal += fileSize
+					} else {
+						pzsvc.LogInfo(s, "Tried to get File Size from S3 File " + jobInputContent.InExtFiles[i] + " but encountered an error: " + err)
+					}
+				}
+			}
+			diskInMegabyte := 6142
+			if fileSizeTotal != 0 {
+				// Allocate 2G for the filesystem and executables (with some buffer), then add the image sizes
+				diskInMegabyte = 2048 + fileSizeTotal
+				pzsvc.LogInfo(s, "Obtained S3 File Sizes for input files; will use Dynamic Disk Space of " + diskInMegabyte + " in Task container.")
+			} else {
+				pzsvc.LogInfo(s, "Could not get the S3 File Sizes for input files. Will use the default Disk Space when running Task.")
 			}
 
 			taskRequest := cfclient.TaskRequest{
 				Command:          workerCommand,
 				Name:             jobID,
 				DropletGUID:      appID,
-				MemoryInMegabyte: 4096,
-				DiskInMegabyte:   6142,
+				MemoryInMegabyte: 3072,
+				DiskInMegabyte:   diskInMegabyte,
 			}
 
 			pzsvc.LogAudit(s, s.UserID, "Creating CF Task for Job "+jobID+" : "+workerCommand, s.AppName, string(displayByt), pzsvc.INFO)
