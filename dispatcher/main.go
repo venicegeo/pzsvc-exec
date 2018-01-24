@@ -99,8 +99,7 @@ func main() {
 	if svcID == "" {
 		// If no Service ID is found, attempt to register it.
 		pzsvc.LogInfo(s, "Could not find service.  Will attempt to register it.")
-		var pRes pzse.ConfigParseOut
-		registrationInfo, s := pzse.ParseConfigAndRegister(s, &configObj)
+		_, s := pzse.ParseConfigAndRegister(s, &configObj)
 
 		// With registration completed, Check back for Service ID
 		time.Sleep(time.Duration(1) * time.Second)
