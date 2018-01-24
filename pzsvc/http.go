@@ -297,7 +297,7 @@ func GetS3FileSizeInMegabytes(url string) (int, *Error) {
 	if err != nil {
 		return 0, &Error{LogMsg: "Error during HEAD request to S3 Service."}
 	}
-	if response.Status != "200" {
+	if response.Status != "200 OK" {
 		return 0, &Error{LogMsg: "Non-OK HTTP Status received from S3 Service HEAD request: " + response.Status}
 	}
 	fileSizeHeader := response.Header.Get("Content-Length")
