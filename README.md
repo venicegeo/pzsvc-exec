@@ -101,3 +101,4 @@ Either one of the `PzAddr` parameters is required.  Specifying `PzAddrEnVar` ove
 In addition to the config, certain environment variables are required. The `CF_API`, `CF_USER`, and `CF_PASS` variables are required in order to spin up the Cloud Foundry Task container. 
 
 Additionally, the `TASK_LIMIT` environment variable can be used to tune the number of simultaneous Cloud Foundry Tasks that the Dispatcher will be allowed to create.  By default this value is 5. The number of Cloud Foundry Task containers is limited only by the available resources in a CF organization, so it is recommended to supply a realistic limit for this value, depending on your organization. 
+
