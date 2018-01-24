@@ -310,6 +310,6 @@ func GetS3FileSizeInMegabytes(url string) (int, *Error) {
 		if err != nil {
 			return 0, &Error{LogMsg: "Content-Length Header from S3 HEAD Request is not a number."}
 		}
-		return fileSize/1000, nil
+		return fileSize/1000000, nil
 	}
 }
