@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/venicegeo/pzsvc-exec/pzse"
 	"github.com/venicegeo/pzsvc-exec/pzsvc"
 	"github.com/venicegeo/pzsvc-exec/worker/config"
 	"github.com/venicegeo/pzsvc-exec/worker/log"
@@ -46,7 +45,7 @@ func runCmd(ctx *cli.Context) error {
 		JobID:           ctx.String("jobID"),
 		Inputs:          []config.InputSource{},
 		Outputs:         ctx.StringSlice("output"),
-		PzSEConfig:      pzse.ConfigType{},
+		PzSEConfig:      pzsvc.Config{},
 	}
 	workerlog.Info(cfg, "startup")
 

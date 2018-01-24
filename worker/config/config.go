@@ -6,7 +6,6 @@ import (
 	"io/ioutil"
 	"strings"
 
-	"github.com/venicegeo/pzsvc-exec/pzse"
 	"github.com/venicegeo/pzsvc-exec/pzsvc"
 )
 
@@ -40,7 +39,7 @@ type WorkerConfig struct {
 	JobID           string
 	Inputs          []InputSource
 	Outputs         []string
-	PzSEConfig      pzse.ConfigType
+	PzSEConfig      pzsvc.Config
 }
 
 // ReadPzSEConfig reads the pzsvc-exec.config data from the given path
