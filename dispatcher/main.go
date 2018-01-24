@@ -242,7 +242,7 @@ func pollForJobs(s pzsvc.Session, configObj pzse.ConfigType, svcID string, confi
 			for i := range jobInputContent.InExtFiles {
 				workerCommand += fmt.Sprintf(" -i '%s:%s'", jobInputContent.InExtNames[i], jobInputContent.InExtFiles[i])
 				if strings.Contains(jobInputContent.InExtFiles[i], "amazonaws") {
-					fileSize, err := GetS3FileSize(jobInputContent.InExtFiles[i])
+					fileSize, err := GetS3FileSizeInMegabytes(jobInputContent.InExtFiles[i])
 					if err == nil {
 						fileSizeTotal += fileSize
 					} else {
@@ -253,8 +253,8 @@ func pollForJobs(s pzsvc.Session, configObj pzse.ConfigType, svcID string, confi
 			diskInMegabyte := 6142
 			if fileSizeTotal != 0 {
 				// Allocate 2G for the filesystem and executables (with some buffer), then add the image sizes
-				diskInMegaByte = 2048 + fileSizeTotal
-				pzsvc.LogInfo(s, "Obtained S3 File Sizes for input files; will use Dynamic Disk Space of " + diskInMegaByte + " in Task container.")
+				diskInMegabyte = 2048 + fileSizeTotal
+				pzsvc.LogInfo(s, "Obtained S3 File Sizes for input files; will use Dynamic Disk Space of " + diskInMegabyte + " in Task container.")
 			} else {
 				pzsvc.LogInfo(s, "Could not get the S3 File Sizes for input files. Will use the default Disk Space when running Task.")
 			}
