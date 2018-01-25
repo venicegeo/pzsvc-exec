@@ -21,6 +21,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
+	"os/exec"
 	"runtime"
 	"strings"
 	"time"
@@ -233,4 +234,35 @@ func PsuUUID() (string, error) {
 	}
 
 	return fmt.Sprintf("%X-%X-%X-%X-%X", b[0:4], b[4:6], b[6:8], b[8:10], b[10:]), nil
+}
+
+// getVersion spits out the best available version for the
+// current software, based on the contents fo the config file
+func getVersion(s Session, configObj *Config) string {
+	vCmdSlice := splitOrNil(configObj.VersionCmd, " ")
+	if vCmdSlice != nil {
+		vCmd := exec.Command(vCmdSlice[0], vCmdSlice[1:]...)
+
+		// if stdout exists, get that.
+		// if it doesn't, and there wasnt' an error, and stderr exists, get that.
+		// trim leading/trailign whitespace regardless
+
+		verB, err := vCmd.CombinedOutput()
+		verStr := strings.TrimSpace(string(verB))
+		LogInfo(s, `Called VersionCmd `+configObj.VersionCmd+`.  Results: `+verStr)
+		if err != nil {
+			LogSimpleErr(s, "VersionCmd failed: ", err)
+		}
+		if verStr != "" {
+			return verStr
+		}
+	}
+	return configObj.VersionStr
+}
+
+func splitOrNil(inString, knife string) []string {
+	if inString == "" {
+		return nil
+	}
+	return strings.Split(inString, knife)
 }

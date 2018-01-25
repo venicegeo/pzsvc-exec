@@ -22,8 +22,8 @@ import (
 	"net/url"
 	"os"
 	"strconv"
-	"time"
 	"strings"
+	"time"
 
 	"github.com/cloudfoundry-community/go-cfclient"
 	"github.com/venicegeo/pzsvc-exec/pzse"
@@ -48,7 +48,7 @@ func main() {
 		pzsvc.LogSimpleErr(s, "Dispatcher error in reading config: ", err)
 		return
 	}
-	var configObj pzse.ConfigType
+	var configObj pzsvc.Config
 	err = json.Unmarshal(configBuf, &configObj)
 	if err != nil {
 		pzsvc.LogSimpleErr(s, "Dispatcher error in unmarshalling config: ", err)
@@ -114,7 +114,7 @@ func main() {
 		}
 	}
 
-	pzsvc.LogInfo(s, "Found target service.  ServiceID: " + svcID + ".")
+	pzsvc.LogInfo(s, "Found target service.  ServiceID: "+svcID+".")
 
 	// Initialize the CF Client
 	clientConfig := &cfclient.Config{
@@ -212,7 +212,7 @@ func pollForJobs(s pzsvc.Session, configObj pzse.ConfigType, svcID string, confi
 
 		byts, pErr := pzsvc.RequestKnownJSON("POST", "", s.PzAddr+"/service/"+svcID+"/task", s.PzAuth, &pzJobObj)
 		if pErr != nil {
-			pErr.Log(s, "Dispatcher: error getting new task:" + string(byts))
+			pErr.Log(s, "Dispatcher: error getting new task:"+string(byts))
 			time.Sleep(time.Duration(5) * time.Second)
 			continue
 		}
@@ -254,7 +254,7 @@ func pollForJobs(s pzsvc.Session, configObj pzse.ConfigType, svcID string, confi
 						pzsvc.LogInfo(s, fmt.Sprintf("S3 File Size for %s found to be %d", jobInputContent.InExtFiles[i], fileSize))
 						fileSizeTotal += fileSize
 					} else {
-						err.Log(s, "Tried to get File Size from S3 File " + jobInputContent.InExtFiles[i] + " but encountered an error.")
+						err.Log(s, "Tried to get File Size from S3 File "+jobInputContent.InExtFiles[i]+" but encountered an error.")
 					}
 				}
 			}
@@ -290,7 +290,7 @@ func pollForJobs(s pzsvc.Session, configObj pzse.ConfigType, svcID string, confi
 
 			time.Sleep(5 * time.Second)
 		} else {
-			// This is way too chatty. I don't think it's needed at this point in time. 
+			// This is way too chatty. I don't think it's needed at this point in time.
 			// pzsvc.LogInfo(s, "No Jobs found during Poll; Trying again shortly.")
 			time.Sleep(5 * time.Second)
 		}
