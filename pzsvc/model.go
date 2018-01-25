@@ -175,6 +175,22 @@ type Service struct {
 	URL                string   `json:"url,omitempty"`
 }
 
+// InpStruct is the format that pzsvc-exec demarshals input data into
+type InpStruct struct {
+	Command    string   `json:"cmd,omitempty"`
+	UserID     string   `json:"userID,omitempty"`       // string: unique ID of initiating user
+	InPzFiles  []string `json:"inPzFiles,omitempty"`    // slice: Pz dataIds
+	InExtFiles []string `json:"inExtFiles,omitempty"`   // slice: external URL
+	InPzNames  []string `json:"inPzNames,omitempty"`    // slice: name for the InPzFile of the same index
+	InExtNames []string `json:"inExtNames,omitempty"`   // slice: name for the InExtFile of the same index
+	OutTiffs   []string `json:"outTiffs,omitempty"`     // slice: filenames of GeoTIFFs to be ingested
+	OutTxts    []string `json:"outTxts,omitempty"`      // slice: filenames of text files to be ingested
+	OutGeoJs   []string `json:"outGeoJson,omitempty"`   // slice: filenames of GeoJSON files to be ingested
+	ExtAuth    string   `json:"inExtAuthKey,omitempty"` // string: auth key for accessing external files
+	PzAuth     string   `json:"pzAuthKey,omitempty"`    // string: auth key for accessing Piazza
+	PzAddr     string   `json:"pzAddr,omitempty"`       // string: URL for the targeted Pz instance
+}
+
 // IngestReq is the base object used to ingest a file to Piazza.
 type IngestReq struct {
 	Data DataDesc `json:"data,omitempty"`

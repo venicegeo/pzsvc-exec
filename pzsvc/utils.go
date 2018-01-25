@@ -17,6 +17,7 @@ package pzsvc
 import (
 	"bytes"
 	"crypto/rand"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -137,9 +138,9 @@ func LogAuditResponse(s Session, actor, action, actee string, resp *http.Respons
 	}
 }
 
-// Error is intended as a somewhat more full-featured way of handlign the
+// PzCustomError is intended as a somewhat more full-featured way of handling the
 // error niche
-type Error struct {
+type PzCustomError struct {
 	hasLogged  bool   // whether or not this Error has been logged
 	LogMsg     string // message to enter into logs
 	SimpleMsg  string // simplified message to return to user via rest endpoint
@@ -152,13 +153,13 @@ type Error struct {
 // OverwriteRequest exists because some requests contain auth information.  For security
 // reasons, that needs to be stripped out before logging, but the logic that knows
 // it needs to be removed only exists outside of the pzsvc library.
-func (err *Error) OverwriteRequest(inReq string) {
+func (err *PzCustomError) OverwriteRequest(inReq string) {
 	err.request = inReq
 }
 
 // GenExtendedMsg is used to generate extended log messages from Error objects
 // for the cases where that's appropriate
-func (err Error) GenExtendedMsg() string {
+func (err PzCustomError) GenExtendedMsg() string {
 	lineBreak := "\n/**************************************/\n"
 	outBody := "Http Error: " + err.LogMsg + lineBreak
 	if err.url != "" {
@@ -187,7 +188,7 @@ func (err Error) GenExtendedMsg() string {
 // general level of complexity, that strikes a decent balance between providing
 // enough detail to figure out the cause of an error and keepign thigns simple
 // enough to readily understand.
-func (err *Error) Log(s Session, msgAdd string) LoggedError {
+func (err *PzCustomError) Log(s Session, msgAdd string) LoggedError {
 	if !err.hasLogged {
 		if msgAdd != "" {
 			err.LogMsg = msgAdd + ": " + err.LogMsg
@@ -201,11 +202,17 @@ func (err *Error) Log(s Session, msgAdd string) LoggedError {
 	} else {
 		logMessage(s, 3, "Meta-error.  Tried to log same message for a second time.")
 	}
-	if err.SimpleMsg != "" {
-		return fmt.Errorf(err.SimpleMsg)
-	}
-	return fmt.Errorf(err.LogMsg)
 
+	return errors.New(err.Error())
+
+}
+
+// Error implements the common `error` Go interface
+func (err *PzCustomError) Error() string {
+	if err.SimpleMsg != "" {
+		return err.SimpleMsg
+	}
+	return err.LogMsg
 }
 
 // SliceToCommaSep takes a string slice, and turns it into a comma-separated

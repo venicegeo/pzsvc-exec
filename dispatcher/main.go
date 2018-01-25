@@ -26,7 +26,6 @@ import (
 	"time"
 
 	"github.com/cloudfoundry-community/go-cfclient"
-	"github.com/venicegeo/pzsvc-exec/pzse"
 	"github.com/venicegeo/pzsvc-exec/pzsvc"
 )
 
@@ -99,7 +98,7 @@ func main() {
 	if svcID == "" {
 		// If no Service ID is found, attempt to register it.
 		pzsvc.LogInfo(s, "Could not find service.  Will attempt to register it.")
-		_, s := pzse.ParseConfigAndRegister(s, &configObj)
+		_, s := pzsvc.ParseConfigAndRegister(s, &configObj)
 
 		// With registration completed, Check back for Service ID
 		time.Sleep(time.Duration(1) * time.Second)
@@ -164,7 +163,7 @@ type WorkOutData struct {
 	SvcData WorkSvcData `json:"serviceData"`
 }
 
-func pollForJobs(s pzsvc.Session, configObj pzse.ConfigType, svcID string, configPath string, cfClient *cfclient.Client) {
+func pollForJobs(s pzsvc.Session, configObj pzsvc.Config, svcID string, configPath string, cfClient *cfclient.Client) {
 	var (
 		err error
 	)
@@ -222,7 +221,7 @@ func pollForJobs(s pzsvc.Session, configObj pzse.ConfigType, svcID string, confi
 		if inpStr != "" {
 			pzsvc.LogInfo(s, "New Task Grabbed.  JobID: "+jobID)
 
-			var jobInputContent pzse.InpStruct
+			var jobInputContent pzsvc.InpStruct
 			var displayByt []byte
 			err = json.Unmarshal([]byte(inpStr), &jobInputContent)
 			if err == nil {

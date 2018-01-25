@@ -30,7 +30,7 @@ type statusUpdateResultJSON struct {
 }
 
 // SendExecResultNoData sends the result of a job execution to Piazza
-func SendExecResultNoData(s Session, pzAddr, svcID, jobID string, status PiazzaStatus) *Error {
+func SendExecResultNoData(s Session, pzAddr, svcID, jobID string, status PiazzaStatus) *PzCustomError {
 	outAddr := fmt.Sprintf("%s/service/%s/task/%s", pzAddr, svcID, jobID)
 
 	LogInfo(s, fmt.Sprintf("Sending exec results, no body data. URL=%s Status=%s ", outAddr, status))
@@ -42,7 +42,7 @@ func SendExecResultNoData(s Session, pzAddr, svcID, jobID string, status PiazzaS
 }
 
 // SendExecResultData sends the result of a job execution to Piazza, including extra text data
-func SendExecResultData(s Session, pzAddr, svcID, jobID string, status PiazzaStatus, resultData []byte) *Error {
+func SendExecResultData(s Session, pzAddr, svcID, jobID string, status PiazzaStatus, resultData []byte) *PzCustomError {
 	outAddr := pzAddr + `/service/` + svcID + `/task/` + jobID
 	LogInfo(s, fmt.Sprintf("Sending exec results, with body data. URL=%s Status=%s ", outAddr, status))
 	outData := statusUpdateJSON{Status: status}

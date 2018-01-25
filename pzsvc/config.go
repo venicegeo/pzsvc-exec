@@ -50,9 +50,8 @@ type Config struct {
 // ConfigParseOut is a handy struct to organize all of the outputs
 // for pzse.ConfigParse() and prevent potential confusion.
 type ConfigParseOut struct {
-	PortStr  string
-	Version  string
-	ProcPool Semaphore
+	PortStr string
+	Version string
 }
 
 // ParseConfigAndRegister parses the config file on starting up, manages
@@ -151,16 +150,11 @@ func ParseConfigAndRegister(s Session, configObj *Config) (ConfigParseOut, Sessi
 		}
 	}
 
-	var procPool = Semaphore(nil)
-	if configObj.NumProcs > 0 {
-		procPool = make(Semaphore, configObj.NumProcs)
-	}
-
 	s.AppName = configObj.SvcName
 	s.LogRootDir = "pzsvc-exec"
 	s.LogAudit = configObj.LogAudit
 
-	return ConfigParseOut{portStr, version, procPool}, s
+	return ConfigParseOut{portStr, version}, s
 }
 
 // checkConfig takes an input config file, checks it over for issues,
