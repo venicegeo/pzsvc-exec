@@ -289,7 +289,7 @@ func PrintJSON(w http.ResponseWriter, output interface{}, httpStatus int) []byte
 	return outBuf
 }
 
-// Gets the file size of an S3 File by performing a HEAD to read the content-length header
+// GetS3FileSizeInMegabytes gets the file size of an S3 File by performing a HEAD to read the content-length header
 func GetS3FileSizeInMegabytes(url string) (int, *PzCustomError) {
 	client := HTTPClient()
 	response, err := client.Head(url)
@@ -303,12 +303,11 @@ func GetS3FileSizeInMegabytes(url string) (int, *PzCustomError) {
 	if fileSizeHeader == "" {
 		// No header found, we can't get the size
 		return 0, &PzCustomError{LogMsg: "No content-length header found in S3 HEAD request."}
-	} else {
-		// Return File Size
-		fileSize, err := strconv.Atoi(fileSizeHeader)
-		if err != nil {
-			return 0, &PzCustomError{LogMsg: "Content-Length Header from S3 HEAD Request is not a number."}
-		}
-		return fileSize / 1000000, nil
 	}
+	// Return File Size
+	fileSize, err := strconv.Atoi(fileSizeHeader)
+	if err != nil {
+		return 0, &PzCustomError{LogMsg: "Content-Length Header from S3 HEAD Request is not a number."}
+	}
+	return fileSize / 1000000, nil
 }
