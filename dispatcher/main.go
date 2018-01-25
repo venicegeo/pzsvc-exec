@@ -114,9 +114,6 @@ func main() {
 		}
 	}
 
-
-
-
 	pzsvc.LogInfo(s, "Found target service.  ServiceID: " + svcID + ".")
 
 	// Initialize the CF Client
