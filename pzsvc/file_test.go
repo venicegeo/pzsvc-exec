@@ -20,36 +20,6 @@ import (
 	"testing"
 )
 
-func TestDownloadByID(t *testing.T) {
-	outStrs := []string{`{"test":"blah"}`, `{"test":"blah"}`, `{"test":"blah"}`}
-	SetMockClient(outStrs, 250)
-	url := "http://testURL.net"
-	authKey := "testAuthKey"
-	dataID := "1234ID"
-	fileName := "tempTestFile.tmp"
-	subFold := "folderName"
-	s := Session{SubFold: subFold, PzAddr: url, PzAuth: authKey, LogRootDir: "Test"}
-
-	os.Mkdir(subFold, 0777)
-	_, err := DownloadByID(s, dataID, fileName)
-	if err != nil {
-		t.Error(`TestDownloadByID: failed on subfolder-yes call: ` + err.Error())
-	}
-	os.RemoveAll(subFold)
-
-	s.SubFold = ""
-	_, err = DownloadByID(s, dataID, fileName)
-	if err != nil {
-		t.Error(`TestDownloadByID: failed on subfolder-no call: ` + err.Error())
-	}
-	os.Remove(locString("", fileName))
-
-	_, err = DownloadByID(s, dataID, "")
-	if err == nil {
-		t.Error(`TestDownloadByID: passed a filename-no call: ` + err.Error())
-	}
-}
-
 func TestIngestFile(t *testing.T) {
 	outStrs := []string{
 		`{"Data":{"JobID":"testID1"}}`,

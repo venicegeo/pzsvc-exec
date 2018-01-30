@@ -22,8 +22,8 @@ import (
 	"io/ioutil"
 	"mime/multipart"
 	"net/http"
-	"time"
 	"strconv"
+	"time"
 )
 
 var httpClient *http.Client
@@ -51,8 +51,7 @@ func SetHTTPClient(newClient *http.Client) {
 // said response JSON, an address to call and an authKey to send, it will submit
 // the get request, unmarshal the result into the given object, and return. It
 // returns the response buffer, in case it is needed for debugging purposes.
-func RequestKnownJSON(method, bodyStr, address, authKey string, outpObj interface{}) ([]byte, *Error) {
-
+func RequestKnownJSON(method, bodyStr, address, authKey string, outpObj interface{}) ([]byte, *PzCustomError) {
 	resp, err := SubmitSinglePart(method, bodyStr, address, authKey)
 	if resp != nil {
 		defer resp.Body.Close()
@@ -69,7 +68,7 @@ func RequestKnownJSON(method, bodyStr, address, authKey string, outpObj interfac
 
 // SubmitMultipart sends a multi-part POST call, including an optional uploaded file,
 // and returns the response.  Primarily intended to support Ingest calls.
-func SubmitMultipart(bodyStr, address, filename, authKey string, fileData []byte) (*http.Response, *Error) {
+func SubmitMultipart(bodyStr, address, filename, authKey string, fileData []byte) (*http.Response, *PzCustomError) {
 
 	var (
 		body   = &bytes.Buffer{}
@@ -80,33 +79,33 @@ func SubmitMultipart(bodyStr, address, filename, authKey string, fileData []byte
 
 	err = writer.WriteField("data", bodyStr)
 	if err != nil {
-		return nil, &Error{LogMsg: "Could not write string " + bodyStr + "to message body: " + err.Error(), SimpleMsg: "Internal Error on file upload.  See logs."}
+		return nil, &PzCustomError{LogMsg: "Could not write string " + bodyStr + "to message body: " + err.Error(), SimpleMsg: "Internal Error on file upload.  See logs."}
 	}
 
 	if fileData != nil {
 		var part io.Writer
 		part, err = writer.CreateFormFile("file", filename)
 		if err != nil {
-			return nil, &Error{LogMsg: "Error on CreateFormFile: " + err.Error(), SimpleMsg: "Internal Error on file upload.  See logs."}
+			return nil, &PzCustomError{LogMsg: "Error on CreateFormFile: " + err.Error(), SimpleMsg: "Internal Error on file upload.  See logs."}
 		}
 		if part == nil {
-			return nil, &Error{LogMsg: "CreateFormFile returned empty form.", SimpleMsg: "Internal Error on file upload.  See logs."}
+			return nil, &PzCustomError{LogMsg: "CreateFormFile returned empty form.", SimpleMsg: "Internal Error on file upload.  See logs."}
 		}
 
 		_, err = io.Copy(part, bytes.NewReader(fileData))
 		if err != nil {
-			return nil, &Error{LogMsg: "Error on file data Copy: " + err.Error(), SimpleMsg: "Internal Error on file upload.  See logs."}
+			return nil, &PzCustomError{LogMsg: "Error on file data Copy: " + err.Error(), SimpleMsg: "Internal Error on file upload.  See logs."}
 		}
 	}
 
 	err = writer.Close()
 	if err != nil {
-		return nil, &Error{LogMsg: "Error on Writer close: " + err.Error(), SimpleMsg: "Internal Error on file upload.  See logs."}
+		return nil, &PzCustomError{LogMsg: "Error on Writer close: " + err.Error(), SimpleMsg: "Internal Error on file upload.  See logs."}
 	}
 
 	fileReq, err := http.NewRequest("POST", address, body)
 	if err != nil {
-		return nil, &Error{LogMsg: "Error on Request creation: " + err.Error(), SimpleMsg: "Internal Error on file upload.  See logs."}
+		return nil, &PzCustomError{LogMsg: "Error on Request creation: " + err.Error(), SimpleMsg: "Internal Error on file upload.  See logs."}
 	}
 
 	fileReq.Header.Add("Content-Type", writer.FormDataContentType())
@@ -114,20 +113,20 @@ func SubmitMultipart(bodyStr, address, filename, authKey string, fileData []byte
 
 	resp, err := client.Do(fileReq)
 	if err != nil {
-		return nil, &Error{LogMsg: "Error on POST multipart: " + err.Error(), url: address, request: bodyStr, SimpleMsg: "HTTP error on file upload.  See logs."}
+		return nil, &PzCustomError{LogMsg: "Error on POST multipart: " + err.Error(), url: address, request: bodyStr, SimpleMsg: "HTTP error on file upload.  See logs."}
 	}
 	if resp.StatusCode < 200 || resp.StatusCode > 299 {
 		defer resp.Body.Close()
 		errByt, _ := ioutil.ReadAll(resp.Body)
 		outMsg := "Received " + http.StatusText(resp.StatusCode) + " on multipart POST call to " + address + ".  Further details logged."
-		return resp, &Error{LogMsg: "Failed multipart HTTP request", url: address, request: bodyStr, response: string(errByt), httpStatus: resp.StatusCode, SimpleMsg: outMsg}
+		return resp, &PzCustomError{LogMsg: "Failed multipart HTTP request", url: address, request: bodyStr, response: string(errByt), httpStatus: resp.StatusCode, SimpleMsg: outMsg}
 	}
 	return resp, nil
 }
 
 // SubmitSinglePart sends a single-part GET/POST/PUT/DELETE call to the target URL
 // and returns the result.  Includes the necessary headers.
-func SubmitSinglePart(method, bodyStr, url, authKey string) (*http.Response, *Error) {
+func SubmitSinglePart(method, bodyStr, url, authKey string) (*http.Response, *PzCustomError) {
 
 	var (
 		fileReq *http.Request
@@ -136,19 +135,19 @@ func SubmitSinglePart(method, bodyStr, url, authKey string) (*http.Response, *Er
 	)
 
 	if method == "" || url == "" {
-		return nil, &Error{LogMsg: `method:"` + method + `", url:"` + url + `".  You must have both.`}
+		return nil, &PzCustomError{LogMsg: `method:"` + method + `", url:"` + url + `".  You must have both.`}
 	}
 
 	if bodyStr != "" {
 		fileReq, err = http.NewRequest(method, url, bytes.NewBuffer([]byte(bodyStr)))
 		if err != nil {
-			return nil, &Error{LogMsg: err.Error()}
+			return nil, &PzCustomError{LogMsg: err.Error()}
 		}
 		fileReq.Header.Add("Content-Type", "application/json")
 	} else {
 		fileReq, err = http.NewRequest(method, url, nil)
 		if err != nil {
-			return nil, &Error{LogMsg: err.Error()}
+			return nil, &PzCustomError{LogMsg: err.Error()}
 		}
 	}
 
@@ -156,14 +155,14 @@ func SubmitSinglePart(method, bodyStr, url, authKey string) (*http.Response, *Er
 
 	resp, err := client.Do(fileReq)
 	if err != nil {
-		return nil, &Error{LogMsg: err.Error(), request: bodyStr}
+		return nil, &PzCustomError{LogMsg: err.Error(), request: bodyStr}
 	}
 	if resp.StatusCode < 200 || resp.StatusCode > 299 {
 		defer resp.Body.Close()
 		errByt, _ := ioutil.ReadAll(resp.Body)
 
 		outMsg := "Received " + http.StatusText(resp.StatusCode) + " on call to " + url + ".  Further details logged."
-		return resp, &Error{LogMsg: "Failed HTTP request", request: bodyStr, response: string(errByt), url: url, httpStatus: resp.StatusCode, SimpleMsg: outMsg}
+		return resp, &PzCustomError{LogMsg: "Failed HTTP request", request: bodyStr, response: string(errByt), url: url, httpStatus: resp.StatusCode, SimpleMsg: outMsg}
 	}
 
 	return resp, nil
@@ -171,10 +170,10 @@ func SubmitSinglePart(method, bodyStr, url, authKey string) (*http.Response, *Er
 
 // GetJobResponse will repeatedly poll the job status on the given job Id
 // until job completion, then acquires and returns the DataResult.
-func GetJobResponse(s Session, jobID string) (*DataResult, *Error) {
+func GetJobResponse(s Session, jobID string) (*DataResult, *PzCustomError) {
 
 	if jobID == "" {
-		return nil, &Error{LogMsg: `JobID not provided.  Cannot get Job Response.`}
+		return nil, &PzCustomError{LogMsg: `JobID not provided.  Cannot get Job Response.`}
 	}
 
 	for i := 0; i < 300; i++ { // will wait up to 5 minutes
@@ -202,25 +201,25 @@ func GetJobResponse(s Session, jobID string) (*DataResult, *Error) {
 				return respObj.Result, nil
 			}
 			if respObj.Status == "Fail" {
-				return nil, &Error{LogMsg: "Piazza failure when acquiring DataId.  Response json: " + string(respBuf)}
+				return nil, &PzCustomError{LogMsg: "Piazza failure when acquiring DataId.  Response json: " + string(respBuf)}
 			}
 			if respObj.Status == "Error" {
-				return nil, &Error{LogMsg: "Piazza error when acquiring DataId.  Response json: " + string(respBuf)}
+				return nil, &PzCustomError{LogMsg: "Piazza error when acquiring DataId.  Response json: " + string(respBuf)}
 			}
-			return nil, &Error{LogMsg: `Unknown status "` + respObj.Status + `" when acquiring DataId.  Response json: ` + string(respBuf)}
+			return nil, &PzCustomError{LogMsg: `Unknown status "` + respObj.Status + `" when acquiring DataId.  Response json: ` + string(respBuf)}
 		}
 	}
 
-	return nil, &Error{LogMsg: "Job never completed.  JobId: " + jobID}
+	return nil, &PzCustomError{LogMsg: "Job never completed.  JobId: " + jobID}
 }
 
 // GetJobID is a simple function to extract the job ID from
 // the standard response to job-creating Pz calls
-func GetJobID(resp *http.Response) (string, *Error) {
+func GetJobID(resp *http.Response) (string, *PzCustomError) {
 	var respObj JobInitResp
 	byts, err := ReadBodyJSON(&respObj, resp.Body)
 	if respObj.Data.JobID == "" && err == nil {
-		return "", &Error{LogMsg: "Response did not contain Job ID.  initial response: " + string(byts)}
+		return "", &PzCustomError{LogMsg: "Response did not contain Job ID.  initial response: " + string(byts)}
 	}
 	return respObj.Data.JobID, err
 }
@@ -229,26 +228,26 @@ func GetJobID(resp *http.Response) (string, *Error) {
 // object, pulls out the body, and attempts to interpret it as JSON into
 // the given interface format.  It's mostly there as a minor simplifying
 // function.
-func ReadBodyJSON(output interface{}, body io.ReadCloser) ([]byte, *Error) {
+func ReadBodyJSON(output interface{}, body io.ReadCloser) ([]byte, *PzCustomError) {
 	rBytes, err := ioutil.ReadAll(body)
 	if err != nil {
-		return nil, &Error{LogMsg: "Could not read HTTP response."}
+		return nil, &PzCustomError{LogMsg: "Could not read HTTP response."}
 	}
 	err = json.Unmarshal(rBytes, output)
 	if err != nil {
-		return nil, &Error{LogMsg: "Unmarshal failed: " + err.Error() + ".  Original input: " + string(rBytes) + ".", SimpleMsg: "JSON error when reading HTTP Response.  See log."}
+		return nil, &PzCustomError{LogMsg: "Unmarshal failed: " + err.Error() + ".  Original input: " + string(rBytes) + ".", SimpleMsg: "JSON error when reading HTTP Response.  See log."}
 	}
 	return rBytes, nil
 }
 
 // CheckAuth verifies that the given API key is valid for the given
 // Piazza address
-func CheckAuth(s Session) *Error {
+func CheckAuth(s Session) *PzCustomError {
 	targURL := s.PzAddr + "/service"
 	LogAudit(s, s.UserID, "verify Piazza auth key request", targURL, "", INFO)
 	_, err := SubmitSinglePart("GET", "", targURL, s.PzAuth)
 	if err != nil {
-		return &Error{LogMsg: "Could not confirm user authorization."}
+		return &PzCustomError{LogMsg: "Could not confirm user authorization."}
 	}
 	LogAudit(s, targURL, "verify Piazza auth key response", s.UserID, "", INFO)
 	return nil
@@ -290,26 +289,25 @@ func PrintJSON(w http.ResponseWriter, output interface{}, httpStatus int) []byte
 	return outBuf
 }
 
-// Gets the file size of an S3 File by performing a HEAD to read the content-length header
-func GetS3FileSizeInMegabytes(url string) (int, *Error) {
+// GetS3FileSizeInMegabytes gets the file size of an S3 File by performing a HEAD to read the content-length header
+func GetS3FileSizeInMegabytes(url string) (int, *PzCustomError) {
 	client := HTTPClient()
 	response, err := client.Head(url)
 	if err != nil {
-		return 0, &Error{LogMsg: "Error during HEAD request to S3 Service."}
+		return 0, &PzCustomError{LogMsg: "Error during HEAD request to S3 Service."}
 	}
 	if response.Status != "200 OK" {
-		return 0, &Error{LogMsg: "Non-OK HTTP Status received from S3 Service HEAD request: " + response.Status}
+		return 0, &PzCustomError{LogMsg: "Non-OK HTTP Status received from S3 Service HEAD request: " + response.Status}
 	}
 	fileSizeHeader := response.Header.Get("Content-Length")
 	if fileSizeHeader == "" {
 		// No header found, we can't get the size
-		return 0, &Error{LogMsg: "No content-length header found in S3 HEAD request."}
-	} else {
-		// Return File Size
-		fileSize, err := strconv.Atoi(fileSizeHeader)
-		if err != nil {
-			return 0, &Error{LogMsg: "Content-Length Header from S3 HEAD Request is not a number."}
-		}
-		return fileSize/1000000, nil
+		return 0, &PzCustomError{LogMsg: "No content-length header found in S3 HEAD request."}
 	}
+	// Return File Size
+	fileSize, err := strconv.Atoi(fileSizeHeader)
+	if err != nil {
+		return 0, &PzCustomError{LogMsg: "Content-Length Header from S3 HEAD Request is not a number."}
+	}
+	return fileSize / 1000000, nil
 }

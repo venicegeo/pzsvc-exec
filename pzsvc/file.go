@@ -17,12 +17,8 @@ package pzsvc
 import (
 	"encoding/json"
 	"fmt"
-	"io"
 	"io/ioutil"
-	"mime"
 	"net/http"
-	"os"
-	"time"
 )
 
 // locString simplifies certain local processes that wish to interact with
@@ -34,69 +30,6 @@ func locString(subFold, fname string) string {
 	return fmt.Sprintf(`./%s/%s`, subFold, fname)
 }
 
-// DownloadByID retrieves a file from Pz using the file access API
-func DownloadByID(s Session, dataID, filename string) (string, LoggedError) {
-	fName, err := DownloadByURL(s, s.PzAddr+"/file/"+dataID, filename, s.PzAuth, false)
-	if err == nil && fName == "" {
-
-		return "", LogSimpleErr(s, `File for DataID `+dataID+` unnamed.  Probable ingest error.`, nil)
-	}
-	return fName, err
-}
-
-// DownloadByURL retrieves a file from the given URL, which may or may not have anything
-// to do with Piazza
-func DownloadByURL(s Session, url, filename, authKey string, retryOn202 bool) (string, LoggedError) {
-
-	var (
-		params map[string]string
-		err    error
-		pErr   *Error
-		resp   *http.Response
-		x      int
-	)
-	LogAudit(s, s.UserID, "file download request for "+filename, url, "", INFO)
-	for x = 0; x < 60; x++ {
-		resp, pErr = SubmitSinglePart("GET", "", url, authKey)
-		if !retryOn202 || resp == nil || !(resp.StatusCode == 202) {
-			break
-		}
-		if resp != nil && resp.Body != nil {
-			resp.Body.Close()
-		}
-		LogAudit(s, url, "received 202"+filename, s.UserID, "Will wait minute, then retry.", NOTICE)
-		time.Sleep(60 * time.Second)
-	}
-	if resp != nil {
-		defer resp.Body.Close()
-	}
-	if pErr != nil {
-		return "", pErr.Log(s, "Download error: ")
-	}
-	LogAudit(s, url, "file download response for "+filename, s.UserID, "", INFO)
-	if filename == "" {
-		contDisp := resp.Header.Get("Content-Disposition")
-		_, params, err = mime.ParseMediaType(contDisp)
-		if err != nil {
-			return "", LogSimpleErr(s, "Download: could not read Content-Disposition header: ", err)
-		}
-		filename = params["filename"]
-		if filename == "" {
-			return "", LogSimpleErr(s, `Input file from URL "`+url+`" was not given a name.`, nil)
-		}
-	}
-	LogAudit(s, s.UserID, "local file creation and writing", filename, "", INFO) //file creation/manipulation
-	out, err := os.Create(locString(s.SubFold, filename))
-	if err != nil {
-		return "", LogSimpleErr(s, "Download: could not create file "+filename+": ", err)
-	}
-
-	defer out.Close()
-	io.Copy(out, resp.Body)
-
-	return filename, nil
-}
-
 // Ingest ingests the given bytes to Piazza.
 func Ingest(s Session, fName, fType, sourceName, version string,
 	ingData []byte,
@@ -105,7 +38,7 @@ func Ingest(s Session, fName, fType, sourceName, version string,
 	var (
 		fileData []byte
 		resp     *http.Response
-		pErr     *Error
+		pErr     *PzCustomError
 		targAddr string
 	)
 

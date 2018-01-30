@@ -22,11 +22,10 @@ import (
 	"net/url"
 	"os"
 	"strconv"
-	"time"
 	"strings"
+	"time"
 
 	"github.com/cloudfoundry-community/go-cfclient"
-	"github.com/venicegeo/pzsvc-exec/pzse"
 	"github.com/venicegeo/pzsvc-exec/pzsvc"
 )
 
@@ -48,7 +47,7 @@ func main() {
 		pzsvc.LogSimpleErr(s, "Dispatcher error in reading config: ", err)
 		return
 	}
-	var configObj pzse.ConfigType
+	var configObj pzsvc.Config
 	err = json.Unmarshal(configBuf, &configObj)
 	if err != nil {
 		pzsvc.LogSimpleErr(s, "Dispatcher error in unmarshalling config: ", err)
@@ -90,21 +89,28 @@ func main() {
 	}
 	s.PzAuth = "Basic " + base64.StdEncoding.EncodeToString([]byte(apiKey+":"))
 
-	svcID := ""
-	for i := 0; svcID == "" && i < 10; i++ {
-		svcID, err = pzsvc.FindMySvc(s, configObj.SvcName)
-		if err != nil {
-			pzsvc.LogSimpleErr(s, "Dispatcher could not find Pz Service ID.  Initial Error: ", err)
-			return
-		}
-		if svcID == "" && i < 9 {
-			pzsvc.LogInfo(s, "Could not find service.  Will sleep and wait.")
-			time.Sleep(15 * time.Second)
-		}
+	// Check for the Service ID. If it exists, then grab the ID. If it doesn't exist, then Register it.
+	svcID, err := pzsvc.FindMySvc(s, configObj.SvcName)
+	if err != nil {
+		pzsvc.LogSimpleErr(s, "Dispatcher could not find Piazza Service ID.  Initial Error: ", err)
+		return
 	}
 	if svcID == "" {
-		pzsvc.LogSimpleErr(s, "Dispatcher could not find Pz Service ID.  Ensure the Service exists and is registered, and try again.", err)
-		return
+		// If no Service ID is found, attempt to register it.
+		pzsvc.LogInfo(s, "Could not find service.  Will attempt to register it.")
+		_, s := pzsvc.ParseConfigAndRegister(s, &configObj)
+
+		// With registration completed, Check back for Service ID
+		time.Sleep(time.Duration(1) * time.Second)
+		svcID, err := pzsvc.FindMySvc(s, configObj.SvcName)
+		if err != nil {
+			pzsvc.LogSimpleErr(s, "Dispatcher could not find new Service ID post registration.  Initial Error: ", err)
+			return
+		}
+		if svcID == "" {
+			pzsvc.LogInfo(s, "Could not find service ID post registration. The application cannot start. Please verify Service Registration and restart the application.")
+			return
+		}
 	}
 
 	pzsvc.LogInfo(s, "Found target service.  ServiceID: "+svcID+".")
@@ -157,7 +163,7 @@ type WorkOutData struct {
 	SvcData WorkSvcData `json:"serviceData"`
 }
 
-func pollForJobs(s pzsvc.Session, configObj pzse.ConfigType, svcID string, configPath string, cfClient *cfclient.Client) {
+func pollForJobs(s pzsvc.Session, configObj pzsvc.Config, svcID string, configPath string, cfClient *cfclient.Client) {
 	var (
 		err error
 	)
@@ -205,7 +211,7 @@ func pollForJobs(s pzsvc.Session, configObj pzse.ConfigType, svcID string, confi
 
 		byts, pErr := pzsvc.RequestKnownJSON("POST", "", s.PzAddr+"/service/"+svcID+"/task", s.PzAuth, &pzJobObj)
 		if pErr != nil {
-			pErr.Log(s, "Dispatcher: error getting new task:" + string(byts))
+			pErr.Log(s, "Dispatcher: error getting new task:"+string(byts))
 			time.Sleep(time.Duration(5) * time.Second)
 			continue
 		}
@@ -215,7 +221,7 @@ func pollForJobs(s pzsvc.Session, configObj pzse.ConfigType, svcID string, confi
 		if inpStr != "" {
 			pzsvc.LogInfo(s, "New Task Grabbed.  JobID: "+jobID)
 
-			var jobInputContent pzse.InpStruct
+			var jobInputContent pzsvc.InpStruct
 			var displayByt []byte
 			err = json.Unmarshal([]byte(inpStr), &jobInputContent)
 			if err == nil {
@@ -247,7 +253,7 @@ func pollForJobs(s pzsvc.Session, configObj pzse.ConfigType, svcID string, confi
 						pzsvc.LogInfo(s, fmt.Sprintf("S3 File Size for %s found to be %d", jobInputContent.InExtFiles[i], fileSize))
 						fileSizeTotal += fileSize
 					} else {
-						err.Log(s, "Tried to get File Size from S3 File " + jobInputContent.InExtFiles[i] + " but encountered an error.")
+						err.Log(s, "Tried to get File Size from S3 File "+jobInputContent.InExtFiles[i]+" but encountered an error.")
 					}
 				}
 			}
@@ -283,7 +289,7 @@ func pollForJobs(s pzsvc.Session, configObj pzse.ConfigType, svcID string, confi
 
 			time.Sleep(5 * time.Second)
 		} else {
-			// This is way too chatty. I don't think it's needed at this point in time. 
+			// This is way too chatty. I don't think it's needed at this point in time.
 			// pzsvc.LogInfo(s, "No Jobs found during Poll; Trying again shortly.")
 			time.Sleep(5 * time.Second)
 		}

@@ -57,8 +57,7 @@ func FindMySvc(s Session, svcName string) (string, LoggedError) {
 // every time your service starts up.  For those of you code-reading, the filter is
 // still somewhat rudimentary.  It will improve as better tools become available.
 func ManageRegistration(s Session, svcObj Service) LoggedError {
-
-	var pzErr *Error
+	var pzErr *PzCustomError
 	var resp *http.Response
 	LogInfo(s, "Searching for service in Pz service list")
 	svcID, err := FindMySvc(s, svcObj.ResMeta.Name)
@@ -66,7 +65,7 @@ func ManageRegistration(s Session, svcObj Service) LoggedError {
 		return err
 	}
 
-	svcJSON, err := json.Marshal(svcObj)
+	svcJSON, _ := json.Marshal(svcObj)
 
 	if svcID == "" {
 		LogInfo(s, "Registering Service")
