@@ -192,9 +192,10 @@ func pollForJobs(s pzsvc.Session, configObj pzsvc.Config, svcID string, configPa
 
 	// Polling Loop
 	for {
+		pzsvc.LogInfo(s, "Attempting to retrieve CF client connection from factory")
 		cfClient, err := clientFactory.GetClient()
 		if err != nil {
-			pzsvc.LogSimpleErr(s, "Error lazily generating valid CF Client", err)
+			pzsvc.LogSimpleErr(s, "Error lazily generating valid CF client", err)
 		}
 
 		// First, check to see if there is room for tasks. If we've reached the task limit, then do not poll Piazza for jobs.
