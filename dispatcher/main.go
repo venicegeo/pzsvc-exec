@@ -121,7 +121,7 @@ func main() {
 		Username:   os.Getenv("CF_USER"),
 		Password:   os.Getenv("CF_PASS"),
 	}
-	clientFactory, err := NewCFClientFactory(clientConfig)
+	clientFactory, err := NewCFClientFactory(&s, clientConfig)
 
 	if err != nil {
 		pzsvc.LogSimpleErr(s, "Error in initializing CF Client factory: ", err)

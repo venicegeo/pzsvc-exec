@@ -4,18 +4,20 @@ import (
 	"time"
 
 	cfclient "github.com/cloudfoundry-community/go-cfclient"
+	"github.com/venicegeo/pzsvc-exec/pzsvc"
 )
 
 // CFClientFactory encapsulates functionality to lazily generate cfclient.Client objects
 type CFClientFactory struct {
+	pzSession                *pzsvc.Session
 	config                   *cfclient.Config
 	cachedClient             *cfclient.Client
 	cachedClientCreationTime time.Time
 }
 
 // NewCFClientFactory creates a new factory object for lazily creating cfclient.Client objects
-func NewCFClientFactory(config *cfclient.Config) (*CFClientFactory, error) {
-	clientFactory := &CFClientFactory{config: config}
+func NewCFClientFactory(pzSession *pzsvc.Session, config *cfclient.Config) (*CFClientFactory, error) {
+	clientFactory := &CFClientFactory{pzSession: pzSession, config: config}
 	err := clientFactory.RefreshCachedClient()
 	if err != nil {
 		return nil, err
@@ -50,6 +52,7 @@ func (f *CFClientFactory) CachedClientAge() time.Duration {
 // RefreshCachedClient replaces the cached client with a new one based on the
 // factory's stored cfclient.Config and expiration duration
 func (f *CFClientFactory) RefreshCachedClient() error {
+	pzsvc.LogInfo(*f.pzSession, "Regenerating lazily generated CF client")
 	client, err := cfclient.NewClient(f.config)
 	if err != nil {
 		return err
