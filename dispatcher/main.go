@@ -130,7 +130,7 @@ func main() {
 
 	pzsvc.LogInfo(s, "Cloud Foundry Client initialized. Beginning Polling.")
 
-	pollForJobs(s, configObj, svcID, configPath, clientFactory)
+	pollForJobs(&s, configObj, svcID, configPath, clientFactory)
 }
 
 // WorkBody exists as part of the response format of the Piazza job manager task request endpoint.
@@ -164,7 +164,7 @@ type WorkOutData struct {
 	SvcData WorkSvcData `json:"serviceData"`
 }
 
-func pollForJobs(s pzsvc.Session, configObj pzsvc.Config, svcID string, configPath string, clientFactory *CFClientFactory) {
+func pollForJobs(s *pzsvc.Session, configObj pzsvc.Config, svcID string, configPath string, clientFactory *CFClientFactory) {
 	var (
 		err error
 	)
@@ -174,15 +174,15 @@ func pollForJobs(s pzsvc.Session, configObj pzsvc.Config, svcID string, configPa
 	vcapJSONContainer := make(map[string]interface{})
 	err = json.Unmarshal([]byte(os.Getenv("VCAP_APPLICATION")), &vcapJSONContainer)
 	if err != nil {
-		pzsvc.LogSimpleErr(s, "Cannot proceed: Error in reading VCAP Application properties: ", err)
+		pzsvc.LogSimpleErr(*s, "Cannot proceed: Error in reading VCAP Application properties: ", err)
 		return
 	}
 	appID, ok := vcapJSONContainer["application_id"].(string)
 	if !ok {
-		pzsvc.LogSimpleErr(s, "Cannot Read Application Name from VCAP Application properties: string type assertion failed", nil)
+		pzsvc.LogSimpleErr(*s, "Cannot Read Application Name from VCAP Application properties: string type assertion failed", nil)
 		return
 	}
-	pzsvc.LogInfo(s, "Found application name from VCAP Tree: "+appID)
+	pzsvc.LogInfo(*s, "Found application name from VCAP Tree: "+appID)
 
 	// Read the # of simultaneous Tasks that are allowed to be run by the Dispatcher
 	taskLimit := 5
@@ -192,10 +192,10 @@ func pollForJobs(s pzsvc.Session, configObj pzsvc.Config, svcID string, configPa
 
 	// Polling Loop
 	for {
-		pzsvc.LogInfo(s, "Attempting to retrieve CF client connection from factory")
+		pzsvc.LogInfo(*s, "Attempting to retrieve CF client connection from factory")
 		cfClient, err := clientFactory.GetClient()
 		if err != nil {
-			pzsvc.LogSimpleErr(s, "Error lazily generating valid CF client", err)
+			pzsvc.LogSimpleErr(*s, "Error lazily generating valid CF client", err)
 		}
 
 		// First, check to see if there is room for tasks. If we've reached the task limit, then do not poll Piazza for jobs.
@@ -203,11 +203,11 @@ func pollForJobs(s pzsvc.Session, configObj pzsvc.Config, svcID string, configPa
 		query.Add("states", "RUNNING")
 		tasks, err := cfClient.TasksByAppByQuery(appID, query)
 		if err != nil {
-			pzsvc.LogSimpleErr(s, "Cannot poll CF tasks", err)
+			pzsvc.LogSimpleErr(*s, "Cannot poll CF tasks", err)
 		}
 
 		if len(tasks) > taskLimit {
-			pzsvc.LogInfo(s, "Maximum Tasks reached for App. Will not poll for work until current work has completed.")
+			pzsvc.LogInfo(*s, "Maximum Tasks reached for App. Will not poll for work until current work has completed.")
 			continue
 		}
 
@@ -218,7 +218,7 @@ func pollForJobs(s pzsvc.Session, configObj pzsvc.Config, svcID string, configPa
 
 		byts, pErr := pzsvc.RequestKnownJSON("POST", "", s.PzAddr+"/service/"+svcID+"/task", s.PzAuth, &pzJobObj)
 		if pErr != nil {
-			pErr.Log(s, "Dispatcher: error getting new task:"+string(byts))
+			pErr.Log(*s, "Dispatcher: error getting new task:"+string(byts))
 			time.Sleep(time.Duration(5) * time.Second)
 			continue
 		}
@@ -226,7 +226,7 @@ func pollForJobs(s pzsvc.Session, configObj pzsvc.Config, svcID string, configPa
 		inpStr := pzJobObj.Data.SvcData.Data.DataInputs.Body.Content
 		jobID := pzJobObj.Data.SvcData.JobID
 		if inpStr != "" {
-			pzsvc.LogInfo(s, "New Task Grabbed.  JobID: "+jobID)
+			pzsvc.LogInfo(*s, "New Task Grabbed.  JobID: "+jobID)
 
 			var jobInputContent pzsvc.InpStruct
 			var displayByt []byte
@@ -240,8 +240,8 @@ func pollForJobs(s pzsvc.Session, configObj pzsvc.Config, svcID string, configPa
 				}
 				displayByt, err = json.Marshal(jobInputContent)
 				if err != nil {
-					pzsvc.LogAudit(s, s.UserID, "Audit failure", s.AppName, "Could not Marshal.  Job Canceled.", pzsvc.ERROR)
-					pzsvc.SendExecResultNoData(s, s.PzAddr, svcID, jobID, pzsvc.PiazzaStatusFail)
+					pzsvc.LogAudit(*s, s.UserID, "Audit failure", s.AppName, "Could not Marshal.  Job Canceled.", pzsvc.ERROR)
+					pzsvc.SendExecResultNoData(*s, s.PzAddr, svcID, jobID, pzsvc.PiazzaStatusFail)
 					time.Sleep(5 * time.Second)
 					continue
 				}
@@ -257,10 +257,10 @@ func pollForJobs(s pzsvc.Session, configObj pzsvc.Config, svcID string, configPa
 				if strings.Contains(jobInputContent.InExtFiles[i], "amazonaws") {
 					fileSize, err := pzsvc.GetS3FileSizeInMegabytes(jobInputContent.InExtFiles[i])
 					if err == nil {
-						pzsvc.LogInfo(s, fmt.Sprintf("S3 File Size for %s found to be %d", jobInputContent.InExtFiles[i], fileSize))
+						pzsvc.LogInfo(*s, fmt.Sprintf("S3 File Size for %s found to be %d", jobInputContent.InExtFiles[i], fileSize))
 						fileSizeTotal += fileSize
 					} else {
-						err.Log(s, "Tried to get File Size from S3 File "+jobInputContent.InExtFiles[i]+" but encountered an error.")
+						err.Log(*s, "Tried to get File Size from S3 File "+jobInputContent.InExtFiles[i]+" but encountered an error.")
 					}
 				}
 			}
@@ -268,9 +268,9 @@ func pollForJobs(s pzsvc.Session, configObj pzsvc.Config, svcID string, configPa
 			if fileSizeTotal != 0 {
 				// Allocate 2G for the filesystem and executables (with some buffer), then add the image sizes
 				diskInMegabyte = 2048 + fileSizeTotal
-				pzsvc.LogInfo(s, fmt.Sprintf("Obtained S3 File Sizes for input files; will use Dynamic Disk Space of %d in Task container.", diskInMegabyte))
+				pzsvc.LogInfo(*s, fmt.Sprintf("Obtained S3 File Sizes for input files; will use Dynamic Disk Space of %d in Task container.", diskInMegabyte))
 			} else {
-				pzsvc.LogInfo(s, "Could not get the S3 File Sizes for input files. Will use the default Disk Space when running Task.")
+				pzsvc.LogInfo(*s, "Could not get the S3 File Sizes for input files. Will use the default Disk Space when running Task.")
 			}
 
 			taskRequest := cfclient.TaskRequest{
@@ -281,18 +281,18 @@ func pollForJobs(s pzsvc.Session, configObj pzsvc.Config, svcID string, configPa
 				DiskInMegabyte:   diskInMegabyte,
 			}
 
-			pzsvc.LogAudit(s, s.UserID, "Creating CF Task for Job "+jobID+" : "+workerCommand, s.AppName, string(displayByt), pzsvc.INFO)
+			pzsvc.LogAudit(*s, s.UserID, "Creating CF Task for Job "+jobID+" : "+workerCommand, s.AppName, string(displayByt), pzsvc.INFO)
 
 			// Send Run-Task request to CF
 			_, err := cfClient.CreateTask(taskRequest)
 			if err != nil {
-				pzsvc.LogAudit(s, s.UserID, "Audit failure", s.AppName, "Could not Create PCF Task for Job. Job Failed: "+err.Error(), pzsvc.ERROR)
-				pzsvc.SendExecResultNoData(s, s.PzAddr, svcID, jobID, pzsvc.PiazzaStatusFail)
+				pzsvc.LogAudit(*s, s.UserID, "Audit failure", s.AppName, "Could not Create PCF Task for Job. Job Failed: "+err.Error(), pzsvc.ERROR)
+				pzsvc.SendExecResultNoData(*s, s.PzAddr, svcID, jobID, pzsvc.PiazzaStatusFail)
 				time.Sleep(5 * time.Second)
 				continue
 			}
 
-			pzsvc.LogAudit(s, s.UserID, "Task Created for CF Job", s.AppName, string(displayByt), pzsvc.INFO)
+			pzsvc.LogAudit(*s, s.UserID, "Task Created for CF Job", s.AppName, string(displayByt), pzsvc.INFO)
 
 			time.Sleep(5 * time.Second)
 		} else {
