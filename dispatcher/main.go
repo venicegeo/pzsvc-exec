@@ -121,15 +121,16 @@ func main() {
 		Username:   os.Getenv("CF_USER"),
 		Password:   os.Getenv("CF_PASS"),
 	}
-	client, err := cfclient.NewClient(clientConfig)
+	clientFactory, err := NewCFClientFactory(clientConfig)
+
 	if err != nil {
-		pzsvc.LogSimpleErr(s, "Error in Inflating Cloud Foundry API Client: ", err)
+		pzsvc.LogSimpleErr(s, "Error in initializing CF Client factory: ", err)
 		return
 	}
 
 	pzsvc.LogInfo(s, "Cloud Foundry Client initialized. Beginning Polling.")
 
-	pollForJobs(s, configObj, svcID, configPath, client)
+	pollForJobs(s, configObj, svcID, configPath, clientFactory)
 }
 
 // WorkBody exists as part of the response format of the Piazza job manager task request endpoint.
@@ -163,7 +164,7 @@ type WorkOutData struct {
 	SvcData WorkSvcData `json:"serviceData"`
 }
 
-func pollForJobs(s pzsvc.Session, configObj pzsvc.Config, svcID string, configPath string, cfClient *cfclient.Client) {
+func pollForJobs(s pzsvc.Session, configObj pzsvc.Config, svcID string, configPath string, clientFactory *CFClientFactory) {
 	var (
 		err error
 	)
@@ -191,6 +192,11 @@ func pollForJobs(s pzsvc.Session, configObj pzsvc.Config, svcID string, configPa
 
 	// Polling Loop
 	for {
+		cfClient, err := clientFactory.GetClient()
+		if err != nil {
+			pzsvc.LogSimpleErr(s, "Error lazily generating valid CF Client", err)
+		}
+
 		// First, check to see if there is room for tasks. If we've reached the task limit, then do not poll Piazza for jobs.
 		query := url.Values{}
 		query.Add("states", "RUNNING")
