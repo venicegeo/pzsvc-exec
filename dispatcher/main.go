@@ -121,16 +121,30 @@ func main() {
 		Username:   os.Getenv("CF_USER"),
 		Password:   os.Getenv("CF_PASS"),
 	}
-	clientFactory, err := NewCFClientFactory(&s, clientConfig)
-
+	client, err := cfclient.NewClient(clientConfig)
 	if err != nil {
-		pzsvc.LogSimpleErr(s, "Error in initializing CF Client factory: ", err)
+		pzsvc.LogSimpleErr(s, "Error in Inflating Cloud Foundry API Client: ", err)
 		return
 	}
 
+	// TODO: Filip, the CF Client Factory is breaking. It has been disabled. 
+	//clientConfig := &cfclient.Config{
+	//	ApiAddress: os.Getenv("CF_API"),
+	//	Username:   os.Getenv("CF_USER"),
+	//	Password:   os.Getenv("CF_PASS"),
+	//}
+	//clientFactory, err := NewCFClientFactory(&s, clientConfig)
+	//
+	//if err != nil {
+	//	pzsvc.LogSimpleErr(s, "Error in initializing CF Client factory: ", err)
+	//	return
+	//}
+
 	pzsvc.LogInfo(s, "Cloud Foundry Client initialized. Beginning Polling.")
 
-	pollForJobs(&s, configObj, svcID, configPath, clientFactory)
+	// TODO: Enable this line again when the Client Factory is fixed
+	//pollForJobs(&s, configObj, svcID, configPath, clientFactory)
+	pollForJobs(&s, configObj, svcID, configPath, client)
 }
 
 // WorkBody exists as part of the response format of the Piazza job manager task request endpoint.
@@ -164,7 +178,7 @@ type WorkOutData struct {
 	SvcData WorkSvcData `json:"serviceData"`
 }
 
-func pollForJobs(s *pzsvc.Session, configObj pzsvc.Config, svcID string, configPath string, clientFactory *CFClientFactory) {
+func pollForJobs(s *pzsvc.Session, configObj pzsvc.Config, svcID string, configPath string, cfClient *cfclient.Client /*clientFactory *CFClientFactory TODO: Client factory has been disabled */) {
 	var (
 		err error
 	)
@@ -191,19 +205,12 @@ func pollForJobs(s *pzsvc.Session, configObj pzsvc.Config, svcID string, configP
 	}
 
 	// Get the CF Client
-	cfClient, err := clientFactory.GetClient()
+	// TODO: This has been disabled and the default client is being used -- bypassing the client Factory
+	//cfClient, err := clientFactory.GetClient()
 
 	// Polling Loop
 	for {
 		// TODO: Check for OAuth token validity before using the Client again
-
-		pzsvc.LogInfo(*s, "Attempting to retrieve CF client connection from factory")
-		
-		if err != nil {
-			pzsvc.LogSimpleErr(*s, "Error lazily generating valid CF client", err)
-		}
-		ageMsg := fmt.Sprintf("Retrieved client is %.2fs old", clientFactory.CachedClientAge().Seconds())
-		pzsvc.LogInfo(*s, ageMsg)
 
 		// First, check to see if there is room for tasks. If we've reached the task limit, then do not poll Piazza for jobs.
 		query := url.Values{}
