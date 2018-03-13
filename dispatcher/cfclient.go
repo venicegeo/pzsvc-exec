@@ -52,7 +52,7 @@ func (f *CFClientFactory) CachedClientAge() time.Duration {
 // RefreshCachedClient replaces the cached client with a new one based on the
 // factory's stored cfclient.Config and expiration duration
 func (f *CFClientFactory) RefreshCachedClient() error {
-	pzsvc.LogInfo(*f.pzSession, "Regenerating lazily generated CF client")
+	pzsvc.LogInfo(*f.pzSession, "Regenerating Cloud Foundry Client.")
 	client, err := cfclient.NewClient(f.config)
 	if err != nil {
 		return err
@@ -75,6 +75,7 @@ func (f CFClientFactory) IsCachedClientExpired() (bool, error) {
 	}
 
 	if cfclient.IsNotAuthorizedError(err) || cfclient.IsNotAuthenticatedError(err) {
+		pzsvc.LogInfo(*f.pzSession, "Detected invalid OAuth Token, will attempt to regenerate the CF Client.")
 		return true, nil
 	}
 	return false, err
