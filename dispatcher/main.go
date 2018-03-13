@@ -190,10 +190,15 @@ func pollForJobs(s *pzsvc.Session, configObj pzsvc.Config, svcID string, configP
 		taskLimit, _ = strconv.Atoi(envTaskLimit)
 	}
 
+	// Get the CF Client
+	cfClient, err := clientFactory.GetClient()
+
 	// Polling Loop
 	for {
+		// TODO: Check for OAuth token validity before using the Client again
+
 		pzsvc.LogInfo(*s, "Attempting to retrieve CF client connection from factory")
-		cfClient, err := clientFactory.GetClient()
+		
 		if err != nil {
 			pzsvc.LogSimpleErr(*s, "Error lazily generating valid CF client", err)
 		}
