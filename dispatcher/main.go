@@ -185,7 +185,7 @@ func pollForJobs(s *pzsvc.Session, configObj pzsvc.Config, svcID string, configP
 	pzsvc.LogInfo(*s, "Found application name from VCAP Tree: "+appID)
 
 	// Read the # of simultaneous Tasks that are allowed to be run by the Dispatcher
-	taskLimit := 5
+	taskLimit := 3
 	if envTaskLimit := os.Getenv("TASK_LIMIT"); envTaskLimit != "" {
 		taskLimit, _ = strconv.Atoi(envTaskLimit)
 	}
@@ -289,6 +289,14 @@ func pollForJobs(s *pzsvc.Session, configObj pzsvc.Config, svcID string, configP
 			// Send Run-Task request to CF
 			_, err := cfClient.CreateTask(taskRequest)
 			if err != nil {
+				// Check if the error is related to org quota limit being exceeded. If so, 
+				if (cfclient.IsAppMemoryQuotaExceededError(err)
+				 	|| cfclient.IsQuotaInstanceLimitExceededError(err)
+				  	|| cfclient.IsQuotaInstanceMemoryLimitExceededError(err)
+				   	|| cfclient.IsSpaceQuotaInstanceMemoryLimitExceededError(err)) {
+				   	pzsvc.LogAudit(*s, s.UserID, "Audit failure", s.AppName, "The Memory limit of CF Org has been exceeded. No further jobs can be created.", pzsvc.ERROR)	
+				}
+				// General error - fail the job.
 				pzsvc.LogAudit(*s, s.UserID, "Audit failure", s.AppName, "Could not Create PCF Task for Job. Job Failed: "+err.Error(), pzsvc.ERROR)
 				pzsvc.SendExecResultNoData(*s, s.PzAddr, svcID, jobID, pzsvc.PiazzaStatusFail)
 				time.Sleep(5 * time.Second)
