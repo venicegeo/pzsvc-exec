@@ -185,20 +185,19 @@ func pollForJobs(s *pzsvc.Session, configObj pzsvc.Config, svcID string, configP
 	pzsvc.LogInfo(*s, "Found application name from VCAP Tree: "+appID)
 
 	// Read the # of simultaneous Tasks that are allowed to be run by the Dispatcher
-	taskLimit := 5
+	taskLimit := 3
 	if envTaskLimit := os.Getenv("TASK_LIMIT"); envTaskLimit != "" {
 		taskLimit, _ = strconv.Atoi(envTaskLimit)
 	}
 
 	// Polling Loop
 	for {
-		pzsvc.LogInfo(*s, "Attempting to retrieve CF client connection from factory")
+		// Get the CF Client
 		cfClient, err := clientFactory.GetClient()
 		if err != nil {
-			pzsvc.LogSimpleErr(*s, "Error lazily generating valid CF client", err)
+			pzsvc.LogSimpleErr(*s, "Error generating valid CF Client. The application cannot proceed.", err)
+			return
 		}
-		ageMsg := fmt.Sprintf("Retrieved client is %.2fs old", clientFactory.CachedClientAge().Seconds())
-		pzsvc.LogInfo(*s, ageMsg)
 
 		// First, check to see if there is room for tasks. If we've reached the task limit, then do not poll Piazza for jobs.
 		query := url.Values{}
@@ -267,19 +266,21 @@ func pollForJobs(s *pzsvc.Session, configObj pzsvc.Config, svcID string, configP
 				}
 			}
 			diskInMegabyte := 6142
+      		memoryInMegabyte := 3072
 			if fileSizeTotal != 0 {
 				// Allocate 2G for the filesystem and executables (with some buffer), then add the image sizes
-				diskInMegabyte = 2048 + fileSizeTotal
-				pzsvc.LogInfo(*s, fmt.Sprintf("Obtained S3 File Sizes for input files; will use Dynamic Disk Space of %d in Task container.", diskInMegabyte))
+				diskInMegabyte = 2048 + (fileSizeTotal * 2)
+				memoryInMegabyte = memoryInMegabyte + (fileSizeTotal * 5)
+				pzsvc.LogInfo(*s, fmt.Sprintf("Obtained S3 File Sizes for input files; will use Dynamic Disk Space of %d in Task container and Dynamic Memory Size of %d", diskInMegabyte, memoryInMegabyte))
 			} else {
-				pzsvc.LogInfo(*s, "Could not get the S3 File Sizes for input files. Will use the default Disk Space when running Task.")
+				pzsvc.LogInfo(*s, "Could not get the S3 File Sizes for input files. Will use the default Disk and Memory Space when running Task.")
 			}
 
 			taskRequest := cfclient.TaskRequest{
 				Command:          workerCommand,
 				Name:             jobID,
 				DropletGUID:      appID,
-				MemoryInMegabyte: 3072,
+				MemoryInMegabyte: memoryInMegabyte,
 				DiskInMegabyte:   diskInMegabyte,
 			}
 
@@ -288,6 +289,14 @@ func pollForJobs(s *pzsvc.Session, configObj pzsvc.Config, svcID string, configP
 			// Send Run-Task request to CF
 			_, err := cfClient.CreateTask(taskRequest)
 			if err != nil {
+				// Check if the error is related to org quota limit being exceeded. If so, 
+				if (cfclient.IsAppMemoryQuotaExceededError(err)
+				 	|| cfclient.IsQuotaInstanceLimitExceededError(err)
+				  	|| cfclient.IsQuotaInstanceMemoryLimitExceededError(err)
+				   	|| cfclient.IsSpaceQuotaInstanceMemoryLimitExceededError(err)) {
+				   	pzsvc.LogAudit(*s, s.UserID, "Audit failure", s.AppName, "The Memory limit of CF Org has been exceeded. No further jobs can be created.", pzsvc.ERROR)	
+				}
+				// General error - fail the job.
 				pzsvc.LogAudit(*s, s.UserID, "Audit failure", s.AppName, "Could not Create PCF Task for Job. Job Failed: "+err.Error(), pzsvc.ERROR)
 				pzsvc.SendExecResultNoData(*s, s.PzAddr, svcID, jobID, pzsvc.PiazzaStatusFail)
 				time.Sleep(5 * time.Second)
