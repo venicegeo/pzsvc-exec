@@ -266,7 +266,7 @@ func pollForJobs(s *pzsvc.Session, configObj pzsvc.Config, svcID string, configP
 				}
 			}
 			diskInMegabyte := 6142
-      		memoryInMegabyte := 3072
+			memoryInMegabyte := 3072
 			if fileSizeTotal != 0 {
 				// Allocate 2G for the filesystem and executables (with some buffer), then add the image sizes
 				diskInMegabyte = 2048 + (fileSizeTotal * 2)
@@ -289,12 +289,12 @@ func pollForJobs(s *pzsvc.Session, configObj pzsvc.Config, svcID string, configP
 			// Send Run-Task request to CF
 			_, err := cfClient.CreateTask(taskRequest)
 			if err != nil {
-				// Check if the error is related to org quota limit being exceeded. If so, 
-				if (cfclient.IsAppMemoryQuotaExceededError(err)
-				 	|| cfclient.IsQuotaInstanceLimitExceededError(err)
-				  	|| cfclient.IsQuotaInstanceMemoryLimitExceededError(err)
-				   	|| cfclient.IsSpaceQuotaInstanceMemoryLimitExceededError(err)) {
-				   	pzsvc.LogAudit(*s, s.UserID, "Audit failure", s.AppName, "The Memory limit of CF Org has been exceeded. No further jobs can be created.", pzsvc.ERROR)	
+				// Check if the error is related to org quota limit being exceeded. If so,
+				if cfclient.IsAppMemoryQuotaExceededError(err) ||
+					cfclient.IsQuotaInstanceLimitExceededError(err) ||
+					cfclient.IsQuotaInstanceMemoryLimitExceededError(err) ||
+					cfclient.IsSpaceQuotaInstanceMemoryLimitExceededError(err) {
+					pzsvc.LogAudit(*s, s.UserID, "Audit failure", s.AppName, "The Memory limit of CF Org has been exceeded. No further jobs can be created.", pzsvc.ERROR)
 				}
 				// General error - fail the job.
 				pzsvc.LogAudit(*s, s.UserID, "Audit failure", s.AppName, "Could not Create PCF Task for Job. Job Failed: "+err.Error(), pzsvc.ERROR)
