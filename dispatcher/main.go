@@ -209,6 +209,7 @@ func pollForJobs(s *pzsvc.Session, configObj pzsvc.Config, svcID string, configP
 
 		if len(tasks) > taskLimit {
 			pzsvc.LogInfo(*s, "Maximum Tasks reached for App. Will not poll for work until current work has completed.")
+			time.Sleep(10 * time.Second)
 			continue
 		}
 
