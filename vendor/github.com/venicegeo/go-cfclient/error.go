@@ -22,8 +22,12 @@ type CloudFoundryError struct {
 	Code        int    `json:"code"`
 	ErrorCode   string `json:"error_code"`
 	Description string `json:"description"`
+	RawBody     []byte `json:"-"`
 }
 
 func (cfErr CloudFoundryError) Error() string {
-	return fmt.Sprintf("cfclient: error (%d): %s", cfErr.Code, cfErr.ErrorCode)
+	if cfErr.Code > 0 {
+		return fmt.Sprintf("cfclient: error (%d): %s", cfErr.Code, cfErr.ErrorCode)
+	}
+	return fmt.Sprintf("cfclient: null error; raw error body was: %s", string(cfErr.RawBody))
 }

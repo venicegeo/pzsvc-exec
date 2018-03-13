@@ -25,7 +25,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/cloudfoundry-community/go-cfclient"
+	cfclient "github.com/venicegeo/go-cfclient"
 	"github.com/venicegeo/pzsvc-exec/pzsvc"
 )
 

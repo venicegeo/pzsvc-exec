@@ -4,7 +4,9 @@ import (
 	"bytes"
 	"crypto/tls"
 	"encoding/json"
+	"fmt"
 	"io"
+	"io/ioutil"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -219,9 +221,8 @@ func getInfo(api string, httpClient *http.Client) (*Endpoint, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
 
-	err = decodeBody(resp, &endpoint)
+	err = decodeBody(resp.Body, &endpoint)
 	if err != nil {
 		return nil, err
 	}
@@ -271,10 +272,21 @@ func (c *Client) Do(req *http.Request) (*http.Response, error) {
 	}
 
 	if resp.StatusCode >= http.StatusBadRequest {
-		var cfErr CloudFoundryError
-		if err := decodeBody(resp, &cfErr); err != nil {
-			return resp, errors.Wrap(err, "Unable to decode body, http "+strconv.Itoa(resp.StatusCode))
+		var errBody []byte
+		defer resp.Body.Close()
+		errBody, err = ioutil.ReadAll(resp.Body)
+		if err != nil {
+			return nil, errors.Wrap(err, "error reading response body, http "+strconv.Itoa(resp.StatusCode))
 		}
+
+		var cfErr CloudFoundryError
+		reReadBody := ioutil.NopCloser(bytes.NewReader(errBody))
+
+		if err := decodeBody(reReadBody, &cfErr); err != nil {
+			decodeErrMessage := fmt.Sprintf("Unable to decode body, http %d, body was: `%s`", resp.StatusCode, string(errBody))
+			return resp, errors.Wrap(err, decodeErrMessage)
+		}
+		cfErr.RawBody = errBody
 		return nil, errors.Wrap(cfErr, "cf error in body, http "+strconv.Itoa(resp.StatusCode))
 	}
 
@@ -331,9 +343,9 @@ func (r *request) toHTTP() (*http.Request, error) {
 }
 
 // decodeBody is used to JSON decode a body
-func decodeBody(resp *http.Response, out interface{}) error {
-	defer resp.Body.Close()
-	dec := json.NewDecoder(resp.Body)
+func decodeBody(body io.ReadCloser, out interface{}) error {
+	defer body.Close()
+	dec := json.NewDecoder(body)
 	return dec.Decode(out)
 }
 

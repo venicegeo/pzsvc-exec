@@ -1,8 +1,10 @@
 hash: 299545830ec47f3f8798f458a55f8bde0b174368b7077750afdb952b995c7670
-updated: 2018-03-13T12:09:15.5271806-04:00
+updated: 2018-03-13T15:52:23.0854138-04:00
 imports:
-- name: github.com/cloudfoundry-community/go-cfclient
-  version: bdb31282431a30516bb8d28628e95dd47e577df6
+- name: github.com/cloudfoundry/gofileutils
+  version: 4d0c80011a0f37da1711c184028bc40137cd45af
+  subpackages:
+  - fileutils
 - name: github.com/golang/protobuf
   version: 1e59b77b52bf8e4b449a57e6f79f21226d571845
   subpackages:
@@ -10,7 +12,7 @@ imports:
 - name: github.com/pkg/errors
   version: e881fd58d78e04cf6d0de1217f8707c8cc2249bc
 - name: github.com/venicegeo/go-cfclient
-  version: 57ae5ddab08df6f3a88a37a0fdd11591c944dfa3
+  version: c9176e1006c04317cbd7f5823d9414db51614001
 - name: golang.org/x/net
   version: 5ccada7d0a7ba9aeb5d3aca8d3501b4c2a509fec
   subpackages:
