@@ -269,7 +269,7 @@ func pollForJobs(s *pzsvc.Session, configObj pzsvc.Config, svcID string, configP
 			diskInMegabyte := 6142
 			if fileSizeTotal != 0 {
 				// Allocate 2G for the filesystem and executables (with some buffer), then add the image sizes
-				diskInMegabyte = 2048 + fileSizeTotal
+				diskInMegabyte = 2560 + fileSizeTotal
 				pzsvc.LogInfo(*s, fmt.Sprintf("Obtained S3 File Sizes for input files; will use Dynamic Disk Space of %d in Task container.", diskInMegabyte))
 			} else {
 				pzsvc.LogInfo(*s, "Could not get the S3 File Sizes for input files. Will use the default Disk Space when running Task.")
