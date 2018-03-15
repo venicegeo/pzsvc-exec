@@ -1,5 +1,5 @@
-hash: 299545830ec47f3f8798f458a55f8bde0b174368b7077750afdb952b995c7670
-updated: 2018-03-13T15:52:23.0854138-04:00
+hash: 7130545e7bc00a4f21209bae03ea28b116f398eca9ee6ce243779a74b7ce4279
+updated: 2018-03-15T15:47:06.6178124-04:00
 imports:
 - name: github.com/cloudfoundry/gofileutils
   version: 4d0c80011a0f37da1711c184028bc40137cd45af
@@ -11,6 +11,10 @@ imports:
   - proto
 - name: github.com/pkg/errors
   version: e881fd58d78e04cf6d0de1217f8707c8cc2249bc
+- name: github.com/stretchr/testify
+  version: 12b6f73e6084dad08a7c6e575284b177ecafbc71
+  subpackages:
+  - assert
 - name: github.com/venicegeo/go-cfclient
   version: c9176e1006c04317cbd7f5823d9414db51614001
 - name: golang.org/x/net
