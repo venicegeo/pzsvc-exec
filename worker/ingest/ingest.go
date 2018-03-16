@@ -27,8 +27,6 @@ import (
 	"github.com/venicegeo/pzsvc-exec/worker/log"
 )
 
-const ingestTimeout = 1 * time.Minute
-
 // MultiIngestOutput holds response data for batch-ingesting several files
 type MultiIngestOutput struct {
 	DataIDs       map[string]string
@@ -104,7 +102,7 @@ func ingestFileAsync(s pzsvc.Session, filePath string, fileType string,
 	go func() {
 		resultChan := make(chan singleIngestOutput)
 		go func() {
-			dataID, err := pzsvc.IngestFile(s, filePath, fileType, serviceID, algVersion, attMap)
+			dataID, err := ingestor.IngestFile(s, filePath, fileType, serviceID, algVersion, attMap)
 
 			resultChan <- singleIngestOutput{
 				FilePath: filePath,
@@ -116,7 +114,7 @@ func ingestFileAsync(s pzsvc.Session, filePath string, fileType string,
 		select {
 		case result := <-resultChan:
 			outChan <- result
-		case <-time.After(ingestTimeout):
+		case <-ingestor.Timeout():
 			outChan <- singleIngestOutput{
 				FilePath: filePath,
 				Error:    errors.New("File ingest timed out"),
