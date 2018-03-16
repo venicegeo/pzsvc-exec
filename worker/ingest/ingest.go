@@ -18,11 +18,9 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"path/filepath"
 	"strings"
 	"time"
 
-	"github.com/venicegeo/pzsvc-exec/pzsvc"
 	"github.com/venicegeo/pzsvc-exec/worker/config"
 	"github.com/venicegeo/pzsvc-exec/worker/log"
 )
@@ -92,35 +90,4 @@ func OutputFilesToPiazza(cfg config.WorkerConfig, algFullCommand string, algVers
 	}
 
 	return
-}
-
-// pzSvcIngestor is an interface providing mock-able pzsvc.IngestFile functionality, for modularity/testing purposes
-type pzSvcIngestor interface {
-	IngestFile(s pzsvc.Session, fName, fType, sourceName, version string, props map[string]string) (string, pzsvc.LoggedError)
-	Timeout() <-chan time.Time
-}
-
-type defaultPzSvcIngestor struct{}
-
-func (ingestor defaultPzSvcIngestor) IngestFile(s pzsvc.Session, fName, fType, sourceName, version string, props map[string]string) (string, pzsvc.LoggedError) {
-	return pzsvc.IngestFile(s, fName, fType, sourceName, version, props)
-}
-
-func (ingestor defaultPzSvcIngestor) Timeout() <-chan time.Time {
-	return time.After(1 * time.Minute)
-}
-
-var pzSvcIngestorInstance pzSvcIngestor = &defaultPzSvcIngestor{}
-
-func detectPiazzaFileType(fileName string) string {
-	ext := filepath.Ext(strings.ToLower(fileName))
-
-	switch ext {
-	case ".geojson":
-		return "geojson"
-	case ".tiff", ".geotiff":
-		return "raster"
-	default:
-		return "text"
-	}
 }
