@@ -21,6 +21,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/venicegeo/pzsvc-exec/pzsvc"
 	"github.com/venicegeo/pzsvc-exec/worker/config"
 	"github.com/venicegeo/pzsvc-exec/worker/log"
 )
@@ -38,17 +39,29 @@ type singleIngestOutput struct {
 	Error    error
 }
 
+type asyncIngestorCall struct {
+	s                                         pzsvc.Session
+	filePath, fileType, serviceID, algVersion string
+	attMap                                    map[string]string
+}
+
 // OutputFilesToPiazza ingests the given files into the Piazza system
-func OutputFilesToPiazza(cfg config.WorkerConfig, algFullCommand string, algVersion string) (output MultiIngestOutput) {
-	output.DataIDs = map[string]string{}
-	ingestResultChans := []<-chan singleIngestOutput{}
+func OutputFilesToPiazza(cfg config.WorkerConfig, algFullCommand string, algVersion string) MultiIngestOutput {
+	ingestorCalls, asmErrors := assembleIngestorCalls(cfg, algFullCommand, algVersion)
+	ingestorResultChans := callAsyncIngestor(ingestorCalls)
+	return handleIngestResults(cfg, ingestorResultChans, asmErrors)
+}
+
+func assembleIngestorCalls(cfg config.WorkerConfig, algFullCommand string, algVersion string) ([]asyncIngestorCall, []error) {
+	ingestorCalls := []asyncIngestorCall{}
+	outputErrors := []error{}
 
 	for _, filePath := range cfg.Outputs {
-		workerlog.Info(cfg, "ingesting file to Piazza: "+filePath)
+		workerlog.Info(cfg, "preparing ingest call: "+filePath)
 		if _, fStatErr := os.Stat(filePath); fStatErr != nil {
 			errMsg := fmt.Sprintf("error statting file `%s`: %v", filePath, fStatErr)
 			workerlog.SimpleErr(cfg, errMsg, fStatErr)
-			output.Errors = append(output.Errors, errors.New(errMsg))
+			outputErrors = append(outputErrors, errors.New(errMsg))
 			continue
 		}
 
@@ -63,30 +76,45 @@ func OutputFilesToPiazza(cfg config.WorkerConfig, algFullCommand string, algVers
 
 		workerlog.Info(cfg, fmt.Sprintf("async ingest call: path=%s type=%s serviceID=%s, version=%s, attMap=%v",
 			filePath, fileType, cfg.PiazzaServiceID, algVersion, attMap))
-		resultChan := asyncIngestorInstance.ingestFileAsync(*cfg.Session, filePath, fileType, cfg.PiazzaServiceID, algVersion, attMap)
+
+		ingestorCalls = append(ingestorCalls, asyncIngestorCall{*cfg.Session, filePath, fileType, cfg.PiazzaServiceID, algVersion, attMap})
+	}
+	return ingestorCalls, outputErrors
+}
+
+func callAsyncIngestor(ingestorCalls []asyncIngestorCall) (outputChans []<-chan singleIngestOutput) {
+	ingestResultChans := []<-chan singleIngestOutput{}
+	for _, call := range ingestorCalls {
+		resultChan := asyncIngestorInstance.ingestFileAsync(call.s, call.filePath, call.fileType, call.serviceID, call.algVersion, call.attMap)
 		ingestResultChans = append(ingestResultChans, resultChan)
 	}
+	return ingestResultChans
+}
 
-	for _, resultChan := range ingestResultChans {
+func handleIngestResults(cfg config.WorkerConfig, resultChans []<-chan singleIngestOutput, prependErrors []error) (multiOutput MultiIngestOutput) {
+	multiOutput.DataIDs = map[string]string{}
+	multiOutput.Errors = append([]error{}, prependErrors...)
+
+	for _, resultChan := range resultChans {
 		for result := range resultChan {
 			if result.Error != nil {
 				workerlog.SimpleErr(cfg, "received async ingest error", result.Error)
-				output.Errors = append(output.Errors, result.Error)
+				multiOutput.Errors = append(multiOutput.Errors, result.Error)
 			} else {
 				workerlog.Info(cfg, fmt.Sprintf("ingested file `%s` as ID: %s", result.FilePath, result.DataID))
-				output.DataIDs[result.FilePath] = result.DataID
+				multiOutput.DataIDs[result.FilePath] = result.DataID
 			}
 		}
 	}
 
-	if len(output.Errors) > 0 {
+	if len(multiOutput.Errors) > 0 {
 		errorTexts := []string{}
-		for _, err := range output.Errors {
+		for _, err := range multiOutput.Errors {
 			errorTexts = append(errorTexts, err.Error())
 		}
 		fullErrorText := strings.Join(errorTexts, "; ")
-		output.CombinedError = errors.New("ingest errors: " + fullErrorText)
-		workerlog.SimpleErr(cfg, "concatenated ingest errors", output.CombinedError)
+		multiOutput.CombinedError = errors.New("ingest errors: " + fullErrorText)
+		workerlog.SimpleErr(cfg, "concatenated ingest errors", multiOutput.CombinedError)
 	}
 
 	return

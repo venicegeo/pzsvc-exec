@@ -23,21 +23,33 @@ import (
 
 // Info is a wrapper around pzsvc.LogInfo that includes worker config details
 func Info(cfg config.WorkerConfig, message string) {
+	if cfg.MuteLogs {
+		return
+	}
 	pzsvc.LogInfo(*cfg.Session, applyWorkerPrefix(cfg, message))
 }
 
 // Warn is a wrapper around pzsvc.LogWarn that includes worker config details
 func Warn(cfg config.WorkerConfig, message string) {
+	if cfg.MuteLogs {
+		return
+	}
 	pzsvc.LogWarn(*cfg.Session, applyWorkerPrefix(cfg, message))
 }
 
 // Alert is a wrapper around pzsvc.LogAlert that includes worker config details
 func Alert(cfg config.WorkerConfig, message string) {
+	if cfg.MuteLogs {
+		return
+	}
 	pzsvc.LogAlert(*cfg.Session, applyWorkerPrefix(cfg, message))
 }
 
 // SimpleErr is a wrapper around pzsvc.LogSimpleErr that includes worker config details
 func SimpleErr(cfg config.WorkerConfig, message string, err error) {
+	if cfg.MuteLogs {
+		return
+	}
 	pzsvc.LogSimpleErr(*cfg.Session, applyWorkerPrefix(cfg, message), err)
 }
 

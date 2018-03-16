@@ -2,7 +2,6 @@ package ingest
 
 import (
 	"errors"
-	"os"
 	"testing"
 	"time"
 
@@ -12,28 +11,21 @@ import (
 
 // test setup/teardown
 
-func TestMain(m *testing.M) {
-	setUpMockIngestor()
-	retCode := m.Run()
-	// teardown here
-	os.Exit(retCode)
-}
-
-type ingestorCall struct {
+type mockPzSvcIngestorCall struct {
 	s                                 pzsvc.Session
 	fName, fType, sourceName, version string
 	props                             map[string]string
 }
 
-type mockIngestor struct {
-	Calls        []ingestorCall
+type mockPzSvcIngestor struct {
+	Calls        []mockPzSvcIngestorCall
 	CauseTimeout bool
 	ReturnFileID string
 	ReturnError  pzsvc.LoggedError
 }
 
-func (ingestor *mockIngestor) IngestFile(s pzsvc.Session, fName, fType, sourceName, version string, props map[string]string) (string, pzsvc.LoggedError) {
-	ingestor.Calls = append(ingestor.Calls, ingestorCall{s, fName, fType, sourceName, version, props})
+func (ingestor *mockPzSvcIngestor) IngestFile(s pzsvc.Session, fName, fType, sourceName, version string, props map[string]string) (string, pzsvc.LoggedError) {
+	ingestor.Calls = append(ingestor.Calls, mockPzSvcIngestorCall{s, fName, fType, sourceName, version, props})
 	if ingestor.CauseTimeout {
 		blockedChan := make(chan time.Time)
 		<-blockedChan
@@ -41,7 +33,7 @@ func (ingestor *mockIngestor) IngestFile(s pzsvc.Session, fName, fType, sourceNa
 	return ingestor.ReturnFileID, ingestor.ReturnError
 }
 
-func (ingestor mockIngestor) Timeout() <-chan time.Time {
+func (ingestor mockPzSvcIngestor) Timeout() <-chan time.Time {
 	// if we are causing a timeout, create a channel that returns a time immediately
 	// otherwise, never return a time
 	returnChan := make(chan time.Time, 1)
@@ -51,29 +43,33 @@ func (ingestor mockIngestor) Timeout() <-chan time.Time {
 	return returnChan
 }
 
-func (ingestor *mockIngestor) Reset(causeTimeout bool, returnFileID string, returnError pzsvc.LoggedError) {
-	ingestor.Calls = []ingestorCall{}
+func (ingestor *mockPzSvcIngestor) Reset(causeTimeout bool, returnFileID string, returnError pzsvc.LoggedError) {
+	ingestor.Calls = []mockPzSvcIngestorCall{}
 	ingestor.CauseTimeout = causeTimeout
 	ingestor.ReturnFileID = returnFileID
 	ingestor.ReturnError = returnError
 }
 
-var mockIngestorInstance *mockIngestor
+var mockPzSvcIngestorInstance *mockPzSvcIngestor
 
-func setUpMockIngestor() {
-	mockIngestorInstance = &mockIngestor{}
-	mockIngestorInstance.Reset(false, "", nil)
-	pzSvcIngestorInstance = mockIngestorInstance
+func setUpMockPzSvcIngestor() {
+	mockPzSvcIngestorInstance = &mockPzSvcIngestor{}
+	mockPzSvcIngestorInstance.Reset(false, "", nil)
+	pzSvcIngestorInstance = mockPzSvcIngestorInstance
+}
+
+func tearDownMockPzSvcIngestor() {
+	pzSvcIngestorInstance = &defaultPzSvcIngestor{}
 }
 
 // actual test functions
 
 func TestIngestFileAsync_Success(t *testing.T) {
-	mockIngestorInstance.Reset(false, "testReturnFileID", nil)
+	mockPzSvcIngestorInstance.Reset(false, "testReturnFileID", nil)
 
 	ingestResult := <-defaultAsyncIngestor{}.ingestFileAsync(pzsvc.Session{}, "path/to/output/file", "geojson", "service-id-123", "alg-version-0.1", map[string]string{})
 
-	assert.Equal(t, "path/to/output/file", mockIngestorInstance.Calls[0].fName)
+	assert.Equal(t, "path/to/output/file", mockPzSvcIngestorInstance.Calls[0].fName)
 	assert.Equal(t, "path/to/output/file", ingestResult.FilePath)
 	assert.Equal(t, "testReturnFileID", ingestResult.DataID)
 	assert.Nil(t, ingestResult.Error)
@@ -81,18 +77,18 @@ func TestIngestFileAsync_Success(t *testing.T) {
 
 func TestIngestFileAsync_Failure(t *testing.T) {
 	var loggedError pzsvc.LoggedError = errors.New("test error")
-	mockIngestorInstance.Reset(false, "", loggedError)
+	mockPzSvcIngestorInstance.Reset(false, "", loggedError)
 
 	ingestResult := <-defaultAsyncIngestor{}.ingestFileAsync(pzsvc.Session{}, "path/to/output/file", "geojson", "service-id-123", "alg-version-0.1", map[string]string{})
 
-	assert.Equal(t, "path/to/output/file", mockIngestorInstance.Calls[0].fName)
+	assert.Equal(t, "path/to/output/file", mockPzSvcIngestorInstance.Calls[0].fName)
 	assert.Equal(t, "path/to/output/file", ingestResult.FilePath)
 	assert.Equal(t, "", ingestResult.DataID)
 	assert.Equal(t, loggedError, ingestResult.Error)
 }
 
 func TestIngestFileAsync_Timeout(t *testing.T) {
-	mockIngestorInstance.Reset(true, "testReturnFileID", nil)
+	mockPzSvcIngestorInstance.Reset(true, "testReturnFileID", nil)
 
 	ingestResult := <-defaultAsyncIngestor{}.ingestFileAsync(pzsvc.Session{}, "path/to/output/file", "geojson", "service-id-123", "alg-version-0.1", map[string]string{})
 

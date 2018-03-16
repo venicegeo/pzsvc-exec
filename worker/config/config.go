@@ -54,6 +54,7 @@ type WorkerConfig struct {
 	Inputs          []InputSource
 	Outputs         []string
 	PzSEConfig      pzsvc.Config
+	MuteLogs        bool
 }
 
 // ReadPzSEConfig reads the pzsvc-exec.config data from the given path
