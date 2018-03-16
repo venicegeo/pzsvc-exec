@@ -63,7 +63,7 @@ var mockIngestorInstance *mockIngestor
 func setUpMockIngestor() {
 	mockIngestorInstance = &mockIngestor{}
 	mockIngestorInstance.Reset(false, "", nil)
-	ingestor = mockIngestorInstance
+	pzSvcIngestorInstance = mockIngestorInstance
 }
 
 // actual test functions
@@ -71,7 +71,7 @@ func setUpMockIngestor() {
 func TestIngestFileAsync_Success(t *testing.T) {
 	mockIngestorInstance.Reset(false, "testReturnFileID", nil)
 
-	ingestResult := <-ingestFileAsync(pzsvc.Session{}, "path/to/output/file", "geojson", "service-id-123", "alg-version-0.1", map[string]string{})
+	ingestResult := <-defaultAsyncIngestor{}.ingestFileAsync(pzsvc.Session{}, "path/to/output/file", "geojson", "service-id-123", "alg-version-0.1", map[string]string{})
 
 	assert.Equal(t, "path/to/output/file", mockIngestorInstance.Calls[0].fName)
 	assert.Equal(t, "path/to/output/file", ingestResult.FilePath)
@@ -83,7 +83,7 @@ func TestIngestFileAsync_Failure(t *testing.T) {
 	var loggedError pzsvc.LoggedError = errors.New("test error")
 	mockIngestorInstance.Reset(false, "", loggedError)
 
-	ingestResult := <-ingestFileAsync(pzsvc.Session{}, "path/to/output/file", "geojson", "service-id-123", "alg-version-0.1", map[string]string{})
+	ingestResult := <-defaultAsyncIngestor{}.ingestFileAsync(pzsvc.Session{}, "path/to/output/file", "geojson", "service-id-123", "alg-version-0.1", map[string]string{})
 
 	assert.Equal(t, "path/to/output/file", mockIngestorInstance.Calls[0].fName)
 	assert.Equal(t, "path/to/output/file", ingestResult.FilePath)
@@ -94,7 +94,7 @@ func TestIngestFileAsync_Failure(t *testing.T) {
 func TestIngestFileAsync_Timeout(t *testing.T) {
 	mockIngestorInstance.Reset(true, "testReturnFileID", nil)
 
-	ingestResult := <-ingestFileAsync(pzsvc.Session{}, "path/to/output/file", "geojson", "service-id-123", "alg-version-0.1", map[string]string{})
+	ingestResult := <-defaultAsyncIngestor{}.ingestFileAsync(pzsvc.Session{}, "path/to/output/file", "geojson", "service-id-123", "alg-version-0.1", map[string]string{})
 
 	assert.Equal(t, "path/to/output/file", ingestResult.FilePath)
 	assert.Equal(t, "", ingestResult.DataID)

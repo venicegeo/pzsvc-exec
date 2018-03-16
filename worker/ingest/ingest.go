@@ -65,7 +65,7 @@ func OutputFilesToPiazza(cfg config.WorkerConfig, algFullCommand string, algVers
 
 		workerlog.Info(cfg, fmt.Sprintf("async ingest call: path=%s type=%s serviceID=%s, version=%s, attMap=%v",
 			filePath, fileType, cfg.PiazzaServiceID, algVersion, attMap))
-		resultChan := ingestFileAsync(*cfg.Session, filePath, fileType, cfg.PiazzaServiceID, algVersion, attMap)
+		resultChan := asyncIngestorInstance.ingestFileAsync(*cfg.Session, filePath, fileType, cfg.PiazzaServiceID, algVersion, attMap)
 		ingestResultChans = append(ingestResultChans, resultChan)
 	}
 
@@ -94,37 +94,23 @@ func OutputFilesToPiazza(cfg config.WorkerConfig, algFullCommand string, algVers
 	return
 }
 
-func ingestFileAsync(s pzsvc.Session, filePath string, fileType string,
-	serviceID string, algVersion string, attMap map[string]string) <-chan singleIngestOutput {
-	outChan := make(chan singleIngestOutput)
-
-	// Nested goroutines to allow for 1 minute for ingestion to succeed
-	go func() {
-		resultChan := make(chan singleIngestOutput)
-		go func() {
-			dataID, err := ingestor.IngestFile(s, filePath, fileType, serviceID, algVersion, attMap)
-
-			resultChan <- singleIngestOutput{
-				FilePath: filePath,
-				DataID:   dataID,
-				Error:    err,
-			}
-			close(resultChan)
-		}()
-		select {
-		case result := <-resultChan:
-			outChan <- result
-		case <-ingestor.Timeout():
-			outChan <- singleIngestOutput{
-				FilePath: filePath,
-				Error:    errors.New("File ingest timed out"),
-			}
-		}
-		close(outChan)
-	}()
-
-	return outChan
+// pzSvcIngestor is an interface providing mock-able pzsvc.IngestFile functionality, for modularity/testing purposes
+type pzSvcIngestor interface {
+	IngestFile(s pzsvc.Session, fName, fType, sourceName, version string, props map[string]string) (string, pzsvc.LoggedError)
+	Timeout() <-chan time.Time
 }
+
+type defaultPzSvcIngestor struct{}
+
+func (ingestor defaultPzSvcIngestor) IngestFile(s pzsvc.Session, fName, fType, sourceName, version string, props map[string]string) (string, pzsvc.LoggedError) {
+	return pzsvc.IngestFile(s, fName, fType, sourceName, version, props)
+}
+
+func (ingestor defaultPzSvcIngestor) Timeout() <-chan time.Time {
+	return time.After(1 * time.Minute)
+}
+
+var pzSvcIngestorInstance pzSvcIngestor = &defaultPzSvcIngestor{}
 
 func detectPiazzaFileType(fileName string) string {
 	ext := filepath.Ext(strings.ToLower(fileName))
