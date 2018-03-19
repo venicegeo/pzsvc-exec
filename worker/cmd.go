@@ -105,7 +105,7 @@ func runCmd(ctx *cli.Context) error {
 	workerlog.Info(cfg, fmt.Sprintf("config validated: %s", cfg.Serialize()))
 
 	workerlog.Info(cfg, "Starting actual worker execution")
-	err := workerexec.WorkerExec(cfg)
+	err := workerexec.NewWorker().Exec(cfg)
 	if err != nil {
 		workerlog.SimpleErr(cfg, "execution error, quitting with status 1", err)
 		return cli.NewExitError(err, 1)
