@@ -2,8 +2,8 @@ package input
 
 import (
 	"fmt"
+	"io"
 	"net/http"
-	"os"
 	"time"
 
 	"github.com/venicegeo/pzsvc-exec/worker/config"
@@ -28,16 +28,12 @@ func (dl defaultAsyncDownloader) DownloadInputAsync(source config.InputSource) c
 		var err error
 		defer close(errChan)
 
-		_, fStatErr := os.Stat(source.FileName)
-		if fStatErr == nil {
-			err = fmt.Errorf("File already exists: %v", source.FileName)
-		} else if !os.IsNotExist(fStatErr) {
-			err = fmt.Errorf("Error statting file: %v; %v", source.FileName, fStatErr)
-		}
+		targetFile, err := fileCheckerInstance.CheckAndOpen(source.FileName, 0777)
 		if err != nil {
 			errChan <- err
 			return
 		}
+		defer targetFile.Close()
 
 		resp, err := httpClient.Get(source.URL)
 		if err == nil && resp.StatusCode != http.StatusOK {
@@ -47,8 +43,9 @@ func (dl defaultAsyncDownloader) DownloadInputAsync(source config.InputSource) c
 			errChan <- err
 			return
 		}
+		defer resp.Body.Close()
 
-		err = fileSaverInstance.CopyTo(source.FileName, resp.Body, 0777)
+		_, err = io.Copy(targetFile, resp.Body)
 
 		if err != nil {
 			errChan <- err
