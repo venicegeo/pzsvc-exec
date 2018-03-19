@@ -27,7 +27,13 @@ type commandOutput struct {
 	Error  error
 }
 
-func runCommand(cfg config.WorkerConfig, command string) (out commandOutput) {
+type commandRunner interface {
+	Run(cfg config.WorkerConfig, command string) commandOutput
+}
+
+type defaultCommandRunner struct{}
+
+func (dcr defaultCommandRunner) Run(cfg config.WorkerConfig, command string) (out commandOutput) {
 	var err error
 	workerlog.Info(cfg, "runCommand: "+command)
 
@@ -45,6 +51,7 @@ func runCommand(cfg config.WorkerConfig, command string) (out commandOutput) {
 	} else {
 		workerlog.Info(cfg, "runCommandOutput success")
 	}
-
 	return
 }
+
+var commandRunnerInstance commandRunner = defaultCommandRunner{}
