@@ -21,7 +21,7 @@ func TestDefaultCommandRunner_Success(t *testing.T) {
 	workerConfig := config.WorkerConfig{MuteLogs: true, Session: &pzsvc.Session{}}
 
 	// Tested code
-	runner := newDefaultCommandRunner()
+	runner := newCommandRunner()
 	runner.exec = exec
 	output := runner.Run(workerConfig, "test command")
 
@@ -44,7 +44,7 @@ func TestDefaultCommandRunner_ExitError(t *testing.T) {
 	workerConfig := config.WorkerConfig{MuteLogs: true, Session: &pzsvc.Session{}}
 
 	// Tested code
-	runner := newDefaultCommandRunner()
+	runner := newCommandRunner()
 	runner.exec = exec
 	output := runner.Run(workerConfig, "test command")
 
@@ -67,7 +67,7 @@ func TestDefaultCommandRunner_UnknownError(t *testing.T) {
 	workerConfig := config.WorkerConfig{MuteLogs: true, Session: &pzsvc.Session{}}
 
 	// Tested code
-	runner := newDefaultCommandRunner()
+	runner := newCommandRunner()
 	runner.exec = exec
 	output := runner.Run(workerConfig, "test command")
 
@@ -88,7 +88,7 @@ func TestDefaultCommandRunner_NativeCommand(t *testing.T) {
 	workerConfig := config.WorkerConfig{MuteLogs: true, Session: &pzsvc.Session{}}
 
 	// Tested code
-	runner := newDefaultCommandRunner()
+	runner := newCommandRunner()
 	output := runner.Run(workerConfig, "echo hello")
 
 	// Asserts

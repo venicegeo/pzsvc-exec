@@ -26,7 +26,7 @@ func TestDefaultPiazzaOutputter_Success(t *testing.T) {
 	outData := workerOutputData{Errors: []string{}}
 
 	// Tested code
-	outputter := newDefaultPiazzaOutputter()
+	outputter := newPiazzaOutputter()
 	outputter.sendExecResultData = mockSendExecResultData
 	outputter.OutputToPiazza(workerConfig, outData)
 
@@ -46,7 +46,7 @@ func TestDefaultPiazzaOutputter_JobError(t *testing.T) {
 	outData := workerOutputData{Errors: []string{"test error"}}
 
 	// Tested code
-	outputter := newDefaultPiazzaOutputter()
+	outputter := newPiazzaOutputter()
 	outputter.sendExecResultData = mockSendExecResultData
 	outputter.OutputToPiazza(workerConfig, outData)
 

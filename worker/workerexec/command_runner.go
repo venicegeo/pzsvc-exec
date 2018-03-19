@@ -27,23 +27,19 @@ type commandOutput struct {
 	Error  error
 }
 
-type commandRunner interface {
-	Run(cfg config.WorkerConfig, command string) commandOutput
-}
-
-type defaultCommandRunner struct {
+type commandRunner struct {
 	exec func(cmdName string, args ...string) ([]byte, error)
 }
 
-func newDefaultCommandRunner() *defaultCommandRunner {
-	return &defaultCommandRunner{
+func newCommandRunner() *commandRunner {
+	return &commandRunner{
 		exec: func(cmdName string, args ...string) ([]byte, error) {
 			return exec.Command(cmdName, args...).Output()
 		},
 	}
 }
 
-func (dcr defaultCommandRunner) Run(cfg config.WorkerConfig, command string) (out commandOutput) {
+func (dcr commandRunner) Run(cfg config.WorkerConfig, command string) (out commandOutput) {
 	var err error
 	workerlog.Info(cfg, "runCommand: "+command)
 
@@ -62,5 +58,3 @@ func (dcr defaultCommandRunner) Run(cfg config.WorkerConfig, command string) (ou
 	}
 	return
 }
-
-var commandRunnerInstance commandRunner = defaultCommandRunner{}

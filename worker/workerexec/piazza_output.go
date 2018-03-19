@@ -8,21 +8,17 @@ import (
 	"github.com/venicegeo/pzsvc-exec/worker/log"
 )
 
-type piazzaOutputter interface {
-	OutputToPiazza(cfg config.WorkerConfig, outData workerOutputData) error
-}
-
-type defaultPiazzaOutputter struct {
+type piazzaOutputter struct {
 	sendExecResultData func(pzsvc.Session, string, string, string, pzsvc.PiazzaStatus, []byte) *pzsvc.PzCustomError
 }
 
-func newDefaultPiazzaOutputter() *defaultPiazzaOutputter {
-	return &defaultPiazzaOutputter{
+func newPiazzaOutputter() *piazzaOutputter {
+	return &piazzaOutputter{
 		sendExecResultData: pzsvc.SendExecResultData,
 	}
 }
 
-func (dpo defaultPiazzaOutputter) OutputToPiazza(cfg config.WorkerConfig, outData workerOutputData) error {
+func (dpo piazzaOutputter) OutputToPiazza(cfg config.WorkerConfig, outData workerOutputData) error {
 	serializedOutData, _ := json.Marshal(outData)
 	workerlog.Info(cfg, "sending serialized output: "+string(serializedOutData))
 	var jobStatus pzsvc.PiazzaStatus
@@ -37,5 +33,3 @@ func (dpo defaultPiazzaOutputter) OutputToPiazza(cfg config.WorkerConfig, outDat
 	}
 	return nil
 }
-
-var piazzaOutputterInstance piazzaOutputter = defaultPiazzaOutputter{}
