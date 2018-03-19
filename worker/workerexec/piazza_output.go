@@ -12,7 +12,15 @@ type piazzaOutputter interface {
 	OutputToPiazza(cfg config.WorkerConfig, outData workerOutputData) error
 }
 
-type defaultPiazzaOutputter struct{}
+type defaultPiazzaOutputter struct {
+	sendExecResultData func(pzsvc.Session, string, string, string, pzsvc.PiazzaStatus, []byte) *pzsvc.PzCustomError
+}
+
+func newDefaultPiazzaOutputter() *defaultPiazzaOutputter {
+	return &defaultPiazzaOutputter{
+		sendExecResultData: pzsvc.SendExecResultData,
+	}
+}
 
 func (dpo defaultPiazzaOutputter) OutputToPiazza(cfg config.WorkerConfig, outData workerOutputData) error {
 	serializedOutData, _ := json.Marshal(outData)
@@ -23,7 +31,7 @@ func (dpo defaultPiazzaOutputter) OutputToPiazza(cfg config.WorkerConfig, outDat
 	} else {
 		jobStatus = pzsvc.PiazzaStatusError
 	}
-	pzsvcErr := pzsvc.SendExecResultData(*cfg.Session, cfg.PiazzaBaseURL, cfg.PiazzaServiceID, cfg.JobID, jobStatus, serializedOutData)
+	pzsvcErr := dpo.sendExecResultData(*cfg.Session, cfg.PiazzaBaseURL, cfg.PiazzaServiceID, cfg.JobID, jobStatus, serializedOutData)
 	if pzsvcErr != nil {
 		return pzsvcErr.Log(*cfg.Session, "failed to send result data")
 	}

@@ -31,14 +31,23 @@ type commandRunner interface {
 	Run(cfg config.WorkerConfig, command string) commandOutput
 }
 
-type defaultCommandRunner struct{}
+type defaultCommandRunner struct {
+	exec func(cmdName string, args ...string) ([]byte, error)
+}
+
+func newDefaultCommandRunner() *defaultCommandRunner {
+	return &defaultCommandRunner{
+		exec: func(cmdName string, args ...string) ([]byte, error) {
+			return exec.Command(cmdName, args...).Output()
+		},
+	}
+}
 
 func (dcr defaultCommandRunner) Run(cfg config.WorkerConfig, command string) (out commandOutput) {
 	var err error
 	workerlog.Info(cfg, "runCommand: "+command)
 
-	cmd := exec.Command("sh", "-c", command)
-	out.Stdout, out.Error = cmd.Output()
+	out.Stdout, out.Error = dcr.exec("sh", "-c", command)
 
 	if out.Error != nil {
 		if exitErr, ok := out.Error.(*exec.ExitError); ok {
