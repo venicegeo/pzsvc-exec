@@ -9,20 +9,28 @@ import (
 )
 
 func TestParseInputSource_NoError(t *testing.T) {
+	// Tested code
 	src, err := ParseInputSource("testFile.txt:http://example.localdomain/mockTestFile.txt")
+
+	// Asserts
 	assert.Nil(t, err)
 	assert.Equal(t, "testFile.txt", src.FileName)
 	assert.Equal(t, "http://example.localdomain/mockTestFile.txt", src.URL)
 }
 
 func TestParseInputSource_BadFormat(t *testing.T) {
+	// Tested code
 	src, err := ParseInputSource("asdf1234")
+
+	// Asserts
 	assert.Nil(t, src)
 	assert.NotNil(t, err)
 	assert.Contains(t, err.Error(), "Invalid input source string")
 }
 
 func TestReadPzSEConfig(t *testing.T) {
+	// Setup
+
 	// from 'examplecfg.txt' in base repo dir
 	testConfig := `{
 	    "CliCmd":"python ../bfalg-ndwi.py --outdir .",
@@ -60,22 +68,27 @@ func TestReadPzSEConfig(t *testing.T) {
 	f.WriteString(testConfig)
 	f.Close()
 	defer os.Remove(f.Name())
-
 	wc := WorkerConfig{}
+
+	// Tested code
 	err = wc.ReadPzSEConfig(f.Name())
 
+	// Asserts
 	assert.Nil(t, err)
 	assert.Equal(t, "python ../bfalg-ndwi.py --outdir .", wc.PzSEConfig.CliCmd)
 }
 
 func TestInputsAsMap(t *testing.T) {
+	// Setup
 	wc := WorkerConfig{Inputs: []InputSource{
 		InputSource{FileName: "testFile1.txt", URL: "http://example1.localdomain/test1.txt"},
 		InputSource{FileName: "testFile2.jp2", URL: "http://example2.localdomain/test2.jp2"},
 	}}
 
+	// Tested code
 	inputs := wc.InputsAsMap()
 
+	// Asserts
 	assert.Len(t, inputs, 2)
 	assert.Equal(t, "http://example1.localdomain/test1.txt", inputs["testFile1.txt"])
 	assert.Equal(t, "http://example2.localdomain/test2.jp2", inputs["testFile2.jp2"])

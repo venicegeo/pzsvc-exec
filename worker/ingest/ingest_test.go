@@ -94,10 +94,13 @@ func tearDownMockOutputs() {
 // actual test functions
 
 func TestAssembleIngestorCalls_Success(t *testing.T) {
+	// Setup
 	testWorkerConfig.Outputs = []string{mockOutput1.Name(), mockOutput2.Name()}
 
+	// Tested code
 	ingestorCalls, asmErrors := assembleIngestorCalls(testWorkerConfig, "./run_algo --someArg 123 --anotherAlg value", "1.2.3test")
 
+	// Asserts
 	assert.Empty(t, asmErrors)
 	assert.Len(t, ingestorCalls, 2)
 
@@ -115,19 +118,25 @@ func TestAssembleIngestorCalls_Success(t *testing.T) {
 }
 
 func TestAssembleIngestorCalls_Failure(t *testing.T) {
+	// Setup
 	testWorkerConfig.Outputs = []string{"does_not_exist_1.txt", "does_not_exist_2.geojson"}
 
+	// Tested code
 	ingestorCalls, asmErrors := assembleIngestorCalls(testWorkerConfig, "./run_algo --someArg 123 --anotherAlg value", "1.2.3test")
 
+	// Asserts
 	assert.Empty(t, ingestorCalls)
 	assert.Len(t, asmErrors, 2)
 }
 
 func TestAssembleIngestorCalls_Mixture(t *testing.T) {
+	// Setup
 	testWorkerConfig.Outputs = []string{"does_not_exist_1.txt", mockOutput1.Name(), "does_not_exist_2.geojson", mockOutput2.Name()}
 
+	// Tested code
 	ingestorCalls, asmErrors := assembleIngestorCalls(testWorkerConfig, "./run_algo --someArg 123 --anotherAlg value", "1.2.3test")
 
+	// Asserts
 	assert.Len(t, ingestorCalls, 2)
 	assert.Len(t, asmErrors, 2)
 
@@ -144,6 +153,7 @@ func TestAssembleIngestorCalls_Mixture(t *testing.T) {
 }
 
 func TestCallAsyncIngestor(t *testing.T) {
+	// Setup
 	mockOutputs := []singleIngestOutput{
 		singleIngestOutput{"good-output-1.txt", "output-data-id-1", nil},
 		singleIngestOutput{"bad-output-1.tif", "", errors.New("test error")},
@@ -156,8 +166,10 @@ func TestCallAsyncIngestor(t *testing.T) {
 		asyncIngestorCall{pzsvc.Session{}, "good-output-2.geojson", "geojson", testWorkerConfig.PiazzaServiceID, "1.2.3test", map[string]string{}},
 	}
 
+	// Tested code
 	outputChans := callAsyncIngestor(ingestorCalls)
 
+	// Asserts
 	assert.Len(t, outputChans, len(mockOutputs))
 	for i, outputChan := range outputChans {
 		output := <-outputChan
@@ -190,6 +202,7 @@ func singleIngestOutputChanWithOneValue(output singleIngestOutput) <-chan single
 }
 
 func TestHandleIngestResults(t *testing.T) {
+	// Setup
 	mockOutputChans := []<-chan singleIngestOutput{
 		singleIngestOutputChanWithOneValue(singleIngestOutput{"good-output-1.txt", "good-data-id-1", nil}),
 		singleIngestOutputChanWithOneValue(singleIngestOutput{"bad-output-1.tif", "", errors.New("test error")}),
@@ -197,8 +210,10 @@ func TestHandleIngestResults(t *testing.T) {
 	}
 	mockPrependErrors := []error{errors.New("prepend error")}
 
+	// Tested code
 	multiOutput := handleIngestResults(testWorkerConfig, mockOutputChans, mockPrependErrors)
 
+	// Asserts
 	assert.Equal(t, "good-data-id-1", multiOutput.DataIDs["good-output-1.txt"])
 	assert.Equal(t, "good-data-id-2", multiOutput.DataIDs["good-output-2.geojson"])
 	assert.Len(t, multiOutput.Errors, 2)
@@ -208,6 +223,7 @@ func TestHandleIngestResults(t *testing.T) {
 }
 
 func TestOutputFilesToPiazza_Full(t *testing.T) {
+	// Setup
 	testWorkerConfig.Outputs = []string{mockOutput1.Name(), mockOutput2.Name(), "does_not_exist.txt"}
 	mockOutputs := []singleIngestOutput{
 		singleIngestOutput{mockOutput1.Name(), "output-data-id-1", nil},
@@ -215,8 +231,10 @@ func TestOutputFilesToPiazza_Full(t *testing.T) {
 	}
 	mockAsyncIngestorInstance.Reset(mockOutputs)
 
+	// Tested code
 	multiOutput := OutputFilesToPiazza(testWorkerConfig, "./run_algo --someArg 123 --anotherAlg value", "1.2.3test")
 
+	// Asserts
 	assert.Len(t, multiOutput.Errors, 1)
 }
 

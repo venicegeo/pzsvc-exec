@@ -65,10 +65,13 @@ func tearDownMockPzSvcIngestor() {
 // actual test functions
 
 func TestIngestFileAsync_Success(t *testing.T) {
+	// Setup
 	mockPzSvcIngestorInstance.Reset(false, "testReturnFileID", nil)
 
+	// Tested code
 	ingestResult := <-defaultAsyncIngestor{}.ingestFileAsync(pzsvc.Session{}, "path/to/output/file", "geojson", "service-id-123", "alg-version-0.1", map[string]string{})
 
+	// Asserts
 	assert.Equal(t, "path/to/output/file", mockPzSvcIngestorInstance.Calls[0].fName)
 	assert.Equal(t, "path/to/output/file", ingestResult.FilePath)
 	assert.Equal(t, "testReturnFileID", ingestResult.DataID)
@@ -76,11 +79,14 @@ func TestIngestFileAsync_Success(t *testing.T) {
 }
 
 func TestIngestFileAsync_Failure(t *testing.T) {
+	// Setup
 	var loggedError pzsvc.LoggedError = errors.New("test error")
 	mockPzSvcIngestorInstance.Reset(false, "", loggedError)
 
+	// Tested code
 	ingestResult := <-defaultAsyncIngestor{}.ingestFileAsync(pzsvc.Session{}, "path/to/output/file", "geojson", "service-id-123", "alg-version-0.1", map[string]string{})
 
+	// Asserts
 	assert.Equal(t, "path/to/output/file", mockPzSvcIngestorInstance.Calls[0].fName)
 	assert.Equal(t, "path/to/output/file", ingestResult.FilePath)
 	assert.Equal(t, "", ingestResult.DataID)
@@ -88,10 +94,13 @@ func TestIngestFileAsync_Failure(t *testing.T) {
 }
 
 func TestIngestFileAsync_Timeout(t *testing.T) {
+	// Setup
 	mockPzSvcIngestorInstance.Reset(true, "testReturnFileID", nil)
 
+	// Tested code
 	ingestResult := <-defaultAsyncIngestor{}.ingestFileAsync(pzsvc.Session{}, "path/to/output/file", "geojson", "service-id-123", "alg-version-0.1", map[string]string{})
 
+	// Asserts
 	assert.Equal(t, "path/to/output/file", ingestResult.FilePath)
 	assert.Equal(t, "", ingestResult.DataID)
 	assert.Contains(t, ingestResult.Error.Error(), "timed out")
