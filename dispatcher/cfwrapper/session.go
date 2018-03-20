@@ -7,9 +7,6 @@ import (
 	"github.com/venicegeo/pzsvc-exec/pzsvc"
 )
 
-// TaskRequest is a rename of cfclient.TaskRequest to reduce imports
-type TaskRequest cfclient.TaskRequest
-
 // CFSession is an abstraction around the Go CF client library to make its inclusion modular
 type CFSession interface {
 	IsValid() (bool, error)

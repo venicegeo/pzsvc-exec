@@ -8,13 +8,13 @@ import (
 // Factory encapsulates functionality to lazily generate CFSession objects
 type Factory struct {
 	pzSession     *pzsvc.Session
-	config        *cfclient.Config
+	config        *Config
 	cachedSession CFSession
 	createSession func(*pzsvc.Session, *cfclient.Config) (CFSession, error)
 }
 
 // NewFactory creates a new factory object for lazily creating cfclient.Client objects
-func NewFactory(pzSession *pzsvc.Session, config *cfclient.Config) (*Factory, error) {
+func NewFactory(pzSession *pzsvc.Session, config *Config) (*Factory, error) {
 	clientFactory := &Factory{
 		pzSession:     pzSession,
 		config:        config,
@@ -54,10 +54,10 @@ func (f *Factory) GetSession() (CFSession, error) {
 func (f *Factory) RefreshCachedClient() error {
 	pzsvc.LogInfo(*f.pzSession, "Regenerating Cloud Foundry Client.")
 
-	session, err := f.createSession(f.pzSession, f.config)
-	if err != nil {
-		return err
+	cfConfig := cfclient.Config(*f.config)
+	session, err := f.createSession(f.pzSession, &cfConfig)
+	if err == nil {
+		f.cachedSession = session
 	}
-	f.cachedSession = session
-	return nil
+	return err
 }

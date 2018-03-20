@@ -20,7 +20,6 @@ import (
 	"io/ioutil"
 	"os"
 
-	cfclient "github.com/venicegeo/go-cfclient"
 	"github.com/venicegeo/pzsvc-exec/dispatcher/cfwrapper"
 	"github.com/venicegeo/pzsvc-exec/dispatcher/poll"
 	"github.com/venicegeo/pzsvc-exec/pzsvc"
@@ -95,7 +94,7 @@ func main() {
 	pzsvc.LogInfo(s, "Found target service.  ServiceID: "+svcID+".")
 
 	// Initialize the CF Client
-	clientConfig := &cfclient.Config{
+	clientConfig := &cfwrapper.Config{
 		ApiAddress: os.Getenv("CF_API"),
 		Username:   os.Getenv("CF_USER"),
 		Password:   os.Getenv("CF_PASS"),
