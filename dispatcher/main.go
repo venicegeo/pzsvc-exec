@@ -17,15 +17,12 @@ package main
 import (
 	"encoding/base64"
 	"encoding/json"
-	"fmt"
 	"io/ioutil"
-	"net/url"
 	"os"
-	"strconv"
-	"strings"
-	"time"
 
 	cfclient "github.com/venicegeo/go-cfclient"
+	"github.com/venicegeo/pzsvc-exec/dispatcher/cfwrapper"
+	"github.com/venicegeo/pzsvc-exec/dispatcher/poll"
 	"github.com/venicegeo/pzsvc-exec/pzsvc"
 )
 
@@ -90,29 +87,11 @@ func main() {
 	s.PzAuth = "Basic " + base64.StdEncoding.EncodeToString([]byte(apiKey+":"))
 
 	// Check for the Service ID. If it exists, then grab the ID. If it doesn't exist, then Register it.
-	svcID, err := pzsvc.FindMySvc(s, configObj.SvcName)
+	svcID, err := newPzSvcDiscoverer().discoverSvcID(&s, &configObj)
 	if err != nil {
-		pzsvc.LogSimpleErr(s, "Dispatcher could not find Piazza Service ID.  Initial Error: ", err)
+		pzsvc.LogSimpleErr(s, "Dispatcher could not find Piazza Service ID. Error: ", err)
 		return
 	}
-	if svcID == "" {
-		// If no Service ID is found, attempt to register it.
-		pzsvc.LogInfo(s, "Could not find service.  Will attempt to register it.")
-		_, s := pzsvc.ParseConfigAndRegister(s, &configObj)
-
-		// With registration completed, Check back for Service ID
-		time.Sleep(time.Duration(1) * time.Second)
-		svcID, err := pzsvc.FindMySvc(s, configObj.SvcName)
-		if err != nil {
-			pzsvc.LogSimpleErr(s, "Dispatcher could not find new Service ID post registration.  Initial Error: ", err)
-			return
-		}
-		if svcID == "" {
-			pzsvc.LogInfo(s, "Could not find service ID post registration. The application cannot start. Please verify Service Registration and restart the application.")
-			return
-		}
-	}
-
 	pzsvc.LogInfo(s, "Found target service.  ServiceID: "+svcID+".")
 
 	// Initialize the CF Client
@@ -121,7 +100,7 @@ func main() {
 		Username:   os.Getenv("CF_USER"),
 		Password:   os.Getenv("CF_PASS"),
 	}
-	clientFactory, err := NewCFClientFactory(&s, clientConfig)
+	clientFactory, err := cfwrapper.NewFactory(&s, clientConfig)
 
 	if err != nil {
 		pzsvc.LogSimpleErr(s, "Error in initializing CF Client factory: ", err)
@@ -130,187 +109,13 @@ func main() {
 
 	pzsvc.LogInfo(s, "Cloud Foundry Client initialized. Beginning Polling.")
 
-	pollForJobs(&s, configObj, svcID, configPath, clientFactory)
-}
-
-// WorkBody exists as part of the response format of the Piazza job manager task request endpoint.
-// specifically, it's one layer of the bit we care about.
-type WorkBody struct {
-	Content string `json:"content"`
-}
-
-// WorkDataInputs exists as part of the response format of the Piazza job manager task request endpoint.
-// specifically, it's one layer of the bit we care about.
-type WorkDataInputs struct {
-	Body WorkBody `json:"body"`
-}
-
-// WorkInData exists as part of the response format of the Piazza job manager task request endpoint.
-// specifically, it's one layer of the bit we care about.
-type WorkInData struct {
-	DataInputs WorkDataInputs `json:"dataInputs"`
-}
-
-// WorkSvcData exists as part of the response format of the Piazza job manager task request endpoint.
-// specifically, it's one layer of the bit we care about.
-type WorkSvcData struct {
-	Data  WorkInData `json:"data"`
-	JobID string     `json:"jobId"`
-}
-
-// WorkOutData exists as part of the response format of the Piazza job manager task request endpoint.
-// specifically, it's one layer of the bit we care about.
-type WorkOutData struct {
-	SvcData WorkSvcData `json:"serviceData"`
-}
-
-func pollForJobs(s *pzsvc.Session, configObj pzsvc.Config, svcID string, configPath string, clientFactory *CFClientFactory) {
-	var (
-		err error
-	)
-	s.SessionID = "Polling"
-
-	// Get the application name
-	vcapJSONContainer := make(map[string]interface{})
-	err = json.Unmarshal([]byte(os.Getenv("VCAP_APPLICATION")), &vcapJSONContainer)
+	pollLoop, err := poll.NewLoop(&s, configObj, svcID, configPath, clientFactory)
 	if err != nil {
-		pzsvc.LogSimpleErr(*s, "Cannot proceed: Error in reading VCAP Application properties: ", err)
+		pzsvc.LogSimpleErr(s, "Error in initializing dispatch polling loop: ", err)
 		return
 	}
-	appID, ok := vcapJSONContainer["application_id"].(string)
-	if !ok {
-		pzsvc.LogSimpleErr(*s, "Cannot Read Application Name from VCAP Application properties: string type assertion failed", nil)
-		return
-	}
-	pzsvc.LogInfo(*s, "Found application name from VCAP Tree: "+appID)
 
-	// Read the # of simultaneous Tasks that are allowed to be run by the Dispatcher
-	taskLimit := 3
-	if envTaskLimit := os.Getenv("TASK_LIMIT"); envTaskLimit != "" {
-		taskLimit, _ = strconv.Atoi(envTaskLimit)
-	}
-
-	// Polling Loop
-	for {
-		// Get the CF Client
-		cfClient, err := clientFactory.GetClient()
-		if err != nil {
-			pzsvc.LogSimpleErr(*s, "Error generating valid CF Client. The application cannot proceed.", err)
-			return
-		}
-
-		// First, check to see if there is room for tasks. If we've reached the task limit, then do not poll Piazza for jobs.
-		query := url.Values{}
-		query.Add("states", "RUNNING")
-		tasks, err := cfClient.TasksByAppByQuery(appID, query)
-		if err != nil {
-			pzsvc.LogSimpleErr(*s, "Cannot poll CF tasks", err)
-		}
-
-		if len(tasks) > taskLimit {
-			pzsvc.LogInfo(*s, "Maximum Tasks reached for App. Will not poll for work until current work has completed.")
-			time.Sleep(10 * time.Second)
-			continue
-		}
-
-		var pzJobObj struct {
-			Data WorkOutData `json:"data"`
-		}
-		pzJobObj.Data = WorkOutData{SvcData: WorkSvcData{JobID: "", Data: WorkInData{DataInputs: WorkDataInputs{Body: WorkBody{Content: ""}}}}}
-
-		byts, pErr := pzsvc.RequestKnownJSON("POST", "", s.PzAddr+"/service/"+svcID+"/task", s.PzAuth, &pzJobObj)
-		if pErr != nil {
-			pErr.Log(*s, "Dispatcher: error getting new task:"+string(byts))
-			time.Sleep(time.Duration(5) * time.Second)
-			continue
-		}
-
-		inpStr := pzJobObj.Data.SvcData.Data.DataInputs.Body.Content
-		jobID := pzJobObj.Data.SvcData.JobID
-		if inpStr != "" {
-			pzsvc.LogInfo(*s, "New Task Grabbed.  JobID: "+jobID)
-
-			var jobInputContent pzsvc.InpStruct
-			var displayByt []byte
-			err = json.Unmarshal([]byte(inpStr), &jobInputContent)
-			if err == nil {
-				if jobInputContent.ExtAuth != "" {
-					jobInputContent.ExtAuth = "*****"
-				}
-				if jobInputContent.PzAuth != "" {
-					jobInputContent.PzAuth = "*****"
-				}
-				displayByt, err = json.Marshal(jobInputContent)
-				if err != nil {
-					pzsvc.LogAudit(*s, s.UserID, "Audit failure", s.AppName, "Could not Marshal.  Job Canceled.", pzsvc.ERROR)
-					pzsvc.SendExecResultNoData(*s, s.PzAddr, svcID, jobID, pzsvc.PiazzaStatusFail)
-					time.Sleep(5 * time.Second)
-					continue
-				}
-			}
-
-			// Form the CLI for the Algorithm Task
-			workerCommand := fmt.Sprintf("worker --cliExtra '%s' --userID '%s' --config '%s' --serviceID '%s' --output '%s' --jobID '%s'", jobInputContent.Command, jobInputContent.UserID, configPath, svcID, jobInputContent.OutGeoJs[0], jobID)
-			// For each input image, add that image ref as an argument to the CLI.
-			// If AWS images, track the total file size to appropriately size the PCF task container.
-			var fileSizeTotal int
-			for i := range jobInputContent.InExtFiles {
-				workerCommand += fmt.Sprintf(" -i '%s:%s'", jobInputContent.InExtNames[i], jobInputContent.InExtFiles[i])
-				if strings.Contains(jobInputContent.InExtFiles[i], "amazonaws") {
-					fileSize, err := pzsvc.GetS3FileSizeInMegabytes(jobInputContent.InExtFiles[i])
-					if err == nil {
-						pzsvc.LogInfo(*s, fmt.Sprintf("S3 File Size for %s found to be %d", jobInputContent.InExtFiles[i], fileSize))
-						fileSizeTotal += fileSize
-					} else {
-						err.Log(*s, "Tried to get File Size from S3 File "+jobInputContent.InExtFiles[i]+" but encountered an error.")
-					}
-				}
-			}
-			diskInMegabyte := 6142
-			memoryInMegabyte := 3072
-			if fileSizeTotal != 0 {
-				// Allocate 2G for the filesystem and executables (with some buffer), then add the image sizes
-				diskInMegabyte = 2048 + (fileSizeTotal * 2)
-				memoryInMegabyte = memoryInMegabyte + (fileSizeTotal * 5)
-				pzsvc.LogInfo(*s, fmt.Sprintf("Obtained S3 File Sizes for input files; will use Dynamic Disk Space of %d in Task container and Dynamic Memory Size of %d", diskInMegabyte, memoryInMegabyte))
-			} else {
-				pzsvc.LogInfo(*s, "Could not get the S3 File Sizes for input files. Will use the default Disk and Memory Space when running Task.")
-			}
-
-			taskRequest := cfclient.TaskRequest{
-				Command:          workerCommand,
-				Name:             jobID,
-				DropletGUID:      appID,
-				MemoryInMegabyte: memoryInMegabyte,
-				DiskInMegabyte:   diskInMegabyte,
-			}
-
-			pzsvc.LogAudit(*s, s.UserID, "Creating CF Task for Job "+jobID+" : "+workerCommand, s.AppName, string(displayByt), pzsvc.INFO)
-
-			// Send Run-Task request to CF
-			_, err := cfClient.CreateTask(taskRequest)
-			if err != nil {
-				// Check if the error is related to org quota limit being exceeded. If so,
-				if cfclient.IsAppMemoryQuotaExceededError(err) ||
-					cfclient.IsQuotaInstanceLimitExceededError(err) ||
-					cfclient.IsQuotaInstanceMemoryLimitExceededError(err) ||
-					cfclient.IsSpaceQuotaInstanceMemoryLimitExceededError(err) {
-					pzsvc.LogAudit(*s, s.UserID, "Audit failure", s.AppName, "The Memory limit of CF Org has been exceeded. No further jobs can be created.", pzsvc.ERROR)
-				}
-				// General error - fail the job.
-				pzsvc.LogAudit(*s, s.UserID, "Audit failure", s.AppName, "Could not Create PCF Task for Job. Job Failed: "+err.Error(), pzsvc.ERROR)
-				pzsvc.SendExecResultNoData(*s, s.PzAddr, svcID, jobID, pzsvc.PiazzaStatusFail)
-				time.Sleep(5 * time.Second)
-				continue
-			}
-
-			pzsvc.LogAudit(*s, s.UserID, "Task Created for CF Job", s.AppName, string(displayByt), pzsvc.INFO)
-
-			time.Sleep(5 * time.Second)
-		} else {
-			// This is way too chatty. I don't think it's needed at this point in time.
-			// pzsvc.LogInfo(s, "No Jobs found during Poll; Trying again shortly.")
-			time.Sleep(5 * time.Second)
-		}
+	for err = range pollLoop.Start() {
+		pzsvc.LogSimpleErr(s, "Polling loop encountered an error on this iteration:: ", err)
 	}
 }
