@@ -99,12 +99,7 @@ func main() {
 		Username:   os.Getenv("CF_USER"),
 		Password:   os.Getenv("CF_PASS"),
 	}
-	clientFactory, err := cfwrapper.NewFactory(&s, clientConfig)
-
-	if err != nil {
-		pzsvc.LogSimpleErr(s, "Error in initializing CF Client factory: ", err)
-		return
-	}
+	clientFactory := cfwrapper.NewFactory(&s, clientConfig)
 
 	pzsvc.LogInfo(s, "Cloud Foundry Client initialized. Beginning Polling.")
 
