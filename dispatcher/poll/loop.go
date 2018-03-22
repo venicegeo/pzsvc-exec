@@ -124,7 +124,7 @@ func (l Loop) runIteration() error {
 	pzsvc.LogAudit(*l.PzSession, l.PzSession.UserID, "Creating CF Task for Job "+jobID+" : "+workerCommand, l.PzSession.AppName, string(serializedInput), pzsvc.INFO)
 
 	if err = cfSession.CreateTask(taskRequest); err != nil {
-		if cfSession.IsMemoryLimitError(err) {
+		if cfwrapper.IsMemoryLimitError(err) {
 			pzsvc.LogAudit(*l.PzSession, l.PzSession.UserID, "Audit failure", l.PzSession.AppName, "The Memory limit of CF Org has been exceeded. No further jobs can be created.", pzsvc.ERROR)
 			return errors.New("CF memory limit hit, will retry job later")
 		}

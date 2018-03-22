@@ -12,7 +12,6 @@ type CFSession interface {
 	IsValid() (bool, error)
 	CountTasksForApp(appID string) (int, error)
 	CreateTask(request TaskRequest) error
-	IsMemoryLimitError(err error) bool
 }
 
 // CFWrappedSession is an implementation of CFSession that wraps an actual cfclient.Client
@@ -56,15 +55,16 @@ func (s wrappedCFSession) CreateTask(request TaskRequest) error {
 	return err
 }
 
-func (s wrappedCFSession) IsMemoryLimitError(err error) bool {
+// IsMemoryLimitError wraps CF detection of multiple memory error codes
+func IsMemoryLimitError(err error) bool {
 	return cfclient.IsAppMemoryQuotaExceededError(err) ||
 		cfclient.IsQuotaInstanceLimitExceededError(err) ||
 		cfclient.IsQuotaInstanceMemoryLimitExceededError(err) ||
 		cfclient.IsSpaceQuotaInstanceMemoryLimitExceededError(err)
 }
 
-func newWrappedCFSession(pzSession *pzsvc.Session, config *cfclient.Config) (CFSession, error) {
-	client, err := cfclient.NewClient(config)
+func newWrappedCFSession(pzSession *pzsvc.Session, config *FactoryConfig) (CFSession, error) {
+	client, err := cfclient.NewClient(config.CFClientConfig())
 	if err != nil {
 		return nil, err
 	}

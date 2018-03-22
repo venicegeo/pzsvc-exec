@@ -94,8 +94,8 @@ func main() {
 	pzsvc.LogInfo(s, "Found target service.  ServiceID: "+svcID+".")
 
 	// Initialize the CF Client
-	clientConfig := &cfwrapper.Config{
-		ApiAddress: os.Getenv("CF_API"),
+	clientConfig := &cfwrapper.FactoryConfig{
+		APIAddress: os.Getenv("CF_API"),
 		Username:   os.Getenv("CF_USER"),
 		Password:   os.Getenv("CF_PASS"),
 	}

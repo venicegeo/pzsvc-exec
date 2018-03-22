@@ -1,30 +1,24 @@
 package cfwrapper
 
 import (
-	cfclient "github.com/venicegeo/go-cfclient"
 	"github.com/venicegeo/pzsvc-exec/pzsvc"
 )
 
 // Factory encapsulates functionality to lazily generate CFSession objects
 type Factory struct {
 	pzSession     *pzsvc.Session
-	config        *Config
+	config        *FactoryConfig
 	cachedSession CFSession
-	createSession func(*pzsvc.Session, *cfclient.Config) (CFSession, error)
+	createSession createSessionFunc
 }
 
 // NewFactory creates a new factory object for lazily creating cfclient.Client objects
-func NewFactory(pzSession *pzsvc.Session, config *Config) (*Factory, error) {
-	clientFactory := &Factory{
+func NewFactory(pzSession *pzsvc.Session, config *FactoryConfig) *Factory {
+	return &Factory{
 		pzSession:     pzSession,
 		config:        config,
-		createSession: newWrappedCFSession,
+		createSession: config.createSessionFunc,
 	}
-	err := clientFactory.RefreshCachedClient()
-	if err != nil {
-		return nil, err
-	}
-	return clientFactory, nil
 }
 
 // GetSession returns a lazily generated CFSession, verified for validity
@@ -54,8 +48,7 @@ func (f *Factory) GetSession() (CFSession, error) {
 func (f *Factory) RefreshCachedClient() error {
 	pzsvc.LogInfo(*f.pzSession, "Regenerating Cloud Foundry Client.")
 
-	cfConfig := cfclient.Config(*f.config)
-	session, err := f.createSession(f.pzSession, &cfConfig)
+	session, err := f.createSession(f.pzSession, f.config)
 	if err == nil {
 		f.cachedSession = session
 	}
