@@ -14,18 +14,30 @@ import (
 	"github.com/venicegeo/pzsvc-exec/pzsvc"
 )
 
+const defaultTaskDiskMB = 6142
+const defaultTaskMemoryMB = 3072
+
+var pzsvcGetS3FileSizeInMegabytes = pzsvc.GetS3FileSizeInMegabytes
+var pzsvcRequestKnownJSON = pzsvc.RequestKnownJSON
+var pzsvcSendExecResultNoData = pzsvc.SendExecResultNoData
+
+// Loop is an encapsulation of configuration and functionality needed for a job polling loop
 type Loop struct {
 	PzSession     *pzsvc.Session
 	PzConfig      pzsvc.Config
 	SvcID         string
 	ConfigPath    string
-	ClientFactory *cfwrapper.Factory
+	ClientFactory cfwrapper.Factory
 	vcapID        string
 	taskLimit     int
 	intervalTick  time.Duration
+
+	stopChan         chan bool
+	runIterationFunc func(l Loop) error
 }
 
-func NewLoop(s *pzsvc.Session, configObj pzsvc.Config, svcID string, configPath string, clientFactory *cfwrapper.Factory) (*Loop, error) {
+// NewLoop creates a Loop and does starting configuration based on the given parameters
+func NewLoop(s *pzsvc.Session, configObj pzsvc.Config, svcID string, configPath string, clientFactory cfwrapper.Factory) (*Loop, error) {
 	pzsvc.LogInfo(*s, "Initializing polling loop object")
 
 	appID, err := getVCAPApplicationID()
@@ -41,33 +53,49 @@ func NewLoop(s *pzsvc.Session, configObj pzsvc.Config, svcID string, configPath 
 	}
 
 	return &Loop{
-		PzSession:     s,
-		PzConfig:      configObj,
-		SvcID:         svcID,
-		ConfigPath:    configPath,
-		ClientFactory: clientFactory,
-		vcapID:        appID,
-		taskLimit:     taskLimit,
-		intervalTick:  5 * time.Second,
+		PzSession:        s,
+		PzConfig:         configObj,
+		SvcID:            svcID,
+		ConfigPath:       configPath,
+		ClientFactory:    clientFactory,
+		vcapID:           appID,
+		taskLimit:        taskLimit,
+		intervalTick:     5 * time.Second,
+		stopChan:         nil, // initialized when loop starts
+		runIterationFunc: runIteration,
 	}, nil
 }
 
 // Start begins the polling interval loop and returns a channel that feeds
 // through any errors encountered in each interval
-func (l Loop) Start() <-chan error {
+func (l *Loop) Start() <-chan error {
 	errChan := make(chan error)
+	l.stopChan = make(chan bool)
 	go func() {
-		for range time.Tick(l.intervalTick) {
-			err := l.runIteration()
-			if err != nil {
-				errChan <- err
+		ticker := time.Tick(l.intervalTick)
+		for {
+			select {
+			case <-ticker:
+				err := l.runIterationFunc(*l)
+				if err != nil {
+					errChan <- err
+				}
+			case <-l.stopChan:
+				close(errChan)
+				return
 			}
 		}
 	}()
 	return errChan
 }
 
-func (l Loop) runIteration() error {
+// Stop halts the loop's iteration
+func (l Loop) Stop() {
+	l.stopChan <- true
+	close(l.stopChan)
+}
+
+func runIteration(l Loop) error {
 	pzsvc.LogInfo(*l.PzSession, "Starting polling loop iteration")
 
 	cfSession, err := l.ClientFactory.GetSession()
@@ -130,7 +158,7 @@ func (l Loop) runIteration() error {
 		}
 		// General error - fail the job.
 		pzsvc.LogAudit(*l.PzSession, l.PzSession.UserID, "Audit failure", l.PzSession.AppName, "Could not Create PCF Task for Job. Job Failed: "+err.Error(), pzsvc.ERROR)
-		pzsvc.SendExecResultNoData(*l.PzSession, l.PzSession.PzAddr, l.SvcID, jobID, pzsvc.PiazzaStatusFail)
+		pzsvcSendExecResultNoData(*l.PzSession, l.PzSession.PzAddr, l.SvcID, jobID, pzsvc.PiazzaStatusFail)
 		return err
 	}
 
@@ -141,7 +169,7 @@ func (l Loop) getPzTaskItem() (*model.PzTaskItem, error) {
 	var pzTaskItem model.PzTaskItem
 	url := fmt.Sprintf("%s/service/%s/task", l.PzSession.PzAddr, l.SvcID)
 
-	byts, err := pzsvc.RequestKnownJSON("POST", "", url, l.PzSession.PzAuth, &pzTaskItem)
+	byts, err := pzsvcRequestKnownJSON("POST", "", url, l.PzSession.PzAuth, &pzTaskItem)
 	if err != nil {
 		err.Log(*l.PzSession, "Dispatcher: error getting new task:"+string(byts))
 		return nil, err
@@ -193,15 +221,16 @@ func (l Loop) buildWorkerCommand(jobInput *pzsvc.InpStruct, jobID string) (strin
 func (l Loop) calculateAWSInputFileSizeMB(jobInput *pzsvc.InpStruct) (total int) {
 	for _, url := range jobInput.InExtFiles {
 		if strings.Contains(url, "amazonaws") {
-			fileSize, err := pzsvc.GetS3FileSizeInMegabytes(url)
+			fileSize, err := pzsvcGetS3FileSizeInMegabytes(url)
 			if err == nil {
 				pzsvc.LogInfo(*l.PzSession, fmt.Sprintf("S3 File Size for %s found to be %d", url, fileSize))
 				total += fileSize
 			} else {
-				err.Log(*l.PzSession, "Tried to get File Size from S3 File "+url+" but encountered an error.")
+				err.Log(*l.PzSession, "Tried to get File Size from S3 File "+url+" but encountered an error; giving up on calculating input sizes")
+				return 0
 			}
 		} else {
-			pzsvc.LogInfo(*l.PzSession, fmt.Sprintf("Input file %s is not AWS, giving up on calculating input sizes", url))
+			pzsvc.LogInfo(*l.PzSession, fmt.Sprintf("Input file %s is not AWS; giving up on calculating input sizes", url))
 			return 0
 		}
 	}
@@ -209,8 +238,8 @@ func (l Loop) calculateAWSInputFileSizeMB(jobInput *pzsvc.InpStruct) (total int)
 }
 
 func (l Loop) calculateDiskAndMemoryLimits(jobInput *pzsvc.InpStruct) (diskMB int, memoryMB int) {
-	diskMB = 6142
-	memoryMB = 3072
+	diskMB = defaultTaskDiskMB
+	memoryMB = defaultTaskMemoryMB
 
 	if inputSize := l.calculateAWSInputFileSizeMB(jobInput); inputSize > 0 {
 		// Allocate 2G for the filesystem and executables (with some buffer), then add the image sizes

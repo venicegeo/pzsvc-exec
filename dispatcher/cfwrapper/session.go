@@ -55,14 +55,6 @@ func (s wrappedCFSession) CreateTask(request TaskRequest) error {
 	return err
 }
 
-// IsMemoryLimitError wraps CF detection of multiple memory error codes
-func IsMemoryLimitError(err error) bool {
-	return cfclient.IsAppMemoryQuotaExceededError(err) ||
-		cfclient.IsQuotaInstanceLimitExceededError(err) ||
-		cfclient.IsQuotaInstanceMemoryLimitExceededError(err) ||
-		cfclient.IsSpaceQuotaInstanceMemoryLimitExceededError(err)
-}
-
 func newWrappedCFSession(pzSession *pzsvc.Session, config *FactoryConfig) (CFSession, error) {
 	client, err := cfclient.NewClient(config.CFClientConfig())
 	if err != nil {

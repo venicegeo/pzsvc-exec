@@ -1,7 +1,6 @@
 package cfwrapper
 
 import (
-	"errors"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -253,26 +252,6 @@ func TestWrappedCFSession_CreateTask_Error(t *testing.T) {
 	// Asserts
 	assert.Equal(t, 1, numHTTPQueries)
 	assert.NotNil(t, err)
-}
-
-func TestIsMemoryLimitError(t *testing.T) {
-	// Tested code
-	var (
-		any                                          = IsMemoryLimitError(errors.New("test error"))
-		cfUnauthenticatedError                       = IsMemoryLimitError(cfclient.CloudFoundryError{Code: 10002})
-		cfAppMemoryQuotaExceededError                = IsMemoryLimitError(cfclient.CloudFoundryError{Code: 100005})
-		cfQuotaInstanceLimitExceededError            = IsMemoryLimitError(cfclient.CloudFoundryError{Code: 100008})
-		cfQuotaInstanceMemoryLimitExceededError      = IsMemoryLimitError(cfclient.CloudFoundryError{Code: 100007})
-		cfSpaceQuotaInstanceMemoryLimitExceededError = IsMemoryLimitError(cfclient.CloudFoundryError{Code: 310004})
-	)
-
-	// Asserts
-	assert.False(t, any)
-	assert.False(t, cfUnauthenticatedError)
-	assert.True(t, cfAppMemoryQuotaExceededError)
-	assert.True(t, cfQuotaInstanceLimitExceededError)
-	assert.True(t, cfQuotaInstanceMemoryLimitExceededError)
-	assert.True(t, cfSpaceQuotaInstanceMemoryLimitExceededError)
 }
 
 func TestNewWrappedCFSession_Success(t *testing.T) {

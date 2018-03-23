@@ -4,8 +4,13 @@ import (
 	"github.com/venicegeo/pzsvc-exec/pzsvc"
 )
 
-// Factory encapsulates functionality to lazily generate CFSession objects
-type Factory struct {
+type Factory interface {
+	GetSession() (CFSession, error)
+	RefreshCachedClient() error
+}
+
+// DefaultFactory encapsulates functionality to lazily generate CFSession objects
+type DefaultFactory struct {
 	pzSession     *pzsvc.Session
 	config        *FactoryConfig
 	cachedSession CFSession
@@ -13,8 +18,8 @@ type Factory struct {
 }
 
 // NewFactory creates a new factory object for lazily creating cfclient.Client objects
-func NewFactory(pzSession *pzsvc.Session, config *FactoryConfig) *Factory {
-	return &Factory{
+func NewFactory(pzSession *pzsvc.Session, config *FactoryConfig) *DefaultFactory {
+	return &DefaultFactory{
 		pzSession:     pzSession,
 		config:        config,
 		createSession: config.createSessionFunc,
@@ -22,7 +27,7 @@ func NewFactory(pzSession *pzsvc.Session, config *FactoryConfig) *Factory {
 }
 
 // GetSession returns a lazily generated CFSession, verified for validity
-func (f *Factory) GetSession() (CFSession, error) {
+func (f *DefaultFactory) GetSession() (CFSession, error) {
 	refreshSession := false
 
 	if f.cachedSession == nil {
@@ -45,7 +50,7 @@ func (f *Factory) GetSession() (CFSession, error) {
 
 // RefreshCachedClient replaces the cached client with a new one based on the
 // factory's stored cfclient.Config and expiration duration
-func (f *Factory) RefreshCachedClient() error {
+func (f *DefaultFactory) RefreshCachedClient() error {
 	pzsvc.LogInfo(*f.pzSession, "Regenerating Cloud Foundry Client.")
 
 	session, err := f.createSession(f.pzSession, f.config)
