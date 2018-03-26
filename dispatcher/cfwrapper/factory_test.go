@@ -45,6 +45,17 @@ func TestNewFactory_Success(t *testing.T) {
 	assert.Equal(t, 0, numCalls) // A session should not be immediately instantiated
 }
 
+func TestNewFactory_DefaultCreateSessionFunc(t *testing.T) {
+
+	// Tested code
+	factory := NewFactory(&pzsvc.Session{}, &FactoryConfig{})
+
+	// Asserts
+	assert.NotNil(t, factory)
+	assert.NotNil(t, factory.createSession)
+	//assert.Equal(t, newWrappedCFSession, factory.createSession) // XXX: this assert doesn't work since it cannot compare funcs; find different way?
+}
+
 func TestFactory_RefreshCachedSession_Success(t *testing.T) {
 	// Setup
 	numCalls := 0

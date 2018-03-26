@@ -21,10 +21,14 @@ type DefaultFactory struct {
 
 // NewFactory creates a new factory object for lazily creating cfclient.Client objects
 func NewFactory(pzSession *pzsvc.Session, config *FactoryConfig) *DefaultFactory {
+	createSessionFunc := config.createSessionFunc
+	if createSessionFunc == nil {
+		createSessionFunc = newWrappedCFSession
+	}
 	return &DefaultFactory{
 		pzSession:     pzSession,
 		config:        config,
-		createSession: config.createSessionFunc,
+		createSession: createSessionFunc,
 	}
 }
 
