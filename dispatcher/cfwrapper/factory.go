@@ -1,6 +1,8 @@
 package cfwrapper
 
 import (
+	"fmt"
+
 	"github.com/venicegeo/pzsvc-exec/pzsvc"
 )
 
@@ -51,7 +53,7 @@ func (f *DefaultFactory) GetSession() (CFSession, error) {
 // RefreshCachedClient replaces the cached client with a new one based on the
 // factory's stored cfclient.Config and expiration duration
 func (f *DefaultFactory) RefreshCachedClient() error {
-	pzsvc.LogInfo(*f.pzSession, "Regenerating Cloud Foundry Client.")
+	pzsvc.LogInfo(*f.pzSession, fmt.Sprintf("Regenerating Cloud Foundry Client with create function: %v", f.createSession))
 
 	session, err := f.createSession(f.pzSession, f.config)
 	if err == nil {
