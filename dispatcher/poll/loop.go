@@ -110,7 +110,7 @@ func runIteration(l Loop) error {
 		return err
 	}
 	if numTasks >= l.taskLimit {
-		pzsvc.LogInfo(*l.PzSession, "Too many tasks already running, aborting polling loop iteration")
+		pzsvc.LogInfo(*l.PzSession, "Too many tasks already running, skipping this iteration cycle")
 		return nil
 	}
 
@@ -122,8 +122,8 @@ func runIteration(l Loop) error {
 	jobID := taskItem.Data.SvcData.JobID
 	jobData := taskItem.Data.SvcData.Data.DataInputs.Body.Content
 	if jobData == "" {
-		message := fmt.Sprintf("Received job with empty data, aborting polling loop iteration; jobID=%s", jobID)
-		pzsvc.LogWarn(*l.PzSession, message)
+		message := fmt.Sprintf("Received job with empty data, skipping this iteration cycle; (jobID='%s')", jobID)
+		pzsvc.LogInfo(*l.PzSession, message)
 		return nil
 	}
 	pzsvc.LogInfo(*l.PzSession, "New Task Grabbed.  JobID: "+jobID)
