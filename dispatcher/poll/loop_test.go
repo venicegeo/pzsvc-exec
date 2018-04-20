@@ -259,19 +259,21 @@ func TestLoop_GetPzTaskItem_Failure(t *testing.T) {
 	}
 
 	// Test code
-	taskItem, err := loop.getPzTaskItem()
+	taskItem, taskBytes, err := loop.getPzTaskItem()
 
 	// Asserts
 	assert.NotNil(t, err)
 	assert.Nil(t, taskItem)
+	assert.Nil(t, taskBytes)
 }
 
 func TestLoop_GetPzTaskItem_Success(t *testing.T) {
 	// Setup
 	requestedAddress := ""
+	mockBody := []byte(`{"data": {"serviceData": {"jobID": "test-job-id", "data": {"dataInputs": {"body": {"content": "test-job-content"}}}}}}`)
 	setMockPzsvcRequestKnownJSON(func(method, bodyStr, address, authKey string, outObj interface{}) ([]byte, *pzsvc.PzCustomError) {
 		requestedAddress = address
-		body := []byte(`{"data": {"serviceData": {"jobID": "test-job-id", "data": {"dataInputs": {"body": {"content": "test-job-content"}}}}}}`)
+		body := append([]byte{}, mockBody...)
 		json.Unmarshal(body, outObj)
 		return body, nil
 	})
@@ -283,11 +285,12 @@ func TestLoop_GetPzTaskItem_Success(t *testing.T) {
 	}
 
 	// Test code
-	taskItem, err := loop.getPzTaskItem()
+	taskItem, taskBytes, err := loop.getPzTaskItem()
 
 	// Asserts
 	assert.Equal(t, "https://piazza.localdomain/service/test-svc-id/task", requestedAddress)
 	assert.Nil(t, err)
+	assert.Equal(t, mockBody, taskBytes)
 	assert.Equal(t, "test-job-id", taskItem.Data.SvcData.JobID)
 	assert.Equal(t, "test-job-content", taskItem.Data.SvcData.Data.DataInputs.Body.Content)
 }

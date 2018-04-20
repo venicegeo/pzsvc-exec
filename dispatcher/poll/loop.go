@@ -114,7 +114,7 @@ func runIteration(l Loop) error {
 		return nil
 	}
 
-	taskItem, err := l.getPzTaskItem()
+	taskItem, taskBytes, err := l.getPzTaskItem()
 	if err != nil {
 		return err
 	}
@@ -122,8 +122,8 @@ func runIteration(l Loop) error {
 	jobID := taskItem.Data.SvcData.JobID
 	jobData := taskItem.Data.SvcData.Data.DataInputs.Body.Content
 	if jobData == "" {
-		message := fmt.Sprintf("Received job with empty data, skipping this iteration cycle; (jobID='%s')", jobID)
-		pzsvc.LogInfo(*l.PzSession, message)
+		message := fmt.Sprintf("Received job with empty data, skipping this iteration cycle; (jobID='%s')\nPiazza Task Response was: %s", jobID, string(taskBytes))
+		pzsvc.LogWarn(*l.PzSession, message)
 		return nil
 	}
 	pzsvc.LogInfo(*l.PzSession, "New Task Grabbed.  JobID: "+jobID)
@@ -165,16 +165,16 @@ func runIteration(l Loop) error {
 	return nil
 }
 
-func (l Loop) getPzTaskItem() (*model.PzTaskItem, error) {
+func (l Loop) getPzTaskItem() (*model.PzTaskItem, []byte, error) {
 	var pzTaskItem model.PzTaskItem
 	url := fmt.Sprintf("%s/service/%s/task", l.PzSession.PzAddr, l.SvcID)
 
 	byts, err := pzsvcRequestKnownJSON("POST", "", url, l.PzSession.PzAuth, &pzTaskItem)
 	if err != nil {
 		err.Log(*l.PzSession, "Dispatcher: error getting new task:"+string(byts))
-		return nil, err
+		return nil, nil, err
 	}
-	return &pzTaskItem, nil
+	return &pzTaskItem, byts, nil
 }
 
 func (l Loop) parseJobInput(jobInputStr string) (*pzsvc.InpStruct, error) {
