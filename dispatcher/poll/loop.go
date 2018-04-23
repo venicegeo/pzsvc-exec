@@ -114,7 +114,7 @@ func runIteration(l Loop) error {
 		return nil
 	}
 
-	taskItem, taskBytes, err := l.getPzTaskItem()
+	taskItem, _, err := l.getPzTaskItem()
 	if err != nil {
 		return err
 	}
@@ -122,7 +122,7 @@ func runIteration(l Loop) error {
 	jobID := taskItem.Data.SvcData.JobID
 	jobData := taskItem.Data.SvcData.Data.DataInputs.Body.Content
 	if jobData == "" {
-		message := fmt.Sprintf("Received job with empty data, skipping this iteration cycle; (jobID='%s')\nPiazza Task Response was: %s", jobID, string(taskBytes))
+		message := fmt.Sprintf("No jobs available in task queue (jobID=''); skipping this iteration cycle")
 		pzsvc.LogWarn(*l.PzSession, message)
 		return nil
 	}
