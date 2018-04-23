@@ -122,8 +122,7 @@ func runIteration(l Loop) error {
 	jobID := taskItem.Data.SvcData.JobID
 	jobData := taskItem.Data.SvcData.Data.DataInputs.Body.Content
 	if jobData == "" {
-		message := fmt.Sprintf("No jobs available in task queue (jobID=''); skipping this iteration cycle")
-		pzsvc.LogWarn(*l.PzSession, message)
+		pzsvc.LogInfo(*l.PzSession, ("No jobs available in task queue (jobID=''); skipping this iteration cycle"))
 		return nil
 	}
 	pzsvc.LogInfo(*l.PzSession, "New Task Grabbed.  JobID: "+jobID)
