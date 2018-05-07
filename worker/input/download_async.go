@@ -9,8 +9,16 @@ import (
 	"github.com/venicegeo/pzsvc-exec/worker/config"
 )
 
+func getClientTimeout() time.Duration {
+	defaultTimeout := 30
+	if envTimeout := os.Getenv("HTTP_TIMEOUT"); envTimeout != "" {
+		defaultTimeout , _ = strconv.Atoi(envTimeout)
+	}
+	return (time.Duration(defaultTimeout) * time.Second)
+}
+
 var httpClient = http.Client{
-	Timeout: 30 * time.Second,
+	Timeout: getClientTimeout(),
 }
 
 type asyncDownloader interface {
