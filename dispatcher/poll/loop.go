@@ -241,7 +241,7 @@ func (l Loop) calculateDiskAndMemoryLimits(jobInput *pzsvc.InpStruct) (diskMB in
 	memoryMB = defaultTaskMemoryMB
 
 	if inputSize := l.calculateAWSInputFileSizeMB(jobInput); inputSize > 0 {
-		// Allocate 2G for the filesystem and executables (with some buffer), then add the image sizes
+		// Allocate space for the filesystem and executables (with some buffer), then add the image sizes
 		diskMB = 4096 + (inputSize * 2)
 		memoryMB = memoryMB + (inputSize * 5)
 		pzsvc.LogInfo(*l.PzSession, fmt.Sprintf("Obtained S3 File Sizes for input files; will use Dynamic Disk Space of %d in Task container and Dynamic Memory Size of %d", diskMB, memoryMB))
