@@ -14,12 +14,22 @@ import (
 	"github.com/venicegeo/pzsvc-exec/pzsvc"
 )
 
-const defaultTaskDiskMB = 6142
-const defaultTaskMemoryMB = 3072
+var defaultTaskDiskMB = 6142
+var defaultTaskMemoryMB = 3072
 
 var pzsvcGetS3FileSizeInMegabytes = pzsvc.GetS3FileSizeInMegabytes
 var pzsvcRequestKnownJSON = pzsvc.RequestKnownJSON
 var pzsvcSendExecResultNoData = pzsvc.SendExecResultNoData
+
+func init() {
+	// Update defaults if overridden via env variables
+	if diskMB, err := strconv.Atoi(os.Getenv("TASK_DISK_MB")); diskMB > 0 && err != nil {
+		defaultTaskDiskMB = diskMB
+	}
+	if memoryMB, err := strconv.Atoi(os.Getenv("TASK_MEMORY_MB")); memoryMB > 0 && err != nil {
+		defaultTaskMemoryMB = memoryMB
+	}
+}
 
 // Loop is an encapsulation of configuration and functionality needed for a job polling loop
 type Loop struct {
