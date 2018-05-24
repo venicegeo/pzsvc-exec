@@ -256,7 +256,7 @@ func (l Loop) calculateDiskAndMemoryLimits(jobInput *pzsvc.InpStruct) (diskMB in
 		memoryMB = memoryMB + (inputSize * 5)
 		pzsvc.LogInfo(*l.PzSession, fmt.Sprintf("Obtained S3 File Sizes for input files; will use Dynamic Disk Space of %d in Task container and Dynamic Memory Size of %d", diskMB, memoryMB))
 	} else {
-		pzsvc.LogInfo(*l.PzSession, "Could not get the S3 File Sizes for input files. Will use the default Disk and Memory Space when running Task.")
+		pzsvc.LogInfo(*l.PzSession, fmt.Sprintf("Could not get the S3 File Sizes for input files. Will use the default Disk %d and Memory %d when running Task.", diskMB, memoryMB))
 	}
 	return
 }

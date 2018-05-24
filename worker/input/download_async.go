@@ -12,7 +12,7 @@ import (
 )
 
 func getClientTimeout() time.Duration {
-	defaultTimeout := 60
+	defaultTimeout := 180
 	if envTimeout := os.Getenv("HTTP_TIMEOUT"); envTimeout != "" {
 		defaultTimeout , _ = strconv.Atoi(envTimeout)
 	}
