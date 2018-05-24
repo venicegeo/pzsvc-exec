@@ -23,10 +23,10 @@ var pzsvcSendExecResultNoData = pzsvc.SendExecResultNoData
 
 func init() {
 	// Update defaults if overridden via env variables
-	if diskMB, err := strconv.Atoi(os.Getenv("TASK_DISK_MB")); diskMB > 0 && err != nil {
+	if diskMB, err := strconv.Atoi(os.Getenv("TASK_DISK_MB")); diskMB > 0 && err == nil {
 		defaultTaskDiskMB = diskMB
 	}
-	if memoryMB, err := strconv.Atoi(os.Getenv("TASK_MEMORY_MB")); memoryMB > 0 && err != nil {
+	if memoryMB, err := strconv.Atoi(os.Getenv("TASK_MEMORY_MB")); memoryMB > 0 && err == nil {
 		defaultTaskMemoryMB = memoryMB
 	}
 }
