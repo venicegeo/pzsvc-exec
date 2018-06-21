@@ -26,7 +26,13 @@ func (s wrappedCFSession) IsValid() (bool, error) {
 		return false, nil
 	}
 
-	_, err := s.Client.ListApps()
+	//Configure a query that will filter out everything.
+	validationQueryParams := url.Values{}
+	validationQueryParams.Add("q", "name:dummy_name")
+
+	pzsvc.LogInfo(*s.PzSession, "Submitting client validation request.")
+	_, err := s.Client.ListAppsByQuery(validationQueryParams)
+	pzsvc.LogInfo(*s.PzSession, "Validation request complete.")
 	if err == nil {
 		return true, nil
 	}
