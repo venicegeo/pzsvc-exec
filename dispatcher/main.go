@@ -18,7 +18,9 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"io/ioutil"
+	"net/http"
 	"os"
+	"time"
 
 	"github.com/venicegeo/pzsvc-exec/dispatcher/cfwrapper"
 	"github.com/venicegeo/pzsvc-exec/dispatcher/poll"
@@ -99,6 +101,9 @@ func main() {
 		Username:   os.Getenv("CF_USER"),
 		Password:   os.Getenv("CF_PASS"),
 	}
+	//Set a timout, otherwise cfclient will use the default 0/infinite value.
+	clientConfig.HTTPClient = http.DefaultClient
+	clientConfig.HTTPClient.Timeout = 2 * time.Minute
 	clientFactory := cfwrapper.NewFactory(&s, clientConfig)
 
 	pzsvc.LogInfo(s, "Cloud Foundry Client initialized. Beginning Polling.")
