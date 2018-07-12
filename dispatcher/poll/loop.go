@@ -15,7 +15,7 @@ import (
 )
 
 var defaultTaskDiskMB = 6142
-var defaultTaskMemoryMB = 3072
+var defaultTaskMemoryMB = 4096
 
 var pzsvcGetS3FileSizeInMegabytes = pzsvc.GetS3FileSizeInMegabytes
 var pzsvcRequestKnownJSON = pzsvc.RequestKnownJSON
