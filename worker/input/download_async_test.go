@@ -99,7 +99,7 @@ func TestDefaultAsyncDownloader_HTTPError(t *testing.T) {
 	inputSource := config.InputSource{FileName: "file1.txt", URL: server.URL + "/notfound.txt"}
 
 	// Tested code
-	downloader := defaultAsyncDownloader{}
+	downloader := defaultAsyncDownloader{ Retries: 3 }
 	errChan := downloader.DownloadInputAsync(inputSource)
 
 	// Asserts
