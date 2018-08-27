@@ -35,7 +35,7 @@ func FetchInputs(cfg config.WorkerConfig, inputs []config.InputSource) error {
 	for i, errChan := range inputResults {
 		err := <-errChan
 		if err != nil {
-			errors = append(errors, fmt.Errorf("error downloading input: %s; %v ", inputs[i].FileName, err))
+			errors = append(errors, fmt.Errorf("error downloading input"))
 		} else {
 			workerlog.Info(cfg, fmt.Sprintf("downloaded input: %s", inputs[i].FileName))
 		}
