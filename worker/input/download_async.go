@@ -61,7 +61,7 @@ func (dl defaultAsyncDownloader) DownloadInputAsync(source config.InputSource) c
 		for i := 0; i <= dl.Retries; i++ {
 			resp, err = httpClient.Get(source.URL)
 			if err == nil && resp.StatusCode != http.StatusOK {
-				err = fmt.Errorf("Unexpected HTTP status: %v", resp.StatusCode)
+				err = fmt.Errorf("unexpected status downloading input (%v)", resp.StatusCode)
 			}
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "Failed to download URL %s on the %d attempt: %v. Timing out after %d retries.\n", source.URL, i+1, err, dl.Retries)

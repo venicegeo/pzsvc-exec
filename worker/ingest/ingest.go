@@ -61,7 +61,7 @@ func assembleIngestorCalls(cfg config.WorkerConfig, algFullCommand string, algVe
 		if _, fStatErr := os.Stat(filePath); fStatErr != nil {
 			errMsg := fmt.Sprintf("error statting file `%s`: %v", filePath, fStatErr)
 			workerlog.SimpleErr(cfg, errMsg, fStatErr)
-			outputErrors = append(outputErrors, errors.New(errMsg))
+			outputErrors = append(outputErrors, errors.New("error validating outputs"))
 			continue
 		}
 

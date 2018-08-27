@@ -47,11 +47,11 @@ func (dcr commandRunner) Run(cfg config.WorkerConfig, command string) (out comma
 
 	if out.Error != nil {
 		if exitErr, ok := out.Error.(*exec.ExitError); ok {
-			workerlog.SimpleErr(cfg, "failed executing command; stderr below", exitErr)
+			workerlog.SimpleErr(cfg, "failed executing algorithm command; stderr below", exitErr)
 			workerlog.Alert(cfg, string(exitErr.Stderr))
 			out.Stderr = exitErr.Stderr
 		} else {
-			workerlog.SimpleErr(cfg, "failed executing command; stderr not available", err)
+			workerlog.SimpleErr(cfg, "failed executing algorithm command; stderr not available", err)
 		}
 	} else {
 		workerlog.Info(cfg, "runCommandOutput success")

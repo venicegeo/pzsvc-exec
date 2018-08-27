@@ -38,7 +38,7 @@ func (ingestor defaultAsyncIngestor) ingestFileAsync(s pzsvc.Session, filePath, 
 		case <-pzSvcIngestorInstance.Timeout():
 			outChan <- singleIngestOutput{
 				FilePath: filePath,
-				Error:    errors.New("File ingest timed out"),
+				Error:    errors.New("Unexpected error storing job output"),
 			}
 		}
 		close(outChan)
