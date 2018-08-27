@@ -35,7 +35,7 @@ func FetchInputs(cfg config.WorkerConfig, inputs []config.InputSource) error {
 	for i, errChan := range inputResults {
 		err := <-errChan
 		if err != nil {
-			errors = append(errors, fmt.Errorf("error downloading input;"))
+			errors = append(errors, fmt.Errorf("error downloading source imagery;"))
 		} else {
 			workerlog.Info(cfg, fmt.Sprintf("downloaded input: %s", inputs[i].FileName))
 		}
