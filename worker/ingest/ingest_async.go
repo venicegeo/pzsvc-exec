@@ -62,7 +62,7 @@ func (ingestor defaultPzSvcIngestor) IngestFile(s pzsvc.Session, fName, fType, s
 }
 
 func (ingestor defaultPzSvcIngestor) Timeout() <-chan time.Time {
-	return time.After(1 * time.Minute)
+	return time.After(3 * time.Minute)
 }
 
 var pzSvcIngestorInstance pzSvcIngestor = &defaultPzSvcIngestor{}
