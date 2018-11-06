@@ -84,7 +84,7 @@ func TestFetchInputs_Errors(t *testing.T) {
 
 	// Asserts
 	assert.NotNil(t, err)
-	assert.Contains(t, err.Error(), "test error text")
+	assert.Contains(t, err.Error(), "error downloading source imagery")
 	assert.Len(t, mockAsyncDownloader.Calls, len(inputs))
 
 	for _, input := range inputs {

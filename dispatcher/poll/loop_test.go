@@ -148,7 +148,7 @@ func TestLoop_CalculateDiskAndMemoryLimits_Success(t *testing.T) {
 	diskMB, memoryMB := loop.calculateDiskAndMemoryLimits(&jobInput)
 
 	// Asserts
-	assert.Equal(t, 2048+(128+128)*2, diskMB)
+	assert.Equal(t, 4096+(128+128)*2, diskMB)
 	assert.Equal(t, defaultTaskMemoryMB+(128+128)*5, memoryMB)
 }
 
