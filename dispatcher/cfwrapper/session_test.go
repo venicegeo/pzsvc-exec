@@ -36,10 +36,9 @@ func (h plainHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 // mockCFHandler is a self-bootstrapping wrapper to mock the CF API
 type mockCFHandler struct {
-	mockServer       *httptest.Server
-	cfClient         *cfclient.Client
-	wrappedHandler   http.Handler
-	tokenHandlerFunc http.HandlerFunc
+	mockServer     *httptest.Server
+	cfClient       *cfclient.Client
+	wrappedHandler http.Handler
 }
 
 func setupMockCFHandler(wrapped http.Handler) (*mockCFHandler, error) {
@@ -79,18 +78,14 @@ func (h mockCFHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if r.URL.EscapedPath() == "/oauth/token" {
-		if h.tokenHandlerFunc != nil {
-			h.tokenHandlerFunc(w, r)
-		} else {
-			w.Header().Set("content-type", "application/json")
-			w.WriteHeader(http.StatusOK)
-			responseStr := `{"access_token":"test-access-token",
-				"token_type":"bearer",
-				"expires_in":3600,
-				"refresh_token":"test-refresh-token",
-				"scope":"create"}`
-			w.Write([]byte(responseStr))
-		}
+		w.Header().Set("content-type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		responseStr := `{"access_token":"test-access-token",
+			"token_type":"bearer",
+			"expires_in":3600,
+			"refresh_token":"test-refresh-token",
+			"scope":"create"}`
+		w.Write([]byte(responseStr))
 		return
 	}
 
