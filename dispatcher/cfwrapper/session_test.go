@@ -1,25 +1,68 @@
 package cfwrapper
 
 import (
+	"errors"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	cfclient "github.com/venicegeo/go-cfclient"
 	"github.com/venicegeo/pzsvc-exec/pzsvc"
-	"golang.org/x/oauth2"
 )
 
+// plainHandler is a plain http.Handler for returning static data and counting hits
+type plainHandler struct {
+	path        string
+	status      int
+	data        []byte
+	calledCount *int
+}
+
+func newPlainHandler(path string, status int, data []byte) *plainHandler {
+	return &plainHandler{path: path, status: status, data: data, calledCount: new(int)}
+}
+
+func (h plainHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	if r.URL.EscapedPath() == h.path {
+		*h.calledCount++
+		w.WriteHeader(h.status)
+		w.Write(h.data)
+	} else {
+		w.WriteHeader(http.StatusNotFound)
+	}
+}
+
+// mockCFHandler is a self-bootstrapping wrapper to mock the CF API
 type mockCFHandler struct {
-	ResponseStatus int
-	ResponseBytes  []byte
-	AssertRequest  func(*http.Request)
+	mockServer       *httptest.Server
+	cfClient         *cfclient.Client
+	wrappedHandler   http.Handler
+	tokenHandlerFunc http.HandlerFunc
+}
+
+func setupMockCFHandler(wrapped http.Handler) (*mockCFHandler, error) {
+	h := mockCFHandler{
+		wrappedHandler: wrapped,
+	}
+	h.mockServer = httptest.NewServer(&h)
+	cfClient, err := cfclient.NewClient(&cfclient.Config{
+		ApiAddress: h.mockServer.URL,
+		HttpClient: h.mockServer.Client(),
+		Username:   "testuser",
+		Password:   "testpassword",
+	})
+	if err != nil {
+		return nil, err
+	}
+	h.cfClient = cfClient
+	return &h, nil
 }
 
 const mockInfoResponse = `{"name":"","build":"","support":"https://support.pivotal.io",
-  "version":0,"description":"","authorization_endpoint":"https://authorization.example.localdomain",
-  "token_endpoint":"https://token.example.localdomain","min_cli_version":"6.23.0",
+  "version":0,"description":"","authorization_endpoint":"++MOCK_HOST++",
+  "token_endpoint":"++MOCK_HOST++","min_cli_version":"6.23.0",
   "min_recommended_cli_version":"6.23.0","api_version":"2.75.0","app_ssh_endpoint":"ssh.example.localdomain:2222",
   "app_ssh_host_key_fingerprint":"00:00:00:00:00:00:00:ff:ff:ff:ff:ff:ff:be:ef:ed",
   "app_ssh_oauth_client":"ssh-proxy","routing_endpoint":"https://api.example.localdomain/routing",
@@ -30,40 +73,44 @@ const mockInfoResponse = `{"name":"","build":"","support":"https://support.pivot
 func (h mockCFHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if r.URL.EscapedPath() == "/v2/info" {
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(mockInfoResponse))
+		responseStr := strings.Replace(mockInfoResponse, "++MOCK_HOST++", h.mockServer.URL, -1)
+		w.Write([]byte(responseStr))
 		return
 	}
-	if h.AssertRequest != nil {
-		h.AssertRequest(r)
+
+	if r.URL.EscapedPath() == "/oauth/token" {
+		if h.tokenHandlerFunc != nil {
+			h.tokenHandlerFunc(w, r)
+		} else {
+			w.Header().Set("content-type", "application/json")
+			w.WriteHeader(http.StatusOK)
+			responseStr := `{"access_token":"test-access-token",
+				"token_type":"bearer",
+				"expires_in":3600,
+				"refresh_token":"test-refresh-token",
+				"scope":"create"}`
+			w.Write([]byte(responseStr))
+		}
+		return
 	}
-	w.WriteHeader(h.ResponseStatus)
-	w.Write(h.ResponseBytes)
+
+	h.wrappedHandler.ServeHTTP(w, r)
 }
-
-type mockTokenSource struct{}
-
-const mockOauth2Token = "mock-oauth2-token"
-
-func createMockCFClient(h http.Handler) (*httptest.Server, *cfclient.Client, error) {
-	server := httptest.NewServer(h)
-	client, err := cfclient.NewClient(&cfclient.Config{ApiAddress: server.URL, HttpClient: server.Client(), Token: mockOauth2Token, TokenSource: mockTokenSource{}})
-	return server, client, err
-}
-
-func (ts mockTokenSource) Token() (*oauth2.Token, error) {
-	return nil, nil
+func (h mockCFHandler) TearDown() {
+	h.mockServer.Close()
 }
 
 func TestWrappedCFSession_IsValid_Valid(t *testing.T) {
 	// Setup
-	server, client, _ := createMockCFClient(mockCFHandler{
-		ResponseStatus: http.StatusOK,
-		ResponseBytes:  []byte(`{"total_results": 0, "total_pages": 1, "prev_url": null, "next_url": null, "resources": []}`)},
-	)
-	defer server.Close()
+	h := newPlainHandler("/v2/apps", http.StatusOK, []byte(`{"total_results": 0, "total_pages": 1, "prev_url": null, "next_url": null, "resources": []}`))
+	cfMock, err := setupMockCFHandler(h)
+	if err != nil {
+		panic(err)
+	}
+	defer cfMock.TearDown()
 
 	// Tested code
-	cfSession := wrappedCFSession{Client: client}
+	cfSession := wrappedCFSession{PzSession: &pzsvc.Session{}, Client: cfMock.cfClient}
 	valid, err := cfSession.IsValid()
 
 	// Asserts
@@ -73,7 +120,7 @@ func TestWrappedCFSession_IsValid_Valid(t *testing.T) {
 
 func TestWrappedCFSession_IsValid_NilClient(t *testing.T) {
 	// Tested code
-	cfSession := wrappedCFSession{Client: nil}
+	cfSession := wrappedCFSession{PzSession: &pzsvc.Session{}, Client: nil}
 	valid, err := cfSession.IsValid()
 
 	// Asserts
@@ -83,218 +130,212 @@ func TestWrappedCFSession_IsValid_NilClient(t *testing.T) {
 
 func TestWrappedCFSession_IsValid_UnauthenticatedResponse(t *testing.T) {
 	// Setup
-	numHTTPQueries := 0
-	handler := &mockCFHandler{
-		ResponseStatus: http.StatusUnauthorized, // 401
-		ResponseBytes:  []byte(`{"code": 10002, "error_code": "CF-NotAuthenticated", "description": "..."}}`),
-		AssertRequest: func(r *http.Request) {
-			if r.URL.EscapedPath() == "/v2/apps" {
-				numHTTPQueries++
-			}
-		},
+	h := newPlainHandler("/v2/apps", http.StatusUnauthorized, []byte(`{"code": 10002, "error_code": "CF-NotAuthenticated", "description": "..."}}`))
+	cfMock, err := setupMockCFHandler(h)
+	if err != nil {
+		panic(err)
 	}
-	server, client, _ := createMockCFClient(*handler)
-	defer server.Close()
+	defer cfMock.TearDown()
 
 	// Tested code
-	cfSession := wrappedCFSession{PzSession: &pzsvc.Session{}, Client: client}
+	cfSession := wrappedCFSession{PzSession: &pzsvc.Session{}, Client: cfMock.cfClient}
 	valid, err := cfSession.IsValid()
 
 	// Asserts
-	assert.Equal(t, 1, numHTTPQueries)
-	assert.False(t, valid)
 	assert.Nil(t, err)
+	assert.False(t, valid)
+	assert.Equal(t, 1, *h.calledCount)
 }
 
 func TestWrappedCFSession_IsValid_UnauthorizedResponse(t *testing.T) {
 	// Setup
-	numHTTPQueries := 0
-	handler := &mockCFHandler{
-		ResponseStatus: http.StatusForbidden, // 403
-		ResponseBytes:  []byte(`{"code": 10003, "error_code": "CF-NotAuthorized", "description": "..."}}`),
-		AssertRequest: func(r *http.Request) {
-			if r.URL.EscapedPath() == "/v2/apps" {
-				numHTTPQueries++
-			}
-		},
+	h := newPlainHandler("/v2/apps", http.StatusForbidden, []byte(`{"code": 10003, "error_code": "CF-NotAuthorized", "description": "..."}}`))
+	cfMock, err := setupMockCFHandler(h)
+	if err != nil {
+		panic(err)
 	}
-	server, client, _ := createMockCFClient(*handler)
-	defer server.Close()
+	defer cfMock.TearDown()
 
 	// Tested code
-	cfSession := wrappedCFSession{PzSession: &pzsvc.Session{}, Client: client}
+	cfSession := wrappedCFSession{PzSession: &pzsvc.Session{}, Client: cfMock.cfClient}
 	valid, err := cfSession.IsValid()
 
 	// Asserts
-	assert.Equal(t, 1, numHTTPQueries)
-	assert.False(t, valid)
 	assert.Nil(t, err)
+	assert.False(t, valid)
+	assert.Equal(t, 1, *h.calledCount)
 }
 
 func TestWrappedCFSession_IsValid_UnknownError(t *testing.T) {
 	// Setup
-	numHTTPQueries := 0
-	handler := &mockCFHandler{
-		ResponseStatus: http.StatusTeapot, // 418
-		ResponseBytes:  []byte(`{"code": 10418, "error_code": "CF-Teapot", "description": "..."}}`),
-		AssertRequest: func(r *http.Request) {
-			if r.URL.EscapedPath() == "/v2/apps" {
-				numHTTPQueries++
-			}
-		},
+	h := newPlainHandler("/v2/apps", http.StatusTeapot, []byte(`{"code": 10418, "error_code": "CF-Teapot", "description": "..."}}`))
+	cfMock, err := setupMockCFHandler(h)
+	if err != nil {
+		panic(err)
 	}
-	server, client, _ := createMockCFClient(*handler)
-	defer server.Close()
+	defer cfMock.TearDown()
 
 	// Tested code
-	cfSession := wrappedCFSession{PzSession: &pzsvc.Session{}, Client: client}
+	cfSession := wrappedCFSession{PzSession: &pzsvc.Session{}, Client: cfMock.cfClient}
 	valid, err := cfSession.IsValid()
 
 	// Asserts
-	assert.Equal(t, 1, numHTTPQueries)
-	assert.False(t, valid)
 	assert.NotNil(t, err)
+	assert.False(t, valid)
+	assert.Equal(t, 1, *h.calledCount)
+}
+
+type expiredOauthRoundTripper struct {
+	calledCount int
+}
+
+func (rt *expiredOauthRoundTripper) RoundTrip(r *http.Request) (*http.Response, error) {
+	rt.calledCount++
+	return nil, errors.New("oauth2: cannot fetch token: 401 Unauthorized")
+}
+func TestWrappedCFSession_IsValid_OAuthExpiredRefreshToken(t *testing.T) {
+	// Setup
+	h := newPlainHandler("/v2/apps", http.StatusOK, []byte(`{"total_results": 0, "total_pages": 1, "prev_url": null, "next_url": null, "resources": []}`))
+	cfMock, err := setupMockCFHandler(h)
+	if err != nil {
+		panic(err)
+	}
+	defer cfMock.TearDown()
+
+	brokenRoundTripper := &expiredOauthRoundTripper{}
+	cfMock.cfClient.Config.HttpClient.Transport = brokenRoundTripper
+
+	// Tested code
+	cfSession := wrappedCFSession{PzSession: &pzsvc.Session{}, Client: cfMock.cfClient}
+	valid, err := cfSession.IsValid()
+
+	// Asserts
+	assert.Nil(t, err)     // XXX: broken! (TDD)
+	assert.False(t, valid) // XXX: broken! (TDD)
+	assert.Equal(t, 1, brokenRoundTripper.calledCount)
+	assert.Equal(t, 0, *h.calledCount)
 }
 
 func TestWrappedCFSession_CountTasksForApp_Success(t *testing.T) {
 	// Setup
-	numHTTPQueries := 0
-	handler := &mockCFHandler{
-		ResponseStatus: http.StatusOK, // 200
-		ResponseBytes:  []byte(`{"pagination":{"total_results":3,"total_pages":1,"first":null,"last":null,"next":null,"previous": null},"resources":[{}, {}, {}]}`),
-		AssertRequest: func(r *http.Request) {
-			if r.URL.EscapedPath() == "/v3/apps/test-app-id/tasks" {
-				numHTTPQueries++
-			}
-		},
+	h := newPlainHandler("/v3/apps/test-app-id/tasks", http.StatusOK, []byte(`{"pagination":{"total_results":3,"total_pages":1,"first":null,"last":null,"next":null,"previous": null},"resources":[{}, {}, {}]}`))
+	cfMock, err := setupMockCFHandler(h)
+	if err != nil {
+		panic(err)
 	}
-	server, client, _ := createMockCFClient(*handler)
-	defer server.Close()
+	defer cfMock.TearDown()
 
 	// Tested code
-	cfSession := wrappedCFSession{PzSession: &pzsvc.Session{}, Client: client}
+	cfSession := wrappedCFSession{PzSession: &pzsvc.Session{}, Client: cfMock.cfClient}
 	count, err := cfSession.CountTasksForApp("test-app-id")
 
 	// Asserts
-	assert.Equal(t, 1, numHTTPQueries)
-	assert.Equal(t, 3, count)
 	assert.Nil(t, err)
+	assert.Equal(t, 3, count)
+	assert.Equal(t, 1, *h.calledCount)
 }
 
 func TestWrappedCFSession_CountTasksForApp_Error(t *testing.T) {
 	// Setup
-	numHTTPQueries := 0
-	handler := &mockCFHandler{
-		ResponseStatus: http.StatusTeapot, // 418
-		ResponseBytes:  []byte(`{"code": 10418, "error_code": "CF-Teapot", "description": "..."}}`),
-		AssertRequest: func(r *http.Request) {
-			if r.URL.EscapedPath() == "/v3/apps/test-app-id/tasks" {
-				numHTTPQueries++
-			}
-		},
+	h := newPlainHandler("/v3/apps/test-app-id/tasks", http.StatusTeapot, []byte(`{"code": 10418, "error_code": "CF-Teapot", "description": "..."}}`))
+	cfMock, err := setupMockCFHandler(h)
+	if err != nil {
+		panic(err)
 	}
-	server, client, _ := createMockCFClient(*handler)
-	defer server.Close()
+	defer cfMock.TearDown()
 
 	// Tested code
-	cfSession := wrappedCFSession{PzSession: &pzsvc.Session{}, Client: client}
+	cfSession := wrappedCFSession{PzSession: &pzsvc.Session{}, Client: cfMock.cfClient}
 	count, err := cfSession.CountTasksForApp("test-app-id")
 
 	// Asserts
-	assert.Equal(t, 1, numHTTPQueries)
-	assert.Equal(t, 0, count)
 	assert.NotNil(t, err)
+	assert.Equal(t, 0, count)
+	assert.Equal(t, 1, *h.calledCount)
 }
 
 func TestWrappedCFSession_CreateTask_Success(t *testing.T) {
 	// Setup
-	numHTTPQueries := 0
-	handler := &mockCFHandler{
-		ResponseStatus: http.StatusOK, // 200
-		ResponseBytes:  []byte(`{}`),
-		AssertRequest: func(r *http.Request) {
-			if r.URL.EscapedPath() == "/v3/apps/test-app-id/tasks" && r.Method == "POST" {
-				numHTTPQueries++
-			}
-		},
+	h := newPlainHandler("/v3/apps/test-app-id/tasks", http.StatusOK, []byte(`{}`))
+	cfMock, err := setupMockCFHandler(h)
+	if err != nil {
+		panic(err)
 	}
-	server, client, _ := createMockCFClient(*handler)
-	defer server.Close()
+	defer cfMock.TearDown()
 
 	// Tested code
-	cfSession := wrappedCFSession{PzSession: &pzsvc.Session{}, Client: client}
-	err := cfSession.CreateTask(TaskRequest{DropletGUID: "test-app-id"})
+	cfSession := wrappedCFSession{PzSession: &pzsvc.Session{}, Client: cfMock.cfClient}
+	err = cfSession.CreateTask(TaskRequest{DropletGUID: "test-app-id"})
 
 	// Asserts
-	assert.Equal(t, 1, numHTTPQueries)
 	assert.Nil(t, err)
+	assert.Equal(t, 1, *h.calledCount)
 }
 
 func TestWrappedCFSession_CreateTask_Error(t *testing.T) {
 	// Setup
-	numHTTPQueries := 0
-	handler := &mockCFHandler{
-		ResponseStatus: http.StatusTeapot, // 418
-		ResponseBytes:  []byte(`{"code": 10418, "error_code": "CF-Teapot", "description": "..."}}`),
-		AssertRequest: func(r *http.Request) {
-			if r.URL.EscapedPath() == "/v3/apps/test-app-id/tasks" && r.Method == "POST" {
-				numHTTPQueries++
-			}
-		},
+	h := newPlainHandler("/v3/apps/test-app-id/tasks", http.StatusTeapot, []byte(`{"code": 10418, "error_code": "CF-Teapot", "description": "..."}}`))
+	cfMock, err := setupMockCFHandler(h)
+	if err != nil {
+		panic(err)
 	}
-	server, client, _ := createMockCFClient(*handler)
-	defer server.Close()
+	defer cfMock.TearDown()
 
 	// Tested code
-	cfSession := wrappedCFSession{PzSession: &pzsvc.Session{}, Client: client}
-	err := cfSession.CreateTask(TaskRequest{DropletGUID: "test-app-id"})
+	cfSession := wrappedCFSession{PzSession: &pzsvc.Session{}, Client: cfMock.cfClient}
+	err = cfSession.CreateTask(TaskRequest{DropletGUID: "test-app-id"})
 
 	// Asserts
-	assert.Equal(t, 1, numHTTPQueries)
 	assert.NotNil(t, err)
+	assert.Equal(t, 1, *h.calledCount)
 }
 
 func TestNewWrappedCFSession_Success(t *testing.T) {
 	// Setup
-	server, client, _ := createMockCFClient(mockCFHandler{
-		ResponseStatus: http.StatusOK,
-		ResponseBytes:  []byte(`{"total_results": 0, "total_pages": 1, "prev_url": null, "next_url": null, "resources": []}`)},
-	)
-	defer server.Close()
-	pzSession := &pzsvc.Session{}
+	h := newPlainHandler("/", http.StatusOK, []byte(`{"total_results": 0, "total_pages": 1, "prev_url": null, "next_url": null, "resources": []}`))
+	cfMock, err := setupMockCFHandler(h)
+	if err != nil {
+		panic(err)
+	}
+	defer cfMock.TearDown()
+
 	config := &FactoryConfig{
-		APIAddress:  client.Config.ApiAddress,
-		Username:    client.Config.Username,
-		Password:    client.Config.Password,
-		HTTPClient:  client.Config.HttpClient,
-		Token:       client.Config.Token,
-		TokenSource: client.Config.TokenSource,
+		APIAddress:  cfMock.cfClient.Config.ApiAddress,
+		Username:    cfMock.cfClient.Config.Username,
+		Password:    cfMock.cfClient.Config.Password,
+		HTTPClient:  cfMock.cfClient.Config.HttpClient,
+		Token:       cfMock.cfClient.Config.Token,
+		TokenSource: cfMock.cfClient.Config.TokenSource,
 	}
 
 	// Tested code
-	session, err := newWrappedCFSession(pzSession, config)
+	session, err := newWrappedCFSession(&pzsvc.Session{}, config)
 
 	// Asserts
-	assert.NotNil(t, session)
 	assert.Nil(t, err)
+	assert.NotNil(t, session)
 }
 
 func TestNewWrappedCFSession_Error(t *testing.T) {
 	// Setup
-	server, client, _ := createMockCFClient(mockCFHandler{})
-	pzSession := &pzsvc.Session{}
-	config := FactoryConfig{
-		APIAddress:  client.Config.ApiAddress,
-		Username:    client.Config.Username,
-		Password:    client.Config.Password,
-		HTTPClient:  client.Config.HttpClient,
-		Token:       client.Config.Token,
-		TokenSource: client.Config.TokenSource,
+	h := newPlainHandler("/", http.StatusInternalServerError, []byte(`{}`))
+	cfMock, err := setupMockCFHandler(h)
+	if err != nil {
+		panic(err)
 	}
-	server.Close() // Force connection failure by shutting down the server early
+	defer cfMock.TearDown()
+
+	config := &FactoryConfig{
+		APIAddress:  "bogus-address",
+		Username:    cfMock.cfClient.Config.Username,
+		Password:    cfMock.cfClient.Config.Password,
+		HTTPClient:  cfMock.cfClient.Config.HttpClient,
+		Token:       cfMock.cfClient.Config.Token,
+		TokenSource: cfMock.cfClient.Config.TokenSource,
+	}
 
 	// Tested code
-	session, err := newWrappedCFSession(pzSession, &config)
+	session, err := newWrappedCFSession(&pzsvc.Session{}, config)
 
 	// Asserts
 	assert.Nil(t, session)
