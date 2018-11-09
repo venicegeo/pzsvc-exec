@@ -205,8 +205,8 @@ func TestWrappedCFSession_IsValid_OAuthExpiredRefreshToken(t *testing.T) {
 	valid, err := cfSession.IsValid()
 
 	// Asserts
-	assert.Nil(t, err)     // XXX: broken! (TDD)
-	assert.False(t, valid) // XXX: broken! (TDD)
+	assert.Nil(t, err)
+	assert.False(t, valid)
 	assert.Equal(t, 1, brokenRoundTripper.calledCount)
 	assert.Equal(t, 0, *h.calledCount)
 }
