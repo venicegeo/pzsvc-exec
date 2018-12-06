@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"os/exec"
 	"strconv"
 	"strings"
 	"time"
@@ -46,6 +47,12 @@ type Loop struct {
 	runIterationFunc func(l Loop) error
 }
 
+type JobRequestData struct {
+	JobID string
+	WorkerCommand string
+	JobInput *pzsvc.InpStruct
+}
+
 // NewLoop creates a Loop and does starting configuration based on the given parameters
 func NewLoop(s *pzsvc.Session, configObj pzsvc.Config, svcID string, configPath string, clientFactory cfwrapper.Factory) (*Loop, error) {
 	pzsvc.LogInfo(*s, "Initializing polling loop object")
@@ -62,6 +69,12 @@ func NewLoop(s *pzsvc.Session, configObj pzsvc.Config, svcID string, configPath 
 		taskLimit, _ = strconv.Atoi(envTaskLimit)
 	}
 
+	// Call the appropriate function depending if PCF tasks are enabled or disabled
+	runFunc := runLocalIteration
+	if clientFactory != nil {
+		runFunc = runPcfTaskIteration
+	}
+
 	return &Loop{
 		PzSession:        s,
 		PzConfig:         configObj,
@@ -72,7 +85,7 @@ func NewLoop(s *pzsvc.Session, configObj pzsvc.Config, svcID string, configPath 
 		taskLimit:        taskLimit,
 		intervalTick:     5 * time.Second,
 		stopChan:         nil, // initialized when loop starts
-		runIterationFunc: runIteration,
+		runIterationFunc: runFunc,
 	}, nil
 }
 
@@ -105,8 +118,32 @@ func (l Loop) Stop() {
 	close(l.stopChan)
 }
 
-func runIteration(l Loop) error {
-	pzsvc.LogInfo(*l.PzSession, "Starting polling loop iteration")
+func runLocalIteration(l Loop) error {
+	pzsvc.LogInfo(*l.PzSession, "Starting Local polling loop iteration")
+
+	jobData, err := l.getJobData()
+	if err != nil {
+		return err // Bubble up error
+	}
+	if jobData == nil {
+		return nil // No Jobs to process
+	}
+
+	serializedInput, _ := json.Marshal(jobData.JobInput)
+	pzsvc.LogAudit(*l.PzSession, l.PzSession.UserID, "Creating CF Task for Job "+jobData.JobID+" : "+jobData.WorkerCommand, l.PzSession.AppName, string(serializedInput), pzsvc.INFO)
+
+	cmd := exec.Command(jobData.WorkerCommand)
+	err = cmd.Run()
+	if err != nil {
+		pzsvc.LogAudit(*l.PzSession, l.PzSession.UserID, "Audit failure", l.PzSession.AppName, "Could not run local Algorithm for Job. Job Failure: "+err.Error(), pzsvc.ERROR)
+		pzsvcSendExecResultNoData(*l.PzSession, l.PzSession.PzAddr, l.SvcID, jobData.JobID, pzsvc.PiazzaStatusFail)
+	}
+
+	return nil
+}
+
+func runPcfTaskIteration(l Loop) error {
+	pzsvc.LogInfo(*l.PzSession, "Starting PCF Task polling loop iteration")
 
 	cfSession, err := l.ClientFactory.GetSession()
 	if err != nil {
@@ -124,41 +161,26 @@ func runIteration(l Loop) error {
 		return nil
 	}
 
-	taskItem, _, err := l.getPzTaskItem()
+	jobData, err := l.getJobData()
 	if err != nil {
-		return err
+		return err // Bubble up error
+	}
+	if jobData == nil {
+		return nil // No Jobs to process
 	}
 
-	jobID := taskItem.Data.SvcData.JobID
-	jobData := taskItem.Data.SvcData.Data.DataInputs.Body.Content
-	if jobData == "" {
-		pzsvc.LogInfo(*l.PzSession, ("No jobs available in task queue (jobID=''); skipping this iteration cycle"))
-		return nil
-	}
-	pzsvc.LogInfo(*l.PzSession, "New Task Grabbed.  JobID: "+jobID)
-
-	jobInput, err := l.parseJobInput(jobData)
-	if err != nil {
-		return err
-	}
-
-	workerCommand, err := l.buildWorkerCommand(jobInput, jobID)
-	if err != nil {
-		return err
-	}
-
-	diskMB, memoryMB := l.calculateDiskAndMemoryLimits(jobInput)
+	diskMB, memoryMB := l.calculateDiskAndMemoryLimits(jobData.JobInput)
 
 	taskRequest := cfwrapper.TaskRequest{
-		Command:          workerCommand,
-		Name:             jobID,
+		Command:          jobData.WorkerCommand,
+		Name:             jobData.JobID,
 		DropletGUID:      l.vcapID,
 		DiskInMegabyte:   diskMB,
 		MemoryInMegabyte: memoryMB,
 	}
 
-	serializedInput, _ := json.Marshal(jobInput)
-	pzsvc.LogAudit(*l.PzSession, l.PzSession.UserID, "Creating CF Task for Job "+jobID+" : "+workerCommand, l.PzSession.AppName, string(serializedInput), pzsvc.INFO)
+	serializedInput, _ := json.Marshal(jobData.JobInput)
+	pzsvc.LogAudit(*l.PzSession, l.PzSession.UserID, "Creating CF Task for Job "+jobData.JobID+" : "+jobData.WorkerCommand, l.PzSession.AppName, string(serializedInput), pzsvc.INFO)
 
 	if err = cfSession.CreateTask(taskRequest); err != nil {
 		if cfwrapper.IsMemoryLimitError(err) {
@@ -167,11 +189,43 @@ func runIteration(l Loop) error {
 		}
 		// General error - fail the job.
 		pzsvc.LogAudit(*l.PzSession, l.PzSession.UserID, "Audit failure", l.PzSession.AppName, "Could not Create PCF Task for Job. Job Failed: "+err.Error(), pzsvc.ERROR)
-		pzsvcSendExecResultNoData(*l.PzSession, l.PzSession.PzAddr, l.SvcID, jobID, pzsvc.PiazzaStatusFail)
+		pzsvcSendExecResultNoData(*l.PzSession, l.PzSession.PzAddr, l.SvcID, jobData.JobID, pzsvc.PiazzaStatusFail)
 		return err
 	}
 
 	return nil
+}
+
+// Queries the Piazza Service for Work and if a job is found, will return the consolidated input data for the latest Job on the queue.
+func (l Loop) getJobData() (*JobRequestData, error) {
+	taskItem, _, err := l.getPzTaskItem()
+	if err != nil {
+		return nil, err
+	}
+
+	jobID := taskItem.Data.SvcData.JobID
+	jobData := taskItem.Data.SvcData.Data.DataInputs.Body.Content
+	if jobData == "" {
+		pzsvc.LogInfo(*l.PzSession, ("No jobs available in task queue (jobID=''); skipping this iteration cycle"))
+		return nil, nil
+	}
+	pzsvc.LogInfo(*l.PzSession, "New Task Grabbed.  JobID: "+jobID)
+
+	jobInput, err := l.parseJobInput(jobData)
+	if err != nil {
+		return nil, err
+	}
+
+	workerCommand, err := l.buildWorkerCommand(jobInput, jobID)
+	if err != nil {
+		return nil, err
+	}
+
+	return &JobRequestData{
+		JobID: jobID,
+		WorkerCommand: workerCommand,
+		JobInput: jobInput,
+	}, nil
 }
 
 func (l Loop) getPzTaskItem() (*model.PzTaskItem, []byte, error) {

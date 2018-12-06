@@ -95,18 +95,24 @@ func main() {
 	}
 	pzsvc.LogInfo(s, "Found target service.  ServiceID: "+svcID+".")
 
-	// Initialize the CF Client
-	clientConfig := &cfwrapper.FactoryConfig{
-		APIAddress: os.Getenv("CF_API"),
-		Username:   os.Getenv("CF_USER"),
-		Password:   os.Getenv("CF_PASS"),
-	}
-	//Set a timout, otherwise cfclient will use the default 0/infinite value.
-	clientConfig.HTTPClient = http.DefaultClient
-	clientConfig.HTTPClient.Timeout = 2 * time.Minute
-	clientFactory := cfwrapper.NewFactory(&s, clientConfig)
+	workerFlag := os.Getenv("WORKER")
+	var clientFactory *cfwrapper.DefaultFactory
+	if workerFlag != "LOCAL" {
+		// Initialize the CF Client
+		clientConfig := &cfwrapper.FactoryConfig{
+			APIAddress: os.Getenv("CF_API"),
+			Username:   os.Getenv("CF_USER"),
+			Password:   os.Getenv("CF_PASS"),
+		}
+		//Set a timout, otherwise cfclient will use the default 0/infinite value.
+		clientConfig.HTTPClient = http.DefaultClient
+		clientConfig.HTTPClient.Timeout = 2 * time.Minute
+		clientFactory = cfwrapper.NewFactory(&s, clientConfig)
 
-	pzsvc.LogInfo(s, "Cloud Foundry Client initialized. Beginning Polling.")
+		pzsvc.LogInfo(s, "Cloud Foundry Client initialized. Beginning Polling.")
+	} else {
+		pzsvc.LogInfo(s, "Local tasks enabled. Will not use Cloud Foundry for Tasks.")
+	}
 
 	pollLoop, err := poll.NewLoop(&s, configObj, svcID, configPath, clientFactory)
 	if err != nil {
