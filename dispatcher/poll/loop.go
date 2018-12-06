@@ -71,10 +71,11 @@ func NewLoop(s *pzsvc.Session, configObj pzsvc.Config, svcID string, configPath 
 
 	// Call the appropriate function depending if PCF tasks are enabled or disabled
 	runFunc := runLocalIteration
-	if clientFactory != nil {
+	workerFlag := os.Getenv("WORKER")
+	if workerFlag != "LOCAL" {
 		runFunc = runPcfTaskIteration
 	}
-
+	
 	return &Loop{
 		PzSession:        s,
 		PzConfig:         configObj,
