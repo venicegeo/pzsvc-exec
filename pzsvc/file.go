@@ -60,13 +60,13 @@ func Ingest(s Session, fName, fType, sourceName, version string,
 	switch fType {
 	case "raster":
 		{
-			//dType.MimeType = "image/tiff"
-			fileData = ingData
+			return "", pErr.Log(s, "Cannot ingest Raster")
 		}
 	case "geojson":
 		{
 			dType.MimeType = "application/vnd.geo+json"
-			fileData = ingData
+			dType.GeoJContent = string(ingData)
+			fileData = nil
 		}
 	case "text":
 		{
@@ -84,10 +84,10 @@ func Ingest(s Session, fName, fType, sourceName, version string,
 	}
 
 	if fileData != nil {
-		targAddr = s.PzAddr + "/data/file"
-		LogInfo(s, "beginning file upload")
+		targAddr = s.PzAddr + "/data"
+		LogInfo(s, "beginning geojson upload")
 		LogAudit(s, s.UserID, "file upload http request", targAddr, string(bbuff), INFO)
-		resp, pErr = SubmitMultipart(string(bbuff), targAddr, fName, s.PzAuth, fileData)
+		resp, pErr = SubmitSinglePart("POST", string(bbuff), targAddr, s.PzAuth)
 	} else {
 		targAddr = s.PzAddr + "/data"
 		LogAudit(s, s.UserID, "file upload http request", targAddr, string(bbuff), INFO)
