@@ -60,7 +60,6 @@ func Ingest(s Session, fName, fType, sourceName, version string,
 	switch fType {
 	case "raster":
 		{
-			//dType.MimeType = "image/tiff"
 			fileData = ingData
 		}
 	case "geojson":
