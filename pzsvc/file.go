@@ -65,8 +65,7 @@ func Ingest(s Session, fName, fType, sourceName, version string,
 	case "geojson":
 		{
 			dType.MimeType = "application/vnd.geo+json"
-			dType.GeoJContent = string(ingData)
-			fileData = nil
+			fileData = ingData
 		}
 	case "text":
 		{
