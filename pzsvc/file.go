@@ -60,7 +60,7 @@ func Ingest(s Session, fName, fType, sourceName, version string,
 	switch fType {
 	case "raster":
 		{
-			return "", pErr.Log(s, "Cannot ingest Raster")
+			fileData = ingData
 		}
 	case "geojson":
 		{
@@ -84,10 +84,10 @@ func Ingest(s Session, fName, fType, sourceName, version string,
 	}
 
 	if fileData != nil {
-		targAddr = s.PzAddr + "/data"
-		LogInfo(s, "beginning geojson upload")
+		targAddr = s.PzAddr + "/data/file"
+		LogInfo(s, "beginning file upload")
 		LogAudit(s, s.UserID, "file upload http request", targAddr, string(bbuff), INFO)
-		resp, pErr = SubmitSinglePart("POST", string(bbuff), targAddr, s.PzAuth)
+		resp, pErr = SubmitMultipart(string(bbuff), targAddr, fName, s.PzAuth, fileData)
 	} else {
 		targAddr = s.PzAddr + "/data"
 		LogAudit(s, s.UserID, "file upload http request", targAddr, string(bbuff), INFO)
