@@ -133,7 +133,7 @@ func runLocalIteration(l Loop) error {
 	serializedInput, _ := json.Marshal(jobData.JobInput)
 	pzsvc.LogAudit(*l.PzSession, l.PzSession.UserID, "Creating Local CLI for Job "+jobData.JobID+" : "+jobData.WorkerCommand, l.PzSession.AppName, string(serializedInput), pzsvc.INFO)
 
-	out, err := exec.Command(jobData.WorkerCommand).CombinedOutput()
+	out, err := exec.Command("sh", "-c", jobData.WorkerCommand).CombinedOutput()
 	if err != nil {
 		fmt.Printf("Raw worker output: %s", out)
 		pzsvc.LogAudit(*l.PzSession, l.PzSession.UserID, "Audit failure", l.PzSession.AppName, "Could not run local Algorithm for Job. Job Failure: "+err.Error(), pzsvc.ERROR)
