@@ -103,5 +103,5 @@ func TestIngestFileAsync_Timeout(t *testing.T) {
 	// Asserts
 	assert.Equal(t, "path/to/output/file", ingestResult.FilePath)
 	assert.Equal(t, "", ingestResult.DataID)
-	assert.Contains(t, ingestResult.Error.Error(), "timed out")
+	assert.Contains(t, ingestResult.Error.Error(), "Unexpected error storing job output")
 }

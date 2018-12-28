@@ -2,6 +2,7 @@ package cfwrapper
 
 import (
 	"net/url"
+	"strings"
 
 	cfclient "github.com/venicegeo/go-cfclient"
 	"github.com/venicegeo/pzsvc-exec/pzsvc"
@@ -40,6 +41,12 @@ func (s wrappedCFSession) IsValid() (bool, error) {
 	if cfclient.IsNotAuthorizedError(err) || cfclient.IsNotAuthenticatedError(err) {
 		return false, nil
 	}
+
+	if strings.Contains(err.Error(), "oauth2: cannot fetch token") {
+		// Hacky fix for expired refresh token breaking the OAuth2 transport of cfclient
+		return false, nil
+	}
+
 	return false, err
 }
 
